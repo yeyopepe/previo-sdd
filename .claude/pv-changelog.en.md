@@ -1,54 +1,51 @@
-# Previo v0.9.5b11 changelog (from v0.9.21)
+# Previo v0.9.5 changelog (from v0.9.21)
 
 ## Index
 
 - ⭐[New](#new)
-  - Framework configuration audit and repair (`pv-update`)
-  - Every skill now blocks until the framework configuration is verified
-  - Per-document-type language configuration
-  - Writing style rules for technical documentation
-  - Automatic project scaffolding
-  - Documentation generation for pre-existing codebases
-  - Existing documentation can be adopted as-is
-  - Risk score surfaced in status reports
-  - Release count in the status summary
-  - Collaborative refinement when promoting a todo idea
-  - Ability to delete a todo idea
-  - Changelog drafting is now isolated from concurrent closures
+  - Framework health audit and self-repair
+  - 📂Framework documentation (3 changes)
+  - Codebase analysis on first initialization
+  - Multi-language support
+  - Framework version verification gate
+  - Todo entry deletion
+  - Isolated changelog staging
 - ✏️[Changed](#changed)
-  - Working folder is no longer configurable at setup, and its default changed
-  - Build-procedure file moved to a renamed project folder
-  - Placeholder documentation is generated after scaffolding, not during questioning
-  - Change-code numbering width increased
-  - `skillModels` baseline is always recorded
-  - Status report tolerates a missing changes folder
-  - "In progress" ordering changed in the status report
-  - Closed-changes staging folder excluded from status counts
-  - Standalone `pv.py` script expanded
+  - 📂`workFolder` structure and paths (4 changes)
+  - 📂`pv-status` reports (2 changes)
+  - Trivial-fix risk tolerance loosened slightly
+  - Technical/style documentation now written using shared style rules
+  - Sequential code padding default increased
+  - Skill model/effort baseline always recorded
+  - Broken or drifted configuration now delegated to `pv-update`
+  - Translated framework prose to English
 
 ## ⭐New
 
-- **Framework configuration audit and repair (`pv-update`)** — A new skill audits `pv-context.json` against the framework's schema, checks that referenced skills and on-disk paths exist, verifies change/fix documents weren't altered or mistranslated, detects duplicate change codes, confirms every `pv-*` skill shares the same version, and reconciles the installed version against what was last verified. It fixes what it can determine unambiguously and only stops to ask the user when `pv-context.json` can't be parsed or a downgrade is detected. `pv-init` now hands off to it when its own checks find something broken.
-- **Every skill now blocks until the framework configuration is verified** — `pv-new`, `pv-fix`, `pv-how`, `pv-do`, `pv-status`, `pv-todo`, and `pv-version` now check the installed framework version against `pv-context.json`'s recorded "last verified" version at startup, and refuse to continue if they don't match, if verification was never recorded, or if a downgrade was flagged. **Action required when updating: run `pv-update` once before using any other `pv-*` skill.**
-- **Per-document-type language configuration** — The framework can now be configured with separate languages for chat interaction, in-progress change/fix documents, the release changelog, functional feature documentation, and technical documentation, instead of one implicit language for everything. `pv-init` asks about this on first setup, and every `pv-*` skill that writes user-facing content now writes it in the language configured for that document type. This adds new fields to `pv-context.json`'s schema.
-- **Writing style rules for technical documentation** — A new `pv-internal-doc-technical` skill enforces how architecture and style-bible documentation is written (dense fact fragments, code/signatures instead of explanatory prose, tables for parallel structures, fixed vocabulary tags), since this documentation is read by other framework steps rather than by a person. `pv-do` now loads these rules before drafting or editing that documentation.
-- **Automatic project scaffolding** — `pv-init` now creates the framework's full base folder structure itself right after writing the configuration, instead of leaving folder creation to whichever skill needed it first.
-- **Documentation generation for pre-existing codebases** — When `pv-init` runs on a project that already has source code, it now offers to analyze that code and generate architecture, style, and feature documentation from it, at a "minimum" or "complete" depth chosen by the user.
-- **Existing documentation can be adopted as-is** — If a project already has architecture, style, or feature documentation living outside the framework's working folder, `pv-init` now offers to move it in unchanged, rather than only recognizing docs already in place or requiring a full migration.
-- **Risk score surfaced in status reports** — `pv-status` reports now show each planned entry's risk score alongside its other details; entries not yet planned show as unscored.
-- **Release count in the status summary** — The main `pv-status` report now also shows how many releases have been prepared, alongside the existing per-state totals.
-- **Collaborative refinement when promoting a todo idea** — Converting a todo idea into a documented change now explicitly offers to develop the idea further in conversation before writing it up, instead of documenting it as-is.
-- **Ability to delete a todo idea** — A queued idea in the todo backlog can now be deleted outright, rather than only ever being promoted into the normal change/fix flow.
-- **Changelog drafting is now isolated from concurrent closures** — `pv-internal-changelog` now stages every pending closed entry into an isolated working copy before drafting the changelog, so a change/fix closed elsewhere while a release is being prepared can no longer interfere with the changelog currently being written.
+- **Framework health audit and self-repair** — `pv-update`: added a new skill that audits `.claude/pv-context.json` and the installed framework files for drift — broken configuration, missing folders, duplicate change codes, mismatched skill versions, stale `pv.py`, corrupted document labels — and automatically fixes everything it can determine safely, asking the user only when the fix would be a guess (invalid JSON, or a suspected downgrade).
+- 📂**Framework documentation**:
+  - **User guide documentation** — `pv-doc`: added a bilingual (English/Spanish) end-user guide describing how to use the `pv-*` framework, previously undocumented outside the skills themselves.
+  - **Style-bible writing guidance** — `pv-internal-doc-style`: added a new shared skill that tells `pv-do` which style categories (writing, visual design, interaction, accessibility, reusable components) apply to a given change and what each must record, used when keeping the project's style bible in sync.
+  - **Shared technical-documentation writing rules** — `pv-internal-doc-technical`: added a new shared skill defining the dense, AI-oriented writing conventions (fixed tags, tables, code blocks) that architecture and style-bible documentation must follow, invoked by `pv-do` and `pv-init` before drafting that content.
+- **Codebase analysis on first initialization** — `pv-init`: when initializing on a project that already has source code, the skill now offers a choice between a minimal or complete analysis pass and generates real architecture, style, and feature documentation from the existing codebase, instead of only scaffolding empty placeholders.
+- **Multi-language support** — `pv-init` and the framework at large: added configuration for the language the framework speaks to the user in chat, plus separate optional languages for in-progress change documents, the release changelog, feature documentation, and technical documentation, each falling back to the chat language if unset.
+- **Framework version verification gate** — `pv-do`, `pv-fix`, `pv-how`, `pv-new`, `pv-status`, `pv-todo`, `pv-version`: every user-invocable skill now checks, before doing anything else, that the installed framework's version matches what was last verified by `pv-update`, and refuses to continue (pointing the user to `pv-update`) if the configuration looks stale or blocked.
+- **Todo entry deletion** — `pv-internal-workflow`: added a capability to delete a todo entry, exposed internally for cleanup after conversion.
+- **Isolated changelog staging** — `pv-internal-changelog`: entries pending inclusion in a release are now staged into an isolated `closed/temp/` copy before drafting, so change/fix entries closed while the changelog is being written no longer interfere with that run; deletion of folded-in entries afterward no longer requires user confirmation, since the staged copy is provably safe to remove.
 
 ## ✏️Changed
 
-- **Working folder is no longer configurable at setup, and its default changed** — `pv-init` no longer asks where the framework should keep its work: it's now always set to a fixed, dedicated subfolder at the repo root (previously the repo root itself was the default, and the user was always asked to confirm or change it). Anyone wanting a different location must now edit `pv-context.json` by hand.
-- **Build-procedure file moved to a renamed project folder** — The project-specific build procedure that `pv-version` reads and writes now lives under a folder named `stuff/` instead of `framework/`. Existing projects need this file relocated to the new folder; `pv-update` covers this in its repair pass.
-- **Placeholder documentation is generated after scaffolding, not during questioning** — Previously, `pv-init` drafted an initial version of missing architecture, style, and feature docs by hand while asking setup questions. Now the scaffolding step creates the folders with a minimal placeholder first, and only afterward asks what the user wants to add.
-- **Change-code numbering width increased** — The default zero-padded width for change/fix codes increased from 4 to 5 digits, and is now always written explicitly to configuration.
-- **`skillModels` baseline is always recorded** — `pv-init` now always inspects and writes each installed skill's actual model/effort as the `skillModels` baseline, even when the user customizes nothing; previously this section was written only if the user asked to change something.
-- **Status report tolerates a missing changes folder** — `pv-status` no longer errors on a freshly initialized project with no changes folder yet; it's now reported the same as an existing-but-empty one.
-- **"In progress" ordering changed in the status report** — Within the full status report, entries already planned (pending implementation) are now listed before entries pending technical analysis, the reverse of before.
-- **Closed-changes staging folder excluded from status counts** — `pv-status` now recognizes the transient staging area used while a changelog is being drafted and excludes it from totals and listings, instead of counting it as a real entry.
-- **Standalone `pv.py` script expanded** — The `pv.py` tool distributed into every project (usable without Claude Code) gained a settings/configuration submenu, a way to browse past releases and read their changelog, search-by-id and search-by-content lookups, and an idea-deletion option, alongside exposing the framework changes above (such as skill-model sync).
+- 📂**`workFolder` structure and paths**:
+  - **`workFolder` default and configuration behavior changed** — `pv-init`: the framework's working folder now defaults to a fixed `/previo-sdd` path instead of the repo root, and is written silently without asking the user to confirm it (previously it was always asked/confirmed); a new `stuff/` fixed subfolder was added alongside `changes/`/`versions/`. Projects previously initialized at the repo root should re-run `pv-init`/`pv-update` to review the new layout.
+  - **Technical/functional documentation paths now relative to `workFolder`** — `pv-init`: architecture, style-bible, and features documentation folders are now placed relative to `workFolder` instead of the repo root, aligning them with `changes/`/`versions/`. Existing configurations pointing outside `workFolder` need review via `pv-update`.
+  - **Release build procedure file relocated** — `pv-version`: the project's build/compile procedure document moved from `{workFolder}/framework/how-to-compile-version.md` to `{workFolder}/stuff/how-to-compile-version.md`. Existing projects need to re-run `pv-update` (or manually relocate the file) after updating.
+  - **Path resolution made consistent regardless of leading-slash formatting** — `pv-internal-workflow`, `pv-how`: `workFolder` values are now resolved the same way whether or not they carry a leading slash, avoiding inconsistent change-code collision checks (internal fix with no visible behavior change for correctly configured projects).
+- 📂**`pv-status` reports**:
+  - **Status report gained risk and version data** — `pv-status`: the general and filtered status reports now show each entry's assessed risk level and a running count of prepared versions; the general report also splits "in progress" entries into a distinct "ready to close" bucket alongside "planned, pending implementation" and "pending technical analysis." The report's own text (headings, labels) is now always rendered in English regardless of the user's configured chat language, since it's produced by deterministic scripts, not drafted prose.
+  - **Terminal report width configurable** — `pv-status`: the plain-text terminal output used by `pv.py` now accepts a caller-specified column width instead of a fixed value.
+- **Trivial-fix risk tolerance loosened slightly** — `pv-fix`: the "fast" (trivial) classification now tolerates a small amount of risk to the rest of the application instead of requiring exactly zero risk.
+- **Technical/style documentation now written using shared style rules** — `pv-do`: when updating architecture or style-bible documentation after implementing a change, it now loads the shared writing conventions from `pv-internal-doc-technical` and, for the style bible specifically, consults `pv-internal-doc-style` for which categories apply, instead of drafting that content with no shared baseline.
+- **Sequential code padding default increased** — `pv-init`: the default zero-padding width for change/fix codes increased, and the field is now always written explicitly to configuration instead of being left to an implicit default.
+- **Skill model/effort baseline always recorded** — `pv-init`: the mapping of which Claude model/effort each `pv-*` skill runs with is now always written to `pv-context.json` (mirrored from each skill's actual frontmatter), even when the user customizes nothing, instead of being omitted when unused.
+- **Broken or drifted configuration now delegated to `pv-update`** — `pv-init`: when it detects a problem beyond an unconfigured optional field (invalid JSON, a dangling reference, a stale `pv.py`), it now hands off diagnosis and repair to the new `pv-update` skill instead of attempting to fix it inline.
+- **Translated framework prose to English** — nearly every `pv-*` skill: all skill instructions, message templates, and document templates (previously written in Spanish) were translated to English as the framework's baseline language, with document field labels using a new fixed-marker convention so they stay parseable regardless of the configured content language.
