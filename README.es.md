@@ -81,6 +81,9 @@ Versión específica:
 $env:**Previo**_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
 ```
 
+> ❗**RECUERDA**:
+> Puedes consultar el changelog en `.claude/pv-changelong.es.md`
+
 Esto instala (o actualiza) `.claude/skills` y la documentación (`pv-guide.md` y su versión `.en.md`) con el contenido del framework, sin tocar tu configuración (`pv-context.json`, `settings.json`) ni ninguna skill propia que no empiece por `pv-`. Volver a ejecutarlo en cualquier momento actualiza el framework a la última versión: añade skills nuevas, actualiza las existentes y elimina las que ya no formen parte de **Previo**.
 
 Después, desde la raíz de ese proyecto, ejecuta según tu caso ```/pv-init``` si es primera instalación o ```/pv-update``` si estás actualizando desde una versión anterior.
@@ -157,11 +160,12 @@ Skills opcionales que complementan el ciclo mínimo: anotar ideas antes de compr
 
 
 ## ⭐La experiencia completa
-Consulta en la [`Guía de usuario`](.claude/pv-doc/pv-guide.es.md) todo lo que puedes hacer con **Previo**.
+Consulta el [changelog](.claude/pv-changelog.es.md) de la vesión actual.
+Consulta en la [guía de usuario](.claude/pv-doc/pv-guide.es.md) todo lo que puedes hacer con **Previo**.
 
 
 ## 📐Cómo está hecho, al detalle
-Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), aquí tienes el [`documento de diseño`](.claude/pv-doc/pv-design/pv-design.es.md).
+Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), aquí tienes el [documento de diseño](.claude/pv-doc/pv-design/pv-design.es.md).
 
 ## ⚖️Licencia
 

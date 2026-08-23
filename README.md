@@ -29,6 +29,7 @@ It brings the control and traceability of *spec-driven development* without the 
 |<u>**Design is always validated**</u>|Visualizes and validates visual changes and workflows with static mockups (HTML/CSS or a custom format) before implementing anything — avoiding the "implement → doesn't land right → redo" cycle.|
 |<u>**Detailed analysis, clear risks**</u>|Every change is analyzed and written up in a detailed plan to set it up for success and anticipate the risk it carries.|
 |<u>**Documentation always up to date**</u>|**Previo** keeps the project's technical and functional documentation up to date at all times, along with the changelog between versions. You can start the project with an initial technical design or let **Previo** build it up on its own.|
+|<u>**Traceability**</u>| What, when, and how, for everything. Always. |
 |<u>**Adaptable and versatile**</u>| Great for projects of any size, and adapts to each project's stack.|
 |<u>**No extra tooling**</u> |Requires nothing beyond Claude Code and Python on the development machine — no installs on your machine, external services, databases, or other headaches.|
 |<u>**100% built by AI, for AI**</u> |The whole cycle (from idea to delivery) is a 100% AI-guided process, for any kind of profile. A few more tokens, much less complexity.|
@@ -79,6 +80,9 @@ Specific version:
 ```
 $env:**Previo**_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
 ```
+
+> ❗**REMEMBER**:
+> You can check the changelog at `.claude/pv-changelog.en.md`
 
 This installs (or updates) `.claude/skills` and the documentation (`pv-guide.md` and its `.en.md` version) with the framework's content, without touching your configuration (`pv-context.json`, `settings.json`) or any custom skill that doesn't start with `pv-`. Running it again at any time updates the framework to the latest version: it adds new skills, updates existing ones, and removes any that are no longer part of **Previo**.
 
@@ -156,6 +160,7 @@ Optional skills that complement the minimal cycle: jotting down ideas before com
 
 
 ## ⭐The Full Experience
+See the [changelog](.claude/pv-changelog.en.md) for the current version.
 See the [user guide](.claude/pv-doc/pv-guide.en.md) for everything you can do with **Previo**.
 
 ## 📐How it's built, in detail
