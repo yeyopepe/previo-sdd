@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b2
+  version: 0.9.6b3
   uses: [pv-internal-doc-files]
 ---
 
