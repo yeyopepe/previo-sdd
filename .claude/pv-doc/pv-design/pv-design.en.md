@@ -8,6 +8,8 @@ Map of the skills that make up the `pv-*` framework and how they invoke each oth
 - [Responsibilities of each skill](#responsibilities-of-each-skill)
   - [User-invocable](#user-invocable)
   - [Internal and support](#internal-and-support)
+    - [Analysis](#analysis)
+    - [Documentation](#documentation)
 - [The `pv-context.json` file](#the-pv-contextjson-file)
   - [skillModels](#skillmodels)
   - [framework](#framework)
@@ -18,7 +20,7 @@ Map of the skills that make up the `pv-*` framework and how they invoke each oth
 
 ## Relationship diagram
 
-Simplified diagram showing only the main flow visible to the user. The internal skills (`pv-internal-workflow`, `pv-internal-tech-analysis`, `pv-internal-tech-security`, `pv-internal-tech-mermaid`, `pv-internal-tech-risks`, `pv-internal-mockups-html`, `pv-internal-mockups-ascii`, `pv-internal-doc-features`, `pv-internal-doc-technical`, `pv-internal-doc-style`, `pv-internal-changelog`) and the support skill (`pv-status`) don't appear here — their relationship to the rest is described in the responsibilities section below. The internal flow of `pv-version`/`pv-internal-changelog` (with guardrails and step-by-step detail) has its own diagram, not duplicated here: [`.claude/skills/pv-version/version-flow-diagram.template.md`](skills/pv-version/version-flow-diagram.template.md).
+Simplified diagram showing only the main flow visible to the user. The internal skills (`pv-internal-workflow`, `pv-internal-tech-analysis`, `pv-internal-tech-security`, `pv-internal-tech-mermaid`, `pv-internal-tech-risks`, `pv-internal-mockups-html`, `pv-internal-mockups-ascii`, `pv-internal-doc-files`, `pv-internal-doc-features`, `pv-internal-doc-technical`, `pv-internal-doc-style`, `pv-internal-changelog`) and the support skill (`pv-status`) don't appear here — their relationship to the rest is described in the responsibilities section below. The internal flow of `pv-version`/`pv-internal-changelog` (with guardrails and step-by-step detail) has its own diagram, not duplicated here: [`.claude/skills/pv-version/version-flow-diagram.template.md`](skills/pv-version/version-flow-diagram.template.md).
 
 `pv-how` (plan) and `pv-do` (implement) are two separate skills: `pv-how` analyzes the technical solution and writes `plan.md`, and only if the user confirms they want to implement it right away does it chain into `pv-do`, which is the one that edits the code. You can also invoke `pv-do` directly on an entry that already has a `plan.md`, without going through `pv-how` again.
 
@@ -135,7 +137,66 @@ Legend:
 
 ### Internal and support
 
-`pv-internal-workflow`, `pv-internal-tech-analysis`, `pv-internal-tech-security`, `pv-internal-doc-style`, and `pv-internal-changelog` only run when another framework skill invokes them as part of its own process; if the user invokes them directly (or asks in plain text to "run X" outside that context), they stop without doing anything and point to the corresponding skill instead.
+`pv-internal-workflow`, `pv-internal-tech-analysis`, `pv-internal-tech-security`, `pv-internal-doc-files`, `pv-internal-doc-style`, and `pv-internal-changelog` only run when another framework skill invokes them as part of its own process; if the user invokes them directly (or asks in plain text to "run X" outside that context), they stop without doing anything and point to the corresponding skill instead.
+
+They split into two groups: **analysis** (technical context, risk, security, diagrams, mockups, `changes/` file mechanics, changelog) and **documentation** (managing `docs.functional`/`docs.tech`), each with its own relationship diagram.
+
+#### Analysis
+
+Relationship diagram for the analysis skills, both among themselves and with the user-invocable skills that use them. Gray for the internal skills in this subsection; blue for the user-invocable ones (same color as in the main diagram).
+
+```mermaid
+graph TD
+    subgraph Invocable
+        pv_new["pv-new"]
+        pv_fix["pv-fix"]
+        pv_how["pv-how"]
+    end
+
+    subgraph Analysis
+        pv_workflow["pv-internal-workflow"]
+        pv_tech_analysis["pv-internal-tech-analysis"]
+        pv_tech_security["pv-internal-tech-security"]
+        pv_tech_mermaid["pv-internal-tech-mermaid"]
+        pv_tech_risks["pv-internal-tech-risks"]
+        pv_mockups_html["pv-internal-mockups-html"]
+        pv_mockups_ascii["pv-internal-mockups-ascii"]
+        pv_changelog["pv-internal-changelog"]
+    end
+
+    pv_version["pv-version"]
+
+    pv_new --> pv_workflow
+    pv_new --> pv_tech_analysis
+    pv_new --> pv_tech_mermaid
+    pv_new --> pv_mockups_html
+
+    pv_fix --> pv_workflow
+    pv_fix --> pv_tech_analysis
+    pv_fix --> pv_tech_mermaid
+    pv_fix --> pv_mockups_html
+
+    pv_how --> pv_tech_analysis
+    pv_how --> pv_tech_mermaid
+    pv_how --> pv_mockups_html
+    pv_how --> pv_tech_risks
+
+    pv_tech_analysis --> pv_tech_security
+
+    pv_version --> pv_changelog
+
+    pv_mockups_ascii -.->|"alternative for framework.skills.mockups"| pv_mockups_html
+
+    classDef entry fill:#2b6cb0,color:#fff
+    classDef internal fill:#495057,color:#fff
+    class pv_new,pv_fix,pv_how,pv_version entry
+    class pv_workflow,pv_tech_analysis,pv_tech_security,pv_tech_mermaid,pv_tech_risks,pv_mockups_html,pv_mockups_ascii,pv_changelog internal
+```
+
+Legend:
+- Solid arrows (`-->`): direct skill-to-skill invocation within the same process.
+- Dotted arrows (`-.->`): swappable configuration (`framework.skills.mockups`) — the origin doesn't invoke itself, it replaces the destination only when that alternative is configured.
+- `pv-internal-tech-mermaid` and `pv-internal-mockups-html` are the skills behind `framework.skills.diagrams`/`framework.skills.mockups` — `pv-new`/`pv-fix`/`pv-how` invoke whichever name is configured there, by default the ones shown in the diagram; `pv-internal-mockups-ascii` is the only alternative already built into the framework for `skills.mockups`, transparent to whoever invokes it.
 
 - **pv-internal-workflow** — Centralizes the framework's file mechanics: numbering and creating new entries in `inProgress` (`action=create`, with `type` `change`/`fix`/`fast`), and moving folders between states (`action=move`). It doesn't analyze or decide anything, it only executes what the calling skill already resolved. For `pv-fix`'s `fast` shortcut, the caller typically chains `create` and `move` in the same invocation, without going through `plan.md`. *Uses:* no other skill.
 
@@ -169,15 +230,64 @@ Legend:
 
   Assets and scripts: none of its own.
 
-- **pv-internal-doc-features** — Centralizes the organization of `docs.functional.featuresDocPathDir` when it's a folder (one file per feature plus a generated `INDEX.md`): `find` locates whether a feature already has its own file, `upsert` writes the final file (already drafted by the caller) and regenerates the index. It doesn't decide what the documentation says, only where and how it's stored. Used by `pv-do`. *Uses:* no other skill.
+#### Documentation
+
+Skills dedicated to managing `docs.functional.featuresDocPathDir`, `docs.tech.architectureDocDir`, and `docs.tech.styleBibleDocDir`: what to write, how to write it, and where to store it.
+
+```mermaid
+graph TD
+    pv_do["pv-do"]
+
+    subgraph Documentation
+        pv_doc_files["pv-internal-doc-files"]
+        pv_doc_features["pv-internal-doc-features"]
+        pv_doc_technical["pv-internal-doc-technical"]
+        pv_doc_style["pv-internal-doc-style"]
+    end
+
+    pv_do -->|"docs.functional.featuresDocPathDir"| pv_doc_features
+    pv_do -->|"docs.tech.architectureDocDir / styleBibleDocDir"| pv_doc_technical
+    pv_do -->|"docs.tech.styleBibleDocDir"| pv_doc_style
+    pv_do -->|"docs.tech.architectureDocDir / styleBibleDocDir"| pv_doc_files
+
+    pv_doc_features -->|"find / upsert"| pv_doc_files
+
+    classDef entry fill:#2b6cb0,color:#fff
+    classDef internal fill:#495057,color:#fff
+    class pv_do entry
+    class pv_doc_files,pv_doc_features,pv_doc_technical,pv_doc_style internal
+```
+
+Legend:
+- Solid arrows (`-->`): direct skill-to-skill invocation, labeled with the `docs.*` field it corresponds to.
+- `pv-do` invokes `pv-internal-doc-files` directly for `architectureDocDir`/`styleBibleDocDir` (it has no intermediate domain skill the way `pv-internal-doc-features` does for features); for `featuresDocPathDir` it always goes through `pv-internal-doc-features`, which in turn delegates to `pv-internal-doc-files`.
+- `pv-internal-doc-technical`/`pv-internal-doc-style` never invoke `pv-internal-doc-files`, nor the other way around: the first two only decide what/how to write, the last one only decides where/how to store it — they don't need each other.
+
+**Responsibility comparison table:**
+
+| | `pv-internal-doc-files` | `pv-internal-doc-features` | `pv-internal-doc-technical` | `pv-internal-doc-style` |
+|---|---|---|---|---|
+| Decides **what** the content says | No | No — `pv-do` does | No — only writing style, topic/structure are free | **Yes** — a checklist of categories + what each one must record |
+| Decides **how to write it** | No | No — builds the `body` with features' domain rules (fields, diagrams, cross-links) but doesn't decide the prose style | **Yes** — general writing rules (dense fragments, tables, code, fixed tags) | **Yes** — its own writing rules, on top of `doc-technical`'s |
+| Manages the file (`NNN` numbering, `Area`, `INDEX.md`, `find`/`upsert`) | **Yes** — for all three folders (`featuresDocPathDir`, `architectureDocDir`, `styleBibleDocDir`) | No — delegates to `pv-internal-doc-files` | No | No — `pv-do` manages the file by invoking `pv-internal-doc-files` |
+| Writes anything to disk | **Yes** (`upsert` action) | No (delegates to `doc-files`) | No | No, never |
+| Which field it applies to | `docs.functional.featuresDocPathDir`, `docs.tech.architectureDocDir`, **and** `docs.tech.styleBibleDocDir` | `docs.functional.featuresDocPathDir` | `docs.tech.architectureDocDir` **and** `docs.tech.styleBibleDocDir` | `docs.tech.styleBibleDocDir` only |
+
+`pv-internal-doc-files` is the single point that touches disk for all three documentation areas: it numbers (`NNN`), computes the slug, writes the file with the `**Area**:` field, and regenerates `INDEX.md`. `pv-internal-doc-features` keeps its own domain responsibility (template, `Available in`/`Code`/`Since`/`Last modified` fields, functional diagrams, the never-duplicate-an-entry rule) but delegates everything about numbering/indexing to `doc-files`. `pv-internal-doc-technical`/`pv-internal-doc-style` don't manage the file or decide where it's stored — `pv-do` does that by invoking `pv-internal-doc-files`.
+
+- **pv-internal-doc-files** — Shared, project-agnostic file-management skill for the three documentation folders (`docs.functional.featuresDocPathDir`, `docs.tech.architectureDocDir`, `docs.tech.styleBibleDocDir`): `find` locates whether a topic already has its own file by reading `INDEX.md` (regenerating it first if missing) and confirming plausible candidates; `upsert` writes `{folder}/{NNN}-{slug}.md` (three-digit number, `**Area**:` field, then the caller's already-drafted `body`) and regenerates `INDEX.md`. It doesn't decide what the documentation says or how to write it — only where and how it's stored on disk; the caller (`pv-internal-doc-features` or `pv-do` directly for architecture/style) supplies `area`, `title`, and a fully-formatted `body`. Used by `pv-internal-doc-features` and `pv-do`. *Uses:* no other skill.
+
+  Assets and scripts:
+  - [`scripts/_slug.py`](skills/pv-internal-doc-files/scripts/_slug.py) — shared internal helper, not directly invocable: `slugify()` normalizes a title into a lowercase ASCII slug, and `github_anchor()` replicates GitHub's anchor algorithm to rewrite `#anchor` links when migrating a legacy `FEATURES.md`.
+  - [`scripts/next-feature-number.py`](skills/pv-internal-doc-files/scripts/next-feature-number.py) — computes the next free number (the title's prefix, not the filename) by finding the highest one already used in the folder; a deleted number is never reused.
+  - [`scripts/rebuild-index.py`](skills/pv-internal-doc-files/scripts/rebuild-index.py) — regenerates `INDEX.md` from every file in the folder, grouped by area; the sole source of truth for that index, never hand-edited.
+  - [`scripts/slugify.py`](skills/pv-internal-doc-files/scripts/slugify.py) — computes the text part (slug) of a new file's filename (`{number}-{slug}.md`); the number already guarantees no collision, so the slug doesn't need to check anything on its own.
+
+- **pv-internal-doc-features** — Owns the domain rules for `docs.functional.featuresDocPathDir` when it's a folder (one file per feature): builds the `body` with its specific fields (`Available in`/`Code`/`Since`/`Last modified`, functional description, optional Mermaid diagram, cross-links `[text](NNN-slug.md)`) and the rule of never duplicating an entry (edit it in place instead). It delegates all file management — numbering, `INDEX.md`, `find`/`upsert` — to `pv-internal-doc-files`. Used by `pv-do`. *Uses:* `pv-internal-doc-files`.
 
   Assets and scripts:
   - [`FEATURE.template.md`](skills/pv-internal-doc-features/FEATURE.template.md) — template for each feature file: number, area, functional description, optional Mermaid diagram, where it's used, associated `xxxx` code(s), and creation/last-modified dates.
-  - [`scripts/_slug.py`](skills/pv-internal-doc-features/scripts/_slug.py) — shared internal helper, not directly invocable: `slugify()` normalizes a title into a lowercase ASCII slug, and `github_anchor()` replicates GitHub's anchor algorithm to rewrite `#anchor` links when migrating a legacy `FEATURES.md`.
   - [`scripts/migrate-legacy-features-doc.py`](skills/pv-internal-doc-features/scripts/migrate-legacy-features-doc.py) — a one-off utility (not an invocable skill) that splits a monolithic `FEATURES.md` (`## Area` / `### Feature`) into one file per feature inside a folder, rewrites internal links, assigns sequential numbering, and regenerates `INDEX.md`; used to adopt the folder convention in a project that still had a single file.
-  - [`scripts/next-feature-number.py`](skills/pv-internal-doc-features/scripts/next-feature-number.py) — computes the next free feature number (the title's prefix, not the filename) by finding the highest one already used in the folder; a deleted number is never reused.
-  - [`scripts/rebuild-index.py`](skills/pv-internal-doc-features/scripts/rebuild-index.py) — regenerates `INDEX.md` from every feature file in the folder, grouped by area; the sole source of truth for that index, never hand-edited.
-  - [`scripts/slugify.py`](skills/pv-internal-doc-features/scripts/slugify.py) — computes the text part (slug) of a new feature's filename (`{number}-{slug}.md`); the number already guarantees no collision, so the slug doesn't need to check anything on its own.
 
 - **pv-internal-doc-technical** — A writing style (not a template) for `docs.tech.architectureDocDir`/`styleBibleDocDir`: dense fact fragments meant to be read by an AI (`pv-internal-tech-analysis` and, later, `pv-do`/`pv-how`), not prose for a person — code for signatures/types, tables for parallel structures, no narrative or summaries, fixed English labels for recurring properties. It doesn't decide each document's topic or structure, and doesn't write anything itself: it only loads the rules before the caller writes. Used by `pv-do`. *Uses:* no other skill.
 
@@ -297,7 +407,7 @@ Each point where the framework writes something can have its own language instea
 
 - **`docs`** (`object`, optional): the project's external reference documentation, grouped by area. All three paths are relative to `workFolder` (not the repo root) — the only field in `pv-context.json` relative to the repo root is `sourcecodeDir`:
   - **`functional.featuresDocPathDir`** (`string`, optional): a listing of already-implemented features. It can be a folder (recommended — one file per feature plus a generated `INDEX.md`, in which case `pv-do` delegates reading/writing to `pv-internal-doc-features`) or, in projects not yet migrated, a single `.md` file. `pv-do` adds or updates the corresponding entry whenever it implements a change/fix, creating the path if it doesn't exist. If not configured, that step is skipped without asking. Its language is set in `functional.language` (see "Language configuration" above).
-  - **`tech.architectureDocDir`** (`string`, optional): a folder with the architecture/technical design document, split into several files with an `INDEX.md` summarizing each one (2-digit numeric prefix, e.g. `01-`, `02-`). `pv-do` keeps it in sync after every change/fix, creating a new file with the next free number if the topic doesn't fit any existing one. Before writing or editing its content, `pv-do` invokes `pv-internal-doc-technical` to apply its writing style.
+  - **`tech.architectureDocDir`** (`string`, optional): a folder with the architecture/technical design document, split into several files with an `INDEX.md` summarizing each one — one `{NNN}-{slug}.md` file per topic (three-digit number, `**Area**:` field), same convention as `docs.functional.featuresDocPathDir`. `pv-do` keeps it in sync after every change/fix, via `pv-internal-doc-files`, creating a new file with the next free number if the topic doesn't fit any existing one. Before writing or editing its content, `pv-do` invokes `pv-internal-doc-technical` to apply its writing style.
   - **`tech.styleBibleDocDir`** (`string`, optional): same convention as `architectureDocDir`, but for the project's style guide (visual, interaction, writing).
   - The language shared by both `tech.*` fields is set in `tech.language` (see "Language configuration" above).
 
@@ -415,12 +525,12 @@ Complete view of what the framework creates and where, with the default configur
     └── docs/                          # docs.* — configurable paths (relative to workFolder), kept up to date by pv-do
         ├── architecture/              # docs.tech.architectureDocDir
         │   ├── INDEX.md                 # generated index, summarizes each sibling file
-        │   └── 01-overview.md, 02-...   # actual content, 2-digit numeric prefix per topic
+        │   └── 001-overview.md, 002-...   # actual content, 3-digit numeric prefix + **Area** per topic
         ├── style/                     # docs.tech.styleBibleDocDir
         │   ├── INDEX.md                 # same pattern as architecture/INDEX.md
-        │   └── 01-overview.md, 02-...   # same pattern as architecture/
+        │   └── 001-overview.md, 002-...   # same pattern as architecture/
         └── features/                  # docs.functional.featuresDocPathDir
-            ├── INDEX.md                 # index generated by pv-internal-doc-features
+            ├── INDEX.md                 # index generated by pv-internal-doc-files
             └── {feature}.md              # one file per already-implemented feature
 ```
 

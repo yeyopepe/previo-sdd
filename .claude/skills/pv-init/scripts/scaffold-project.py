@@ -10,15 +10,14 @@ What it creates, only if nothing already exists at that path (never
 overwrites or touches existing content):
 - workFolder's fixed subfolders: changes/{inProgress,implemented,todo,closed},
   versions/, stuff/ -- empty, with a .gitkeep so git tracks them.
-- docs.tech.architectureDocDir / styleBibleDocDir (if configured): folder +
-  INDEX.md (minimal index table) + 01-overview.md (placeholder). The
-  placeholder content is filled in later by pv-init (or pv-do over time),
-  never by this script.
-- docs.functional.featuresDocPathDir (if configured): this doc follows a
-  different convention (pv-internal-doc-features) -- no 01-overview.md, and
-  its INDEX.md is never hand-written. Only creates the empty folder and
-  regenerates INDEX.md via that skill's own rebuild-index.py (which already
-  handles the zero-file case), instead of inventing a placeholder here.
+- docs.tech.architectureDocDir / styleBibleDocDir / docs.functional.featuresDocPathDir
+  (each if configured): all three follow the same pv-internal-doc-files
+  convention -- one {NNN}-{slug}.md file per topic plus a generated
+  INDEX.md, never hand-written. architectureDocDir/styleBibleDocDir get a
+  single "001-overview.md" placeholder (filled in later by pv-init, or
+  pv-do over time); featuresDocPathDir gets no placeholder file, just the
+  empty folder with its INDEX.md regenerated (pv-internal-doc-files's
+  rebuild-index.py already handles the zero-file case).
 
 Always overwrites (it's a generated file, not user content):
 - assets/pv.py -> {repo root}/pv.py
@@ -62,14 +61,9 @@ WORKFOLDER_SUBFOLDERS = (
     "stuff",
 )
 
-INDEX_TEMPLATE = """# {title}
+OVERVIEW_TEMPLATE = """# 001 — {title}
 
-| File | Covers |
-|---|---|
-| [01-overview.md](01-overview.md) | Project overview |
-"""
-
-OVERVIEW_TEMPLATE = """# Overview
+**Area**: {title}
 
 <Placeholder, generated empty by scaffold-project.py. Filled in afterwards \
 with what's known about the project (type, stack, conventions) -- by \
@@ -105,6 +99,16 @@ def ensure_workfolder_subfolders(root: Path, work_folder: str) -> dict:
     return {"created": created, "skipped": skipped}
 
 
+def rebuild_index(root: Path, folder: Path) -> None:
+    script = root / ".claude/skills/pv-internal-doc-files/scripts/rebuild-index.py"
+    subprocess.run(
+        [sys.executable, str(script), "--folder", str(folder)],
+        cwd=root,
+        check=True,
+        capture_output=True,
+    )
+
+
 def ensure_overview_doc(
     root: Path, work_folder: str, relative_dir: str | None, title: str
 ) -> dict:
@@ -115,8 +119,8 @@ def ensure_overview_doc(
     if folder.exists():
         return {"path": rel, "status": "skipped"}
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / "INDEX.md").write_text(INDEX_TEMPLATE.format(title=title), encoding="utf-8")
-    (folder / "01-overview.md").write_text(OVERVIEW_TEMPLATE, encoding="utf-8")
+    (folder / "001-overview.md").write_text(OVERVIEW_TEMPLATE.format(title=title), encoding="utf-8")
+    rebuild_index(root, folder)
     return {"path": rel, "status": "created"}
 
 
@@ -128,13 +132,7 @@ def ensure_features_doc(root: Path, work_folder: str, relative_dir: str | None) 
     if folder.exists():
         return {"path": rel, "status": "skipped"}
     folder.mkdir(parents=True, exist_ok=True)
-    rebuild_index = root / ".claude/skills/pv-internal-doc-features/scripts/rebuild-index.py"
-    subprocess.run(
-        [sys.executable, str(rebuild_index), "--folder", str(folder)],
-        cwd=root,
-        check=True,
-        capture_output=True,
-    )
+    rebuild_index(root, folder)
     return {"path": rel, "status": "created"}
 
 
