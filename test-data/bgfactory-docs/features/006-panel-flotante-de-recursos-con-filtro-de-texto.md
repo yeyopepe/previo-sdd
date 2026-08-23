@@ -1,0 +1,14 @@
+# 006 — Panel flotante de recursos, con filtro de texto
+
+**Area**: Mesa de juego
+
+Panel flotante en modo edición (análogo al panel de componentes: colapsable, arrastrable por su cabecera, redimensionable en ancho y alto con los mismos dos manejadores combinados en las esquinas inferior derecha y superior izquierda (cambio 00128), sin límite máximo salvo el mínimo de 290px de ancho y el mínimo de alto para ver la cabecera de la tabla más una fila, con el ancho de columna ajustable manualmente igual que en el panel de componentes, y que se trae automáticamente al frente al interactuar con él — ver [Traer al frente automáticamente](003-panel-flotante-de-componentes-con-seleccion-resaltado-arrastre-y-redimensionado.md)) con el listado de recursos disponibles (imágenes y tipografías) en tabla (columnas Nombre, Usos, Tipo, Acciones), ordenado siempre alfabéticamente por nombre (insensible a mayúsculas/tildes, cambio 00141), usado desde las modales de componentes que permiten elegir una imagen o tipografía (ver [Componente "tablero simple"](018-componente-tablero-simple.md), [Componente "dado"](020-componente-dado.md) y [Componente "carta"](022-componente-carta.md)).
+
+Cuando hay al menos un recurso, la cabecera del panel muestra un cuadro de texto de filtro ("Filtrar recursos…"). Al escribir, la tabla se actualiza en vivo (carácter a carácter) mostrando solo los recursos cuyo nombre, tipo mostrado ("Imagen"/"Tipografía") o identificador interno coincidan parcialmente con el texto escrito, de forma insensible a mayúsculas/minúsculas y a tildes. Si no hay coincidencias, la tabla se sustituye por un mensaje indicándolo. El texto del filtro es estado transitorio de la sesión de edición: no se guarda y se resetea al recargar la página. La columna "Usos" no participa en este filtro.
+
+La columna "Usos" (cambio 00160) muestra, para cada recurso, en cuántos componentes distintos del proyecto está siendo usado en ese momento (mismo criterio que ya usa el bloqueo de borrado de un recurso en uso — cualquier tipo de componente, contando una sola vez aunque el recurso se referencie varias veces dentro del mismo componente), recalculado en cada repintado del panel sin ninguna acción del usuario — mismo comportamiento que la columna "Elementos" del panel de Etiquetas (ver [Etiquetas, organización de elementos por nombre](008-grupos-organizacion-de-elementos-por-nombre.md)). No es editable directamente y un recurso sin ningún uso muestra `0`, pero desde el cambio 00165 sí participa en el menú de ordenación/filtrado de cabecera de columna como cualquier otra (ver [Ordenación y filtrado desde la cabecera de columna](004-ordenacion-y-filtrado-desde-la-cabecera-de-columna.md)).
+
+- **Available in**: modo edición.
+- **Code**: 00042, 00064, 00083, 00101, 00128, 00141, 00160, 00165.
+- **Since**: 2026-07-21
+- **Last modified**: 2026-08-06

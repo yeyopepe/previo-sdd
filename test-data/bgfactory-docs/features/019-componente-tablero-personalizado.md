@@ -1,0 +1,16 @@
+# 019 — Componente "tablero personalizado"
+
+**Area**: Mesa de juego
+
+Octavo tipo de componente (cambio 00143): un tablero avanzado, alternativa a "Tablero simple" para cuando hace falta más que un color/patrón o una única imagen de fondo — se elige uno u otro según lo que necesite cada tablero, sin que uno sustituya al otro. Se redimensiona libremente en cualquier proporción en la mesa, igual que "Tablero simple" (no fuerza ningún ratio, a diferencia de "Carta/Ficha"). Su borde usa el mismo bisel de dos tonos que "Tablero simple"/"Dado" (color y grosor configurables, 1–20px) — a diferencia de "Carta/Ficha", cuyo borde es una línea simple sin relieve.
+
+**Redimensionar no reescala el contenido** (fix 00152): a diferencia de "Carta/Ficha" (donde agrandar o encoger la pieza agranda o encoge también todo su diseño, comportamiento intencionado de esa pieza), redimensionar un tablero personalizado cambia únicamente el tamaño del marco visible sobre la mesa — la imagen de fondo, las formas y los cuadros de texto conservan siempre su tamaño y posición reales. Si el nuevo tamaño del marco es menor que el contenido diseñado, la parte que no cabe queda recortada (no se ve, pero no se pierde: sigue ahí si se vuelve a agrandar el tablero).
+
+Su contenido se diseña con el mismo **Editor visual** que usa "Carta/Ficha" (ver "Editor de cartas" más abajo, generalizado en este cambio para servir a ambos tipos): imagen de fondo, cuadros de texto y figuras geométricas, con las mismas capacidades de añadir/mover/redimensionar/duplicar/eliminar/girar 90°, menú contextual y Copiar/Pegar elemento, y el mismo botón "Maximizar". La única diferencia frente al editor de "Carta/Ficha" es que el tablero personalizado tiene una única cara (no se voltea, a diferencia de una carta) y no ofrece el desplegable de proporción ni el checkbox "Esquinas redondeadas" — no aplican a un tipo que se redimensiona libremente. Sin diseño (antes de añadir nada), se muestra en blanco con el tamaño configurado, sin ningún aviso, igual criterio que "Carta/Ficha"/"Visor de documentos" vacíos.
+
+La modal de configuración del tablero personalizado incluye, además de "Bloqueado", una sección "Visual" (la primera de las propiedades específicas, cambio 00154) con los checkboxes "Biselado en el borde" —marcado por defecto, decide si el borde se dibuja con el bisel de dos tonos habitual o totalmente plano de un único color, igual criterio que "Tablero simple"— y, desde el cambio 00158, "Sombra" —también marcado por defecto, decide si el tablero proyecta su sombra de contacto o se dibuja totalmente plano—, seguidas de un único botón "Editar diseño del tablero" que abre el Editor visual. No incluye, en esta primera versión, la sección "Estilo" (Copiar/Pegar estilo) que sí tiene "Carta/Ficha".
+
+- **Available in**: renderizado sobre la mesa en modo juego y modo edición; alta eligiendo "Tablero personalizado" en la modal previa de tipo al pulsar "+ Añadir componente" (ver [Alta/edición/borrado de componentes con modal de tabs](002-alta-edicion-borrado-de-componentes-con-modal-de-tabs.md)); Editor visual solo en modo edición.
+- **Code**: 00143, 00152, 00154, 00158, 00161, 00163.
+- **Since**: 2026-08-05
+- **Last modified**: 2026-08-06
