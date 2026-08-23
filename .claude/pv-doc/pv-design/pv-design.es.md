@@ -251,6 +251,7 @@ graph TD
     pv_do -->|"docs.tech.architectureDocDir / styleBibleDocDir"| pv_doc_files
 
     pv_doc_features -->|"find / upsert"| pv_doc_files
+    pv_doc_technical -.->|"baseline cargado antes,<br/>no invocación directa"| pv_doc_style
 
     classDef entry fill:#2b6cb0,color:#fff
     classDef internal fill:#495057,color:#fff
@@ -261,19 +262,20 @@ graph TD
 Leyenda:
 - Flechas sólidas (`-->`): invocación directa de skill a skill, con la etiqueta indicando a qué campo de `docs.*` corresponde.
 - `pv-do` invoca `pv-internal-doc-files` directamente para `architectureDocDir`/`styleBibleDocDir` (no tiene skill de dominio intermedia como `pv-internal-doc-features`); para `featuresDocPathDir` pasa siempre por `pv-internal-doc-features`, que a su vez delega en `pv-internal-doc-files`.
-- `pv-internal-doc-technical`/`pv-internal-doc-style` nunca invocan a `pv-internal-doc-files` ni a la inversa: las dos primeras solo deciden qué/cómo redactar, la última solo decide dónde/cómo guardarlo — no se necesitan entre sí.
+- `pv-internal-doc-technical`/`pv-internal-doc-style` nunca invocan a `pv-internal-doc-files` ni a la inversa: las dos primeras deciden qué documentar (cada una en su campo: `doc-technical` en `architectureDocDir`, `doc-style` en `styleBibleDocDir`) y cómo redactarlo; la última solo decide dónde/cómo guardarlo.
+- Flecha punteada `pv-internal-doc-technical -.-> pv-internal-doc-style`: no es una invocación directa (ninguna de las dos skills invoca a la otra) — es una dependencia de orden que impone `pv-do`, que siempre invoca primero `pv-internal-doc-technical` para cargar el estilo de escritura base (fragmentos densos, tablas, código, tags fijos) y después `pv-internal-doc-style`, cuyas propias reglas de escritura están definidas como una extensión de ese baseline y presuponen que ya está cargado en contexto.
 
 **Tabla de responsabilidades comparadas:**
 
 | | `pv-internal-doc-files` | `pv-internal-doc-features` | `pv-internal-doc-technical` | `pv-internal-doc-style` |
 |---|---|---|---|---|
-| Decide **qué** dice el contenido | No | No — lo hace `pv-do` | No — solo estilo de redacción, tema/estructura libres | **Sí** — checklist de categorías + qué debe registrar cada una |
+| Decide **qué** dice el contenido | No | No — lo hace `pv-do` | **Sí, para `architectureDocDir`** — checklist de categorías técnicas (componentes, contratos, flujos de datos, decisiones, dependencias, modelo de datos, configuración); estructura del documento sigue libre. No decide el qué de `styleBibleDocDir` (eso es `doc-style`) | **Sí** — checklist de categorías + qué debe registrar cada una |
 | Decide **cómo redactarlo** | No | No — construye el `body` con las reglas de dominio de features (campos, diagramas, cross-links) pero no decide el estilo de prosa | **Sí** — reglas de escritura generales (fragmentos densos, tablas, código, tags fijos) | **Sí** — reglas de escritura propias, encima de las de `doc-technical` |
 | Gestiona el fichero (numeración `NNN`, `Area`, `INDEX.md`, `find`/`upsert`) | **Sí** — para las tres carpetas (`featuresDocPathDir`, `architectureDocDir`, `styleBibleDocDir`) | No — delega en `pv-internal-doc-files` | No | No — el fichero lo gestiona `pv-do` invocando `pv-internal-doc-files` |
 | Escribe algo en disco | **Sí** (acción `upsert`) | No (delega en `doc-files`) | No | No, nunca |
 | A qué campo aplica | `docs.functional.featuresDocPathDir`, `docs.tech.architectureDocDir` **y** `docs.tech.styleBibleDocDir` | `docs.functional.featuresDocPathDir` | `docs.tech.architectureDocDir` **y** `docs.tech.styleBibleDocDir` | `docs.tech.styleBibleDocDir` únicamente |
 
-`pv-internal-doc-files` es el único punto que toca disco para las tres áreas de documentación: numera (`NNN`), calcula el slug, escribe el fichero con el campo `**Area**:` y regenera `INDEX.md`. `pv-internal-doc-features` conserva su responsabilidad de dominio (plantilla, campos `Available in`/`Code`/`Since`/`Last modified`, diagramas funcionales, regla de no duplicar entrada) pero delega en `doc-files` todo lo que es numeración/índice. `pv-internal-doc-technical`/`pv-internal-doc-style` no gestionan fichero ni deciden dónde se guarda — eso lo hace `pv-do` invocando `pv-internal-doc-files`.
+`pv-internal-doc-files` es el único punto que toca disco para las tres áreas de documentación: numera (`NNN`), calcula el slug, escribe el fichero con el campo `**Area**:` y regenera `INDEX.md`. `pv-internal-doc-features` conserva su responsabilidad de dominio (plantilla, campos `Available in`/`Code`/`Since`/`Last modified`, diagramas funcionales, regla de no duplicar entrada) pero delega en `doc-files` todo lo que es numeración/índice. `pv-internal-doc-technical`/`pv-internal-doc-style` no gestionan fichero ni deciden dónde se guarda — eso lo hace `pv-do` invocando `pv-internal-doc-files` — pero `doc-technical` sí decide el catálogo de categorías de contenido para `architectureDocDir` (ver tabla anterior).
 
 - **pv-internal-doc-files** — Skill compartida y agnóstica de proyecto para la gestión de fichero de las tres carpetas de documentación (`docs.functional.featuresDocPathDir`, `docs.tech.architectureDocDir`, `docs.tech.styleBibleDocDir`): `find` localiza si un tema ya tiene fichero propio leyendo `INDEX.md` (regenerándolo primero si falta) y confirmando candidatos plausibles; `upsert` escribe `{folder}/{NNN}-{slug}.md` (número de tres dígitos, campo `**Area**:`, y a continuación el `body` ya redactado por quien invoca) y regenera `INDEX.md`. No decide qué dice la documentación ni cómo redactarla — solo dónde y cómo se guarda en disco; quien invoca (`pv-internal-doc-features`, o `pv-do` directamente para architecture/style) aporta `area`, `title` y un `body` ya completamente formateado. La usan `pv-internal-doc-features` y `pv-do`. *Usa:* ninguna otra skill.
 
@@ -289,7 +291,7 @@ Leyenda:
   - [`FEATURE.template.md`](skills/pv-internal-doc-features/FEATURE.template.md) — plantilla de cada fichero de funcionalidad: número, área, descripción funcional, diagrama Mermaid opcional, dónde se usa, código(s) `xxxx` asociados y fechas de alta/última modificación.
   - [`scripts/migrate-legacy-features-doc.py`](skills/pv-internal-doc-features/scripts/migrate-legacy-features-doc.py) — utilidad puntual (no una skill invocable) que divide un `FEATURES.md` monolítico (`## Área` / `### Funcionalidad`) en un fichero por funcionalidad dentro de una carpeta, reescribe los enlaces internos, asigna numeración secuencial y regenera `INDEX.md`; para adoptar la convención de carpeta en un proyecto que aún tenía un único fichero.
 
-- **pv-internal-doc-technical** — Estilo de escritura (no plantilla) para `docs.tech.architectureDocDir`/`styleBibleDocDir`: fragmentos de hechos densos pensados para que los lea una IA (`pv-internal-tech-analysis` y, después, `pv-do`/`pv-how`), no prosa para una persona — código para firmas/tipos, tablas para estructuras paralelas, sin narrativa ni resúmenes, etiquetas fijas en inglés para propiedades recurrentes. No decide el tema ni la estructura de cada documento, ni escribe nada por sí misma: solo carga las reglas antes de que quien invoca redacte. La usa `pv-do`. *Usa:* ninguna otra skill.
+- **pv-internal-doc-technical** — Qué y cómo escribir `docs.tech.architectureDocDir` (checklist de categorías de contenido técnico — componentes, contratos, flujos de datos, decisiones, dependencias, modelo de datos, configuración) y estilo de escritura compartido con `styleBibleDocDir` (fragmentos densos, tablas, código, tags fijos en inglés). No decide el qué de `styleBibleDocDir` (lo hace `pv-internal-doc-style`) ni la estructura/tema concretos de cada documento, ni escribe nada por sí misma: solo carga la checklist y las reglas antes de que quien invoca redacte. La usa `pv-do`. *Usa:* ninguna otra skill.
 
   Assets y scripts: ninguno propio.
 

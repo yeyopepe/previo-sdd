@@ -1,27 +1,73 @@
 ---
 name: pv-internal-doc-technical
-description: Shared, project-agnostic writing style for docs.tech.architectureDocDir and docs.tech.styleBibleDocDir. Not a template — each document's topic and structure stay free, but how it's written is fixed: dense fact fragments meant for an AI reader (pv-internal-tech-analysis, pv-do, pv-how in later cycles), not prose meant for a human. Internal use by pv-do when it drafts or edits docs.tech content.
+description: Shared, project-agnostic procedure defining what content docs.tech.architectureDocDir must hold (a checklist of technical content categories — components, contracts, data flows, decisions, dependencies, data model, configuration) plus the shared writing style for both docs.tech.architectureDocDir and styleBibleDocDir (dense fact fragments, tables, code spans, fixed English tags). Receives a summary of what's being documented and the context already gathered, and returns which architectureDocDir categories apply, what each must record, which are already covered versus pending, plus the writing rules to apply — without drafting content, deciding the document's structure, or writing anything itself. Internal use by pv-do.
 user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b1
+  version: 0.9.6b2
   uses: []
 ---
 
 # pv-internal-doc-technical
 
-A shared ruleset for **how** to write `docs.tech.architectureDocDir`/`styleBibleDocDir` content — not a template. Architecture and style topics vary too much in shape to force into one structure (unlike `pv-internal-doc-features`'s fixed fields), so this skill doesn't prescribe sections or headings. It prescribes a writing style, applied regardless of topic or configured `docs.tech.language`.
+A shared procedure covering both **what** `docs.tech.architectureDocDir` content must record and **how** to write it — plus, for `styleBibleDocDir`, the **how** only (the **what** for `styleBibleDocDir` belongs to `pv-internal-doc-style`, which extends this skill's writing baseline with its own checklist). Neither field gets a fixed template: each document's exact structure/sections stay free (unlike `pv-internal-doc-features`'s fixed fields) — this skill only fixes the catalog of content categories (for `architectureDocDir`) and the writing style (for both).
 
-**This skill writes nothing itself and takes no parameters.** Invoke it (Skill tool) right before drafting or editing `docs.tech` content, to load these rules into context; the caller (`pv-do`) still drafts and edits the file directly, applying the rules below instead of its default writing style.
+**This skill writes or edits nothing, nor does it draft any content.** For `architectureDocDir`, it states which content categories are relevant to what's being implemented, what each is expected to record, and which are already covered by the caller's context versus still pending to document. For both fields, it returns the writing rules to apply once the caller drafts the actual prose. Deciding each document's file/section structure, drafting the content, and writing it to disk is always the caller's job (`pv-do`).
 
-**Language.** This skill doesn't decide or write the document's language — it only prescribes writing style, applied on top of whatever `docs.tech.language` the caller (`pv-do`) has already resolved (default `interaction.language`). Only the fixed English tags in rule 6 stay in English regardless of that language.
+**Language.** This skill doesn't talk to the user and doesn't read `.claude/pv-context.json` itself. Category names and guidance returned to the caller are in English, as internal framework vocabulary — the caller translates as needed when drafting into `docs.tech.language`. The fixed English tags in the writing rules (rule 6 below) stay in English regardless of `docs.tech.language`.
+
+**Relationship with `pv-internal-doc-style`.** Complementary, not overlapping: this skill's checklist (below) only covers `architectureDocDir` — code-level architecture, not style/UI conventions. `pv-internal-doc-style` owns the **what** for `styleBibleDocDir` entirely and extends this skill's writing rules with its own style-specific additions; it still invokes this skill for the shared baseline.
 
 ## Audience: these documents are for me, not for a human
 
 `docs.tech` exists to be read by `pv-internal-tech-analysis` and, from there, by `pv-do`/`pv-how` in future cycles — not by a person browsing the repo. That changes what "clear" means: dense and fact-first beats narrative and explanatory. Every sentence that could be a fragment, and every fragment that could be a table row, is wasted context.
 
+## Expected input from the caller
+
+- A brief summary of **what's being implemented/documented** (the specific change/fix, not the whole conversation).
+- The **context already gathered** so far (touched code, `plan.md`, existing `architectureDocDir` files for the touched area) — to avoid repeating exploration already done, and to mark a category as already covered when the context makes that clear.
+
+This input/checklist mechanic (below) applies only when the caller is drafting for `architectureDocDir`. If the caller is only invoking this skill for `styleBibleDocDir`'s shared writing baseline, skip straight to "Writing rules".
+
+## 1. The category checklist
+
+For each category, assess two things: (a) whether it's **applicable** to what's being documented (most changes only touch one or two categories, not all of them) and (b) if applicable, whether the caller's context already makes clear how it's resolved, or whether it's **pending to document**. All categories always apply to any project (no presentation-layer gate, unlike `pv-internal-doc-style`).
+
+| Category | What to check |
+|---|---|
+| Components and responsibilities | Does the change add/modify a component, module or service with its own responsibility not already documented? |
+| Contracts and public interfaces | Does it add/change a public signature, API, endpoint or extension point other code consumes? |
+| Data flows between components | Does it change how information moves or transforms between two or more already-documented components? |
+| Technical decisions and discarded alternatives | Is there a non-obvious design choice (why this and not the obvious option) that would be lost if not recorded? |
+| External dependencies | Does it introduce/change a library, external service, or version the project now depends on? |
+| Data model / persistence | Does it add/change an entity, schema, migration, or invariant of the persisted data? |
+| Configuration and environment integration | Does it add/change an environment variable, flag, config file, or deployment requirement? |
+
+Note: "Components and responsibilities" is about code-level architecture (modules, services), not UI. Reusable UI components / design system is `pv-internal-doc-style`'s category, not this one.
+
+## 2. Check against the received context
+
+For each category marked applicable in step 1:
+
+- If the caller's context already makes clear how that category is addressed for this change — e.g. it reuses an already-documented component/contract, follows a pattern `architectureDocDir` already records — don't mark it as pending: flag it as **covered**, in one sentence, citing the specific existing convention that resolves it.
+- If the context doesn't make it clear, or the change introduces something new with nothing already documented to follow, mark it as **pending to document**, with a sentence on what specifically needs recording.
+- Don't over-explore code just to resolve this: if deciding needs more digging than the context already gathered, that itself is a sign the category stays pending — not a reason to launch additional exploration on your own.
+
+## 3. Return the result to the caller
+
+Don't draft any file nor show anything to the user directly. Return to the caller, in the same turn:
+
+- **Applicable categories covered**: a list (can be empty) of `{category}: {why it's already resolved}`.
+- **Categories pending to document**: a list (empty if none) of `{category}: {what needs recording}`.
+- **Writing rules** below, for the caller to apply verbatim while drafting.
+- Categories not applicable aren't even mentioned in the result.
+
+The caller decides what to do with the pending items (document them now as part of this change, note them for later, or judge that they don't warrant documentation) — this skill doesn't intervene on that again, nor does it check back after the caller writes.
+
 ## Writing rules
+
+Apply to both `docs.tech.architectureDocDir` and `styleBibleDocDir` content:
 
 1. **One fact per line, no connective narrative.** Cut framing phrases ("this allows...", "in order to...", "it's worth noting that..."). State the fact directly.
 2. **Signatures, types and values as code, never described in prose.** `funcName(param: type) -> type` in a fenced or inline code span — not "the function receives a parameter and returns...".
