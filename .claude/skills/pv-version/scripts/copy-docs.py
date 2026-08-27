@@ -17,6 +17,14 @@ exist, this script exits non-zero -- a broken config that pv-update should
 have fixed, not a case to silently skip. A folder that exists but holds only
 its placeholder INDEX.md is fine and gets zipped as-is.
 
+This resolves the docs.* dirs itself (docs.* -> workFolder, sourcecodeDir ->
+repo root) rather than calling pv-init/scripts/resolve-path.py: it's a fully
+deterministic script that never "guesses" a path, so the original motivation
+for that helper (skills modelling a resolution rule from prose) doesn't
+apply. The resolution rule here still has to match resolve-path.py and
+pv-update/scripts/audit-context.py's check_docs_dir -- change all three
+together.
+
 Prints ONLY a JSON on stdout with what was copied, for the skill to use when
 confirming to the user:
 

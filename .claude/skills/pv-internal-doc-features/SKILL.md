@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b5
+  version: 0.9.6b6
   uses: [pv-internal-doc-files]
 ---
 
@@ -43,21 +43,22 @@ Given `docs.functional.featuresDocPathDir` (e.g. `docs/features/`), each `{NNN}-
 
 ## Expected input from the caller
 
-The caller must give the `action` (`find` or `upsert`) and its own parameters (see below). `docs.functional.featuresDocPathDir` is a required field (`pv-init` always configures it; `schema.json` marks it required), so it should always be set. If it's genuinely missing from `.claude/pv-context.json`, or configured but pointing at a path that doesn't exist, don't improvise — report to the caller that the framework config is broken and the user must run `/pv-update`, then stop.
+The caller must give the `action` (`find` or `upsert`) and its own parameters (see below), including the already-resolved `featuresDocPathDir` — the caller (`pv-do`) gets it from `resolve-path.py`; this skill never parses `.claude/pv-context.json`. `docs.functional.featuresDocPathDir` is a required field (`pv-init` always configures it; `schema.json` marks it required). If the caller reports that resolving it failed (or passes no resolved path), don't improvise — the framework config is broken and the user must run `/pv-update`; stop.
 
 ## Action `find`
 
 Invoked by `pv-do` before drafting, to know whether the feature it's about to document already has its own entry.
 
-Parameters: a brief description of the feature to look for (approximate name, area, or what it's about).
+Parameters: the already-resolved `featuresDocPathDir` absolute path (from the caller), and a brief description of the feature to look for (approximate name, area, or what it's about).
 
-Delegate directly to `pv-internal-doc-files` (Skill tool) with `action=find`, `folder=featuresDocPathDir`, and the same description. Return its result to the caller as-is — this skill itself uses that result in `upsert` (below) to decide in-place edit vs. new entry, not the caller.
+Delegate directly to `pv-internal-doc-files` (Skill tool) with `action=find`, `folder` = that resolved path, and the same description. Return its result to the caller as-is — this skill itself uses that result in `upsert` (below) to decide in-place edit vs. new entry, not the caller.
 
 ## Action `upsert`
 
 Invoked by `pv-do` with a summary of what was implemented and the context already gathered — not with pre-drafted content. This skill drafts the entry itself.
 
 Parameters:
+- the already-resolved `featuresDocPathDir` absolute path (from the caller), passed straight through to `pv-internal-doc-files`.
 - `summary` — brief description of what was implemented (the feature or behavior change) and where it's used/seen.
 - `area` — functional area name (exactly as it should appear in `**Area**:` and group by in the index).
 - `title` — feature name (exactly as it should appear as `# ...`); for an in-place edit, the existing title unless the change itself renames the feature.
@@ -71,7 +72,7 @@ Steps:
 3. **If there's an `existing_file`**: keep its original `- **Since**:` as-is (read it from the current content). Compute `- **Last modified**:` as today's date. Add this entry's `xxxx` (from `summary`/`context`) to the existing `- **Code**:` list if not already there.
 4. **If there's no `existing_file`** (new feature): both `- **Since**:` and `- **Last modified**:` are today's date, and `- **Code**:` starts with this entry's `xxxx`.
 5. Assemble `body` for `pv-internal-doc-files`, in order, per [`FEATURE.template.md`](FEATURE.template.md): the functional description, the functional diagrams (omit the section entirely if none), then `- **Available in**:`, `- **Code**:`, `- **Since**:`, `- **Last modified**:` with the values above.
-6. Invoke `pv-internal-doc-files` (Skill tool) with `action=upsert`, `folder=featuresDocPathDir`, `area`, `title`, the assembled `body`, and `existing_file` if present.
+6. Invoke `pv-internal-doc-files` (Skill tool) with `action=upsert`, `folder` = the resolved `featuresDocPathDir` path, `area`, `title`, the assembled `body`, and `existing_file` if present.
 7. Return the written file's path to the caller.
 
 ## Assets and scripts

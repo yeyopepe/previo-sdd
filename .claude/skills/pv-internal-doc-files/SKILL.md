@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b5
+  version: 0.9.6b6
   uses: []
 ---
 
@@ -30,7 +30,7 @@ Given a `folder` (e.g. `docs/features`, `docs/architecture`, `docs/style`):
 
 ## Expected input from the caller
 
-The caller must give the `action` (`find` or `upsert`), the `folder` to operate on, and its own parameters (see below).
+The caller must give the `action` (`find` or `upsert`), the `folder` to operate on, and its own parameters (see below). `folder` is an **already-resolved absolute path** — the caller (`pv-do`, or `pv-internal-doc-features` relaying `pv-do`) obtains it from `resolve-path.py` by logical key (`architectureDocDir` / `styleBibleDocDir` / `featuresDocPathDir`); this skill never parses `.claude/pv-context.json` and never resolves a key itself.
 
 ## Action `find`
 

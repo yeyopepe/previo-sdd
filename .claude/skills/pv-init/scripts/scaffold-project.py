@@ -26,6 +26,14 @@ Before creating anything, verifies every resolved path stays inside the
 repo root -- pv-context.json is local configuration that could in principle
 be hand-edited with a path like "../.." for workFolder or a docs.* dir.
 
+This script resolves the docs.* dirs itself (it's owned by pv-init, the
+schema's owner, same as resolve-path.py) rather than shelling out to
+resolve-path.py: it runs before the folders exist (resolve-path.py would
+exit 4), it needs the extra resolve_inside_repo containment check, and it's
+fully deterministic. The docs.* -> workFolder resolution rule here must stay
+in sync with pv-init/scripts/resolve-path.py and
+pv-update/scripts/audit-context.py's check_docs_dir.
+
 Prints ONLY a JSON summary on stdout, e.g.:
 
   {

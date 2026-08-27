@@ -4,7 +4,7 @@ description: Initializes the pv-* framework (change/fix/workflow) in the current
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b5
+  version: 0.9.6b6
   uses: [pv-update]
 ---
 
@@ -155,7 +155,7 @@ For each of `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir` the scri
 
 Only runs if step 3's `sourcecodeDir` check found existing code and the user picked a mode (mínimo/completa). If there was no existing code, skip this step entirely — don't mention it in step 6's summary either.
 
-1. Invoke `pv-internal-tech-analysis` (Skill tool) with a summary along the lines of "initial full analysis of the app in `{sourcecodeDir}` to generate architecture and style documentation for the first time" — `architectureDocDir`/`styleBibleDocDir` hold only their scaffolded placeholder `INDEX.md` at this point, so `pv-internal-tech-analysis` treats them as "nothing documented yet", goes straight to exploring the real code under `sourcecodeDir`, and returns already-synthesized context (architecture/layers, style conventions, file/symbol map). (The doc dirs *are* configured and *do* exist — scaffolded in step 5 — so this is the normal empty-folder path, not the broken-config one.)
+1. Invoke `pv-internal-tech-analysis` (Skill tool) with a summary along the lines of "initial full analysis of the app in `{sourcecodeDir}` to generate architecture and style documentation for the first time", **and `bootstrap: true`**. That flag tells `pv-internal-tech-analysis` not to resolve `docs.tech` via `resolve-path.py` (the folders exist but hold only their scaffolded placeholder `INDEX.md`, which would read as an empty/unsettled resolve) and to go straight to exploring the real code under `sourcecodeDir`, returning already-synthesized context (architecture/layers, style conventions, file/symbol map). Only `pv-init` passes `bootstrap: true`.
 2. Invoke `pv-internal-doc-technical` (Skill tool, no parameters) to load its writing rules before drafting anything for `architectureDocDir`/`styleBibleDocDir` — same as `pv-do`'s step 2.1.
 3. Draft `architectureDocDir`, replacing the placeholder step 5 left there:
    - **Mínimo**: only files/classes and each one's general responsibility.
