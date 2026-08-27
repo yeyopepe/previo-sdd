@@ -4,22 +4,27 @@ Ideas para mejorar la skill `pv-internal-doc-technical` optimizando exclusivamen
 
 ## Índice
 
-| # | Propuesta | Estado | Incompatible With |
-|---|-----------|--------|------------------|
-| [1](#1-metadata-de-verificación-contra-código--descartado) | Metadata de verificación contra código (`[verified: ...]` / `[source: ...]`) | ❌ descartado | — |
-| [2](#2-tag-de-anti-expectativa--aprobado) | Tag de anti-expectativa para hechos que contradicen el prior por defecto | ✅ aprobado | — |
-| [3](#3-orden-por-frecuencia-de-consulta--descartado) | Orden por frecuencia de consulta en vez de jerarquía lógica humana | ❌ descartado | — |
-| [4](#4-ids-estables-y-citables-entre-documentos--aprobado) | IDs estables y citables entre documentos `docs.tech` | ✅ aprobado | — |
-| [5](#5-excluir-lo-ya-inferible-por-conocimiento-general-del-modelo) | Excluir explícitamente lo ya-inferible por conocimiento general del modelo | 🔍 analizando | — |
-| [6](#6-notación-compacta-en-vez-de-prosa-para-datos-estructurados--aprobado) | Notación compacta en vez de prosa para datos estructurados (tipos, defaults, opcionalidad) | ✅ aprobado | — |
-| [7](#7-prohibir-referencias-anafóricas--aprobado) | Prohibir referencias anafóricas ("esto", "dicho campo") — repetir el nombre exacto | ✅ aprobado | — |
-| [8](#8-prohibir-adjetivosadverbios-de-intensidad-sin-cifra--aprobado) | Prohibir adjetivos/adverbios de intensidad sin cifra ("muy rápido", "poco frecuente") | ✅ aprobado | — |
-| [9](#9-nombres-de-sección-fijos-entre-documentos) | Nombres de sección fijos y repetidos entre todos los docs `docs.tech` (indexación por convención) | 🔍 analizando | — |
-| [10](#10-un-único-término-por-concepto--aprobado) | Un único término por concepto, prohibida la variación sinonímica dentro del proyecto | ✅ aprobado | — |
-| [11](#11-grafo-de-dependencias-explícito-entre-secciones--aprobado) | Grafo de dependencias explícito entre secciones (`requires:` / `assumes:` / `narrows:`) en vez de orden narrativo | ✅ aprobado | [3](#111-punto-11--punto-3-orden-por-frecuencia-de-consulta), [9](#112-punto-11--punto-9-nombres-de-sección-fijos), [13](#113-punto-11--punto-13-notación-nativa--índice-inverso-de-narrows) |
-| [12](#12-invariantes-como-asserts-ejecutables--aprobado) | Invariantes como asserts ejecutables/testables en vez de (o además de) prosa | ✅ aprobado | — |
-| [13](#13-notación-nativa-por-tipo-de-contenido-prosa-solo-donde-no-hay-forma-mejor--aprobado) | Notación nativa por tipo de contenido (tablas, contratos, diagramas...); prosa solo donde no hay forma mejor | ✅ aprobado | — |
-| [14](#14-inglés-técnico-como-idioma-del-documento--aprobado) | Inglés técnico como idioma del documento en vez de español | ✅ aprobado | — |
+| # | Propuesta | Estado | Ganancia | Razón de la ganancia (fase de análisis) | Incompatible con... |
+|---|-----------|--------|----------|------------------------------------------|------------------|
+| [1](#1-metadata-de-verificación-contra-código--descartado) | Metadata de verificación contra código (`[verified: ...]` / `[source: ...]`) | ❌ descartado | — | — | — |
+| [2](#2-tag-de-anti-expectativa--aprobado) | Tag de anti-expectativa para hechos que contradicen el prior por defecto | ✅ aprobado | **Alta** | Marca justo la línea donde el análisis se equivoca: la excepción al patrón común, que si no se pierde entre hechos que solo confirman lo obvio. | — |
+| [3](#3-orden-por-frecuencia-de-consulta--descartado) | Orden por frecuencia de consulta en vez de jerarquía lógica humana | ❌ descartado | — | — | — |
+| [4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) | IDs estables y citables entre documentos `docs.tech` | 🔀 absorbido por [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) | Media | Evita reconciliar dos redacciones de la misma regla al cruzar varios docs; menos drift que resolver durante el análisis. | via [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado): [9](#inc-151-punto-15--punto-9-nombres-de-sección-fijos), [13](#inc-152-punto-15--punto-13-afirmaciones-no-escalares) |
+| [5](#5-excluir-lo-ya-inferible-por-conocimiento-general-del-modelo) | Excluir explícitamente lo ya-inferible por conocimiento general del modelo | 🔍 analizando | Media | Menos texto que leer y descartar; lo genérico no tapa lo específico del proyecto. Acelera, no cambia lo que se entiende. | — |
+| [6](#6-notación-compacta-en-vez-de-prosa-para-datos-estructurados--aprobado) | Notación compacta en vez de prosa para datos estructurados (tipos, defaults, opcionalidad) | ✅ aprobado | **Alta** | El análisis exige la definición completa de cada estructura tocada; `campo: tipo = default (opc)` se extrae sin ambigüedad, la misma info en prosa hay que parsearla y es donde se cuela el error. | — |
+| [7](#7-prohibir-referencias-anafóricas--aprobado) | Prohibir referencias anafóricas ("esto", "dicho campo") — repetir el nombre exacto | ✅ aprobado | Media | Elimina la pasada extra de desambiguación de "esto"/"dicho campo", que a veces se resuelve mal con dos candidatos cerca. Ambigüedad puntual, no reestructura. | — |
+| [8](#8-prohibir-adjetivosadverbios-de-intensidad-sin-cifra--aprobado) | Prohibir adjetivos/adverbios de intensidad sin cifra ("muy rápido", "poco frecuente") | ✅ aprobado | Baja | Un intensificador sin cifra ya se descarta como no-información; forzar la cifra solo aporta cuando existe. Higiene de redacción. | — |
+| [9](#9-nombres-de-sección-fijos-entre-documentos) | Nombres de sección fijos y repetidos entre todos los docs `docs.tech` (indexación por convención) | 🔍 analizando | Media | *Jump-to-section* por convención: se localiza "Contracts"/"Invariants" en cualquier doc sin leer su índice. Acelera localizar, no comprender. | — |
+| [10](#10-un-único-término-por-concepto--absorbido-por-el-15) | Un único término por concepto, prohibida la variación sinonímica dentro del proyecto | 🔀 absorbido por [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) | Media | Elimina la resolución de sinonimia (¿"endpoint", "ruta" y "handler" son lo mismo aquí?), que puede fallar y partir un concepto en dos. Subconjunto de lo que el 15 hace estructural. | — |
+| [11](#11-grafo-de-dependencias-explícito-entre-secciones--descartado) | Grafo de dependencias explícito entre secciones (`requires:` / `assumes:` / `narrows:`) en vez de orden narrativo | ❌ descartado | Baja | Ahorra leer secciones de más en consultas puntuales, pero eso es menos que el error de entender mal las que sí se leen (lo ataca el 13). Depende de infraestructura de otras 3 propuestas. | [3](#111-punto-11--punto-3-orden-por-frecuencia-de-consulta), [9](#112-punto-11--punto-9-nombres-de-sección-fijos), [13](#113-punto-11--punto-13-notación-nativa--índice-inverso-de-narrows) |
+| [12](#12-invariantes-como-asserts-ejecutables--absorbido-por-el-13) | Invariantes como asserts ejecutables/testables en vez de (o además de) prosa | 🔀 absorbido por [13](#136-invariante-forma-ejecutable-vs-declarativa-absorbe-el-12) | Media | Un `assert token.exp - token.iat <= 3600` se lee sin ambigüedad y, con test, se sabe vivo sin verificar contra el código. Acotado a invariantes evaluables en runtime. | — |
+| [13](#13-notación-nativa-por-tipo-de-contenido-prosa-solo-donde-no-hay-forma-mejor--aprobado) | Notación nativa por tipo de contenido (tablas, contratos, diagramas...); prosa solo donde no hay forma mejor | ✅ aprobado | **Alta** | Convierte cada contrato/FSM/tabla/flujo de prosa-a-parsear en estructura que se lee directa. Reduce a la vez coste (menos parsing) y error (menos relleno con el patrón), en cada documento. | — |
+| [14](#14-inglés-técnico-como-idioma-del-documento--aprobado) | Inglés técnico como idioma del documento en vez de español | ✅ aprobado | Baja | Hipótesis de mejor tokenización y doc monolingüe, no medida (regla 8). Sin cifra no se puede afirmar ganancia real de análisis. | — |
+| [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) | Namespace jerárquico único (segmentos separados por puntos), vinculado al código, para conceptos y afirmaciones — absorbe 4 y 10 | ✅ aprobado | **Alta** | Cada concepto y afirmación tiene ruta canónica única vinculada al código por `ancla:`. Elimina de golpe sinonimia, drift y la duda "¿esto es lo mismo que aquello?", y da un punto de verificación contra el código por nodo. | [9](#inc-151-punto-15--punto-9-nombres-de-sección-fijos), [13](#inc-152-punto-15--punto-13-afirmaciones-no-escalares) |
+
+Leyenda de estado: ✅ aprobado · ❌ descartado · 🔍 analizando · 🔀 absorbido (su contenido sigue vivo dentro de otra propuesta que lo generaliza).
+
+Columna **Ganancia**: cuánto acelera o hace más fiable la **fase de análisis** de una tarea cualquiera (`pv-internal-tech-analysis`: leer `docs.tech`, reconstruir interfaces y estructuras, no rellenar huecos con el patrón por defecto) si ese punto —y solo ese— estuviera implementado en la documentación. **Alta**: golpea el núcleo del análisis (extraer estructura, no equivocarse en la excepción). **Media**: reduce coste o ambigüedad puntual sin cambiar lo que se entiende. **Baja**: higiene, efecto marginal o no verificable. Ver [Ganancia en la fase de análisis](#ganancia-en-la-fase-de-análisis) para el detalle punto por punto.
 
 ## 1. Metadata de verificación contra código — DESCARTADO
 
@@ -65,11 +70,24 @@ Ejemplo: en un doc de arquitectura de auth, la jerarquía humana típica empezar
 
 </details>
 
-## 4. IDs estables y citables entre documentos — APROBADO
+## 4. IDs estables y citables entre documentos — ABSORBIDO POR EL 15
+
+El [punto 15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) generaliza esta propuesta: las hojas del namespace jerárquico (las que tienen `=valor` o cuelgan de `.decision.*`) **son** los IDs estables citables que pedía este punto, y la ruta con puntos (`auth.token.session.ttl.value`) es su forma canónica de cita — una sola sintaxis, sin `ver docs.tech#id` vs `[ver id]`. El contenido de este punto sigue vivo dentro del 15; no está descartado.
+
+Las incompatibilidades que se registraron para el punto 4 se trasladan al bloque de incompatibilidades del punto 15:
+- 4 ↔ 9 → [Incompat. 15.1](#inc-151-punto-15--punto-9-nombres-de-sección-fijos) (fricción, sigue abierta).
+- 4 ↔ 13 (sintaxis de cita) → **resuelta por construcción**; lo que queda abierto es otra cosa (afirmaciones no escalares), en [Incompat. 15.2](#inc-152-punto-15--punto-13-afirmaciones-no-escalares).
+- 4 ↔ 10 → **resuelta por construcción** ([Incompat. 15.3](#inc-153-punto-15--punto-10-un-único-término-por-concepto--resuelta-por-construcción)).
+- 4 ↔ 1 → guía de implementación del 15 ([Incompat. 15.4](#inc-154-punto-15--punto-1-metadata-de-verificación--histórico)).
+
+<details>
+<summary>Idea original (absorbida por el 15)</summary>
 
 La regla 5 cubre "apunta al código en vez de duplicar su forma", pero no cubre la duplicación entre distintos documentos `docs.tech` que comparten una misma invariante o decisión. Hoy, si dos docs de arquitectura mencionan la misma regla, probablemente cada uno la redacta con su propia prosa, lo que introduce el mismo riesgo de drift que la regla 5 ya evita para el código.
 
 Idea: anchors o IDs estables (`<!-- id: auth-token-expiry -->` o similar) que permitan a un doc referenciar a otro (`ver docs.tech#auth-token-expiry`) sin reescribir el hecho. Reduce duplicación y mantiene una única fuente de verdad también a nivel de documentación, no solo entre documentación y código.
+
+</details>
 
 ## 5. Excluir lo ya-inferible por conocimiento general del modelo
 
@@ -95,13 +113,36 @@ Prohibir intensificadores sin cuantificar ("muy rápido", "bastante grande", "po
 
 Una sola convención de nombrado de secciones fija y repetida en todos los docs `docs.tech` (mismos headers literales: "Contratos", "Invariantes", "Decisiones descartadas", etc.) en vez de dejar que cada doc titule libremente. Permite *jump-to-section* por nombre exacto sin tener que leer el índice cada vez — indexación por convención en vez de por contenido.
 
-## 10. Un único término por concepto — APROBADO
+## 10. Un único término por concepto — ABSORBIDO POR EL 15
+
+El [punto 15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) generaliza esta propuesta: los **nodos** del namespace jerárquico (los segmentos con ancla de código, `auth.token.session`) son el término único por concepto que pedía este punto, y su unicidad es estructural — no hay dos rutas para el mismo nodo. La prohibición de sinónimos deja de ser una regla de estilo a vigilar y pasa a ser una propiedad del árbol de nombres. El contenido de este punto sigue vivo dentro del 15; no está descartado.
+
+<details>
+<summary>Idea original (absorbida por el 15)</summary>
 
 Evitar sinónimos variados para el mismo concepto dentro del proyecto (a veces "endpoint", a veces "ruta", a veces "handler" para la misma cosa) — fijar un término único por concepto y prohibir variarlo por elegancia de estilo. La variación estilística que un humano agradece (para no sonar repetitivo) al lector-modelo le cuesta una resolución de sinonimia que puede fallar.
 
 Criterio de aprobación: no importa la repetición del término — el estilo no es un objetivo del doc, solo la efectividad de lectura para el modelo. Lenguaje único e inequívoco por encima de variedad estilística.
 
-## 11. Grafo de dependencias explícito entre secciones — APROBADO
+</details>
+
+## 11. Grafo de dependencias explícito entre secciones — DESCARTADO
+
+Descartado al compararlo cabeza a cabeza con el [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado): si solo se implementa uno de los dos, el 13 aporta mucho más y el 11 no compensa su coste de infraestructura.
+
+Razones:
+
+- **Cobertura.** El 13 toca cada línea de cada documento (cómo se escribe un invariante, un contrato, una FSM, una tabla de decisión, una alternativa descartada). El 11 solo añade metadatos de navegación en la cabecera de cada sección — cambia el bloque de aristas, no el contenido.
+- **El coste que elimina es secundario.** Parsear prosa para extraer estructura (default, opcionalidad, transición faltante) es el trabajo más caro y más propenso a error de relleno con el patrón común — eso lo resuelve el 13. El 11 solo ahorra *leer secciones irrelevantes*, un ahorro menor frente a *entender mal las relevantes*.
+- **El 13 funciona solo; el 11 casi no.** El 11 rinde solo si además existen los IDs estables ([punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15)), los nombres de sección resueltos ([punto 9](#9-nombres-de-sección-fijos-entre-documentos)) y un índice inverso de `narrows` generado al escribir. Es infraestructura dependiente de otras tres propuestas. El 13 se aplica documento a documento sin nada más.
+- **Degradación.** Un doc con 13 y sin 11 sigue siendo denso y rápido de leer, solo que se navega linealmente. Un doc con 11 y sin 13 es prosa humana con un grafo encima: se sabe qué cargar, pero cada sección cargada cuesta lo mismo de parsear.
+
+Lo que se pierde al descartar el 11: en documentos grandes (>15-20 secciones) el lector-modelo carga de más o de menos en consultas puntuales, y se pierde la validación de ciclos que forzaba a fusionar secciones mal separadas. Mitigación parcial: buen uso de los IDs citables del [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) y referencias explícitas entre secciones donde la dependencia sea crítica.
+
+Las incompatibilidades registradas para el punto 11 ([11.1](#111-punto-11--punto-3-orden-por-frecuencia-de-consulta), [11.2](#112-punto-11--punto-9-nombres-de-sección-fijos), [11.3](#113-punto-11--punto-13-notación-nativa--índice-inverso-de-narrows)) quedan como histórico — ninguna aplica ya, pero documentan por qué el grafo chocaba con 9 y 13.
+
+<details>
+<summary>Desarrollo original (descartado)</summary>
 
 En vez de orden narrativo (Sección A seguida de Sección B, con la jerarquía implícita en el orden), un bloque de aristas al principio de cada sección. Permite al lector-modelo decidir algorítmicamente qué otras secciones necesita cargar en contexto antes de confiar en esta, en vez de inferirlo leyendo todo el documento en orden.
 
@@ -129,7 +170,7 @@ Motivo: es local. Se escribe o edita una sección sin tocar ninguna otra. Es el 
 
 ### 11.3. Formato del bloque
 
-Bloque al inicio de la sección, inmediatamente bajo el header, antes de cualquier contenido. Aristas ausentes se omiten (no se escribe `requires: []`). Los IDs son los IDs estables del [punto 4](#4-ids-estables-y-citables-entre-documentos--aprobado).
+Bloque al inicio de la sección, inmediatamente bajo el header, antes de cualquier contenido. Aristas ausentes se omiten (no se escribe `requires: []`). Los IDs son los IDs estables del [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15).
 
 ```
 ## auth-token-refresh
@@ -222,11 +263,20 @@ Sin el grafo, cada una de esas preguntas obligaría a leer las 7 secciones para 
 
 ### Nota pendiente: aristas entre secciones de documentos distintos
 
-El ejemplo asume todas las secciones en un mismo fichero. Si `requires`/`assumes` apunta a un ID de otro fichero `docs.tech`, el algoritmo de carga 11.4 no cambia (los IDs del [punto 4](#4-ids-estables-y-citables-entre-documentos--aprobado) ya son globales al proyecto), pero el índice inverso de `narrows` (paso 3 de 11.5) pasa a ser de proyecto, no de documento. Pendiente de decidir si ese índice inverso vive en el `00-glossary.md` (nota del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado)) o en un artefacto propio generado por `pv-internal-doc-technical`.
+El ejemplo asume todas las secciones en un mismo fichero. Si `requires`/`assumes` apunta a un ID de otro fichero `docs.tech`, el algoritmo de carga 11.4 no cambia (los IDs del [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) ya son globales al proyecto), pero el índice inverso de `narrows` (paso 3 de 11.5) pasa a ser de proyecto, no de documento. Pendiente de decidir si ese índice inverso vive en el `00-glossary.md` (nota del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado)) o en un artefacto propio generado por `pv-internal-doc-technical`.
 
-## 12. Invariantes como asserts ejecutables — APROBADO
+</details>
+
+## 12. Invariantes como asserts ejecutables — ABSORBIDO POR EL 13
+
+El [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado) ya obliga a que los invariantes vayan en notación, nunca en prosa (fila "Invariante booleana / pre-post-condición" de su tabla). Este punto es una **restricción adicional sobre esa misma fila**, no una categoría nueva: cuando el invariante sea evaluable en runtime, la forma preferente es el assert ejecutable (`assert <expr>`), para fusionar doc + verificación. Se traslada al 13 como parte de la regla de esa fila (ver [13, fila "Invariante"](#tabla-contenido--notación--excepciones-a-prosa) y [13.6](#136-invariante-forma-ejecutable-vs-declarativa-absorbe-el-12)). El contenido sigue vivo dentro del 13; no está descartado. No queda incompatibilidad: el 13 pasa a ser la única fuente sobre cómo se escribe un invariante.
+
+<details>
+<summary>Idea original (absorbida por el 13)</summary>
 
 En vez de (o además de) prosa, documentar invariantes como asserts en pseudo-código o código real testable (`assert token.expiry <= 3600`). Fusiona documentación y verificación en el mismo artefacto: si la regla cambia, el assert falla, en vez de depender de que alguien recuerde actualizar el texto.
+
+</details>
 
 ## 13. Notación lógico-matemática o formato nativo para TODO; prosa SOLO excepción — REFACTORIZADO
 
@@ -238,7 +288,7 @@ No es optimización de forma — es reconocer que casi toda la estructura de sof
 
 | Tipo de contenido | Notación óptima | Prosa se usa en... |
 |---|---|---|
-| Invariante booleana / pre-post-condición | Lógica proposicional (`pre:`, `post:`, `inv:`, `∧`, `∨`, `¬`, `→`) | Nunca (estructura pura) |
+| Invariante booleana / pre-post-condición | Assert ejecutable (`assert <expr>`) si es evaluable en runtime; lógica proposicional declarativa (`pre:`, `post:`, `inv:`, `∧`, `∨`, `¬`, `→`, `⟹`, `∀`) si no. Ver [13.6](#136-invariante-forma-ejecutable-vs-declarativa-absorbe-el-12) | Nunca (estructura pura) |
 | Estructura de datos (campos, tipos, defaults, opcionalidad) | Tabla o BNF compacto (`campo: tipo = default`) | Nunca (cartesiano, no narrativa) |
 | Máquina de estados / transiciones | FSM o tabla `(estado, evento) → estado'` | Nunca (grafo de transiciones, no narrativa) |
 | Relación/cardinalidad entre entidades | Diagrama ER o notación cardinalidad (`1---*`, `0..1`) | Nunca (relaciones, no narrativa) |
@@ -334,9 +384,29 @@ Prosa aquí porque: el invariante en sí ya es notación; solo la razón de *por
   4. Si ninguna de las tres aplica → prosa, marcada `[motivación]`, una frase.
 - **Nunca:** forzar prosa por elegancia, fluidez de lectura, o porque "suena a trade-off". Un trade-off casi siempre es una tabla con más columnas.
 
+### 13.6. Invariante: forma ejecutable vs. declarativa (absorbe el 12)
+
+El [punto 12](#12-invariantes-como-asserts-ejecutables--absorbido-por-el-13) queda absorbido aquí: no era una categoría de contenido nueva, era una regla sobre *cómo* se escribe la fila "Invariante" de la tabla. La fila ya prohíbe prosa; el 12 añade que, **cuando el invariante sea evaluable en un punto concreto del programa, se escriba como assert ejecutable** — así doc y test son el mismo artefacto y un cambio en la regla rompe el test.
+
+Criterio de elección (mecánico, no de juicio):
+
+| Pregunta | Sí | No |
+|---|---|---|
+| ¿Existe un punto del programa (entrada de función, transición, fin de operación) donde esta condición se puede comprobar con los valores en mano? | **Assert ejecutable**: `assert token.exp - token.iat <= 3600` | **Lógica declarativa**: `inv: ∀ s ∈ sessions · s.exp > s.iat` |
+| ¿La condición habla de un estado observable en runtime (campos, variables, retorno)? | Assert ejecutable | — |
+| ¿La condición cuantifica sobre un conjunto abstracto, habla de un estado de una FSM, o de una propiedad global no observable en un solo punto? | — | Lógica declarativa |
+
+Reglas:
+- **Forma preferente = assert ejecutable siempre que el criterio dé "sí".** La lógica declarativa no es un estilo alternativo libre: es el fallback para lo que no se puede evaluar en runtime.
+- Un mismo invariante puede tener **las dos formas** si aporta: el assert como forma normativa verificable, la declarativa como enunciado general. En ese caso el assert manda; la declarativa va marcada como enunciado, no se duplican como si fueran hechos distintos.
+- La sintaxis exacta del assert (lenguaje real del proyecto vs. pseudocódigo) y de la lógica declarativa (juego de símbolos) las fija el `00-glossary.md` (nota siguiente), una sola vez para todo `docs.tech`.
+- El `[motivación]` de una frase sobre *por qué existe* el invariante (ver [Caso 2 / comentario semántico](#comentario-semántico-puntual-sobre-un-invariante-sobre-el-caso-2)) aplica igual a las dos formas.
+
+No queda incompatibilidad entre 12 y 13: **el 13 es la única fuente sobre cómo se escribe un invariante**, y la regla ejecutable-vs-declarativa está integrada en su tabla y en esta subsección.
+
 ### Nota pendiente: glosario de notación único por proyecto
 
-Riesgo detectado: "notación con precedente amplio" (contratos, FSM, tablas, etc.) puede variar de doc a doc dentro del mismo proyecto si cada uno la reinventa a su manera (uno usa `pre:/post:`, otro `requires:/ensures:`) — mismo problema que resuelven el [punto 9](#9-nombres-de-sección-fijos-entre-documentos) (secciones) y el [punto 10](#10-un-único-término-por-concepto--aprobado) (vocabulario), pero sin cubrir aún a nivel de notación.
+Riesgo detectado: "notación con precedente amplio" (contratos, FSM, tablas, etc.) puede variar de doc a doc dentro del mismo proyecto si cada uno la reinventa a su manera (uno usa `pre:/post:`, otro `requires:/ensures:`) — mismo problema que resuelven el [punto 9](#9-nombres-de-sección-fijos-entre-documentos) (secciones) y el [punto 10](#10-un-único-término-por-concepto--absorbido-por-el-15) (vocabulario), pero sin cubrir aún a nivel de notación.
 
 Acción: `pv-internal-doc-technical` debe crear siempre un fichero `00-glossary.md` donde se documente toda la notación (símbolos, convenciones de contrato, formato de tablas de decisión, notación de FSM/cardinalidad, etc.) que aplicará de forma consistente a toda la documentación `docs.tech` del proyecto — una sola fuente de verdad para la notación, igual que el punto 4 lo es para IDs citables.
 
@@ -353,7 +423,7 @@ Riesgo detectado: la tabla del punto 13 asigna una notación nativa por tipo de 
 Sin una regla para este caso, quien escriba el doc tiene dos escapes problemáticos: (a) anidar la segunda notación inline dentro de la primera, generando una notación híbrida ad-hoc no cubierta por ningún estándar de precedente amplio (exactamente el problema que el punto 13 quiere evitar), o (b) recurrir a prosa "para no anidar", que es el escape que el punto 13 entero busca cerrar.
 
 Opciones a evaluar (sin decidir aún):
-1. **Referencia por ID en vez de anidar** — conectando con el [punto 4](#4-ids-estables-y-citables-entre-documentos--aprobado): la celda/condición no repite la notación ajena, solo la cita (`pre: state == AUTHENTICATED [ver fsm-auth#AUTHENTICATED]`).
+1. **Referencia por ID en vez de anidar** — conectando con el [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15): la celda/condición no repite la notación ajena, solo la cita (`pre: state == AUTHENTICATED [ver fsm-auth#AUTHENTICATED]`).
 2. **Notación compuesta explícita** — el `00-glossary.md` (nota anterior) define cómo se combinan dos notaciones nativas cuando aparecen juntas (p. ej. cómo se escribe una celda de tabla de decisión que a su vez es un contrato), en vez de dejarlo a criterio de quien escribe cada doc.
 
 Pendiente de decidir cuál de las dos (o ambas, según el caso) adopta `pv-internal-doc-technical`; probablemente ligado a la implementación del glosario de notación, no un mecanismo aparte.
@@ -388,14 +458,139 @@ Aprobar el punto 14 no es "agregar una regla más" — es **revertir esa decisi�
 
 Este documento de ideas no decide si se aprueba — solo deja constancia de que, si se aprueba, el cambio no es aditivo: requiere reescribir la sección "Language-independence" de `SKILL.md` (pasaría a ser una sección de "fixed language" en su lugar) y eliminar la opción `docs.tech.language` de la configuración del framework. Ese trabajo de implementación, si se decide seguir adelante, corresponde a `_v1.md` u otro plan de implementación — no a este documento.
 
+## 15. Namespace jerárquico único, vinculado al código — APROBADO
+
+Absorbe el [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) (IDs citables entre docs) y el [punto 10](#10-un-único-término-por-concepto--absorbido-por-el-15) (término único por concepto). Los puntos 4, 7, 9 y 10 comparten el espíritu "lenguaje preciso e inequívoco", pero operan sobre objetos distintos; de ellos, **solo 4 y 10 nombran un elemento** y se pueden unificar en un único sistema de nombres. El 7 es regla de redacción (prohíbe anáfora, no aporta identificador) y el 9 es organización física del `.md` (ortogonal). Ver [15.3](#153-relación-con-los-puntos-7-y-9) para por qué 7 y 9 quedan fuera.
+
+### 15.1. El esquema
+
+Un árbol de nombres único por proyecto. Cada elemento —concepto o afirmación— tiene **una sola ruta canónica**, con segmentos separados por puntos, de agregado a detalle.
+
+```
+auth.token.session                       → concepto. ancla: src/auth/token.ts#SessionToken
+auth.token.session.exp                   → concepto (campo). ancla: SessionToken.exp
+auth.token.session.ttl                   → concepto. ancla: SESSION_TTL_SECONDS
+auth.token.session.ttl.value = 3600      → afirmación. "el TTL de sesión es 3600 s"
+auth.token.session.refresh.grace = 7d    → afirmación. "refresh permitido hasta exp + 7d"
+auth.decision.circuit-breaker-over-retry → decisión. sin ancla de código (es una elección)
+```
+
+### 15.2. Reglas del árbol
+
+| Elemento | Forma | Qué era antes | Regla |
+|---|---|---|---|
+| **Nodo con ancla de código** | segmento sin `=`, con `ancla: file#symbol` | término único del [punto 10](#10-un-único-término-por-concepto--absorbido-por-el-15) | El nombre canónico **es** la ruta; la definición vive en el código, no en la doc. La unicidad es estructural: no hay dos rutas para el mismo nodo. |
+| **Hoja `ruta = valor`** | segmento terminal con `= <escalar>` | ID citable del [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) | Es lo citable entre docs: `ver auth.token.session.ttl.value`. Una sola sintaxis de cita en todo el proyecto. |
+| **Rama `ruta.decision.<slug>`** | subárbol reservado bajo `decision.` | decisión del [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) | Afirmación sin ancla de código (una elección de diseño). Citable igual que una hoja `=valor`. |
+| **Nodo sin ancla y sin `=`** | — | — | **Sospechoso**: o falta el ancla, o es conocimiento general ([punto 5](#5-excluir-lo-ya-inferible-por-conocimiento-general-del-modelo)) y no debería estar nombrado. Lo marca la validación. |
+
+Frontera concepto/afirmación (lo que en la antigua [4.3](#inc-153-punto-15--punto-10-un-único-término-por-concepto--resuelta-por-construcción) era criterio difuso, aquí es sintáctico): **¿tiene `= valor` o cuelga de `.decision.`?** → afirmación. **¿no?** → concepto. No hay juicio: la forma lo decide.
+
+### 15.3. Relación con los puntos 7 y 9
+
+| Punto | Objeto | ¿Entra en el namespace? |
+|---|---|---|
+| [7](#7-prohibir-referencias-anafóricas--aprobado) — prohibir anáfora | El referente de un pronombre ("esto", "dicho campo") dentro de una frase | **No.** El 7 no crea identificadores: prohíbe *dejar de repetir* el nombre que ya existe. Con el 15 se reformula como corolario: "el identificador válido para citar es la ruta del namespace; nunca una anáfora ni un sinónimo". |
+| [9](#9-nombres-de-sección-fijos-entre-documentos) — headers fijos | La sección del documento como contenedor estructural | **No.** El 9 organiza el `.md` en ficheros y títulos; el 15 nombra elementos del sistema. Son capas distintas: se puede tener un namespace perfecto y aun así discutir cómo se titula cada `.md`. Choque residual en [Incompat. 15.1](#inc-151-punto-15--punto-9-nombres-de-sección-fijos). |
+
+### 15.4. Qué resuelve respecto a 4 y 10 por separado
+
+- **Un solo mecanismo** da vocabulario único (nodos) y afirmaciones citables (hojas). Desaparecen las antiguas incompatibilidades 4.2 y 4.3 (ver [Incompat. 15.2](#inc-152-punto-15--punto-13-afirmaciones-no-escalares) y [15.3](#inc-153-punto-15--punto-10-un-único-término-por-concepto--resuelta-por-construcción)): la frontera concepto/hecho es sintáctica y la sintaxis de cita es una sola (`ruta.punteada`).
+- **Vínculo al código verificable**: cada nodo-concepto tiene `ancla`. `pv-internal-doc-technical` comprueba que la ancla existe; ancla rota = error de validación. El drift que el [punto 1](#1-metadata-de-verificación-contra-código--descartado) (descartado) no supo atacar aquí es detectable.
+- **Cita entre docs con una sintaxis**: `auth.token.session.ttl.value`. Se acaba `ver docs.tech#id` vs `[ver id]` del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado).
+
+### 15.5. Pendiente de decidir
+
+1. **Orden de segmentos.** `auth.token.session` vs `auth.session.token`. Necesita una convención fija (de módulo a detalle / de agregado a parte) y una autoridad que asigne rutas — probablemente el `00-glossary.md` del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado).
+2. **Afirmaciones no escalares.** "refresh permitido en estado `EXPIRED` si `now - exp < 7d`" no es `clave = valor`. ¿Se fuerza a `auth.token.session.refresh.grace = 7d` asumiendo el resto, o la hoja apunta a un bloque de notación? Es la nota de notación anidada del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado). Desarrollado en [Incompat. 15.2](#inc-152-punto-15--punto-13-afirmaciones-no-escalares).
+3. **Coste de mantenimiento del árbol** al refactorizar el código: renombrar `SessionToken` obliga a renombrar `auth.token.session` y todas sus hojas. Mitigable si la validación detecta la ancla rota, pero la re-asignación de ruta es manual.
+4. **Relación con `docs.tech.language` ([punto 14](#14-inglés-técnico-como-idioma-del-documento--aprobado))**: los segmentos del namespace salen de nombres de código (inglés), coherente con el 14; queda por decidir si un concepto de dominio sin símbolo de código usa slug en inglés o en el idioma del proyecto.
+
+## Ganancia en la fase de análisis
+
+Detalle de la columna **Ganancia** del índice. Criterio único: valor para la **fase de análisis de una tarea cualquiera** — el trabajo de `pv-internal-tech-analysis` (leer `docs.tech`, reconstruir la definición completa de cada interfaz/estructura tocada, detectar dónde el proyecto se desvía del patrón esperable, no concluir en falso rellenando huecos con el default). No se valora aquí el coste de implementar el punto ni su efecto sobre otras fases (redacción, revisión, versión).
+
+Escala:
+- **Alta** — golpea el núcleo del análisis: o convierte contenido que había que *parsear* en contenido que se *lee directo* (estructura), o marca justo el punto donde el análisis se equivoca (la excepción al patrón). Efecto en casi toda tarea.
+- **Media** — reduce coste o ambigüedad puntual (una pasada extra de desambiguación, una reconciliación entre dos redacciones, localizar dónde está lo que se busca) sin cambiar lo que se entiende una vez localizado. Efecto acotado a las tareas donde aplica.
+- **Baja** — higiene de redacción, efecto marginal sobre la comprensión, o ganancia no verificable sin medición.
+
+| # | Ganancia | Qué se gana en análisis (punto implementado en solitario) | Qué la limita |
+|---|----------|-----------------------------------------------------------|---------------|
+| [2](#2-tag-de-anti-expectativa--aprobado) `[gotcha]` | **Alta** | El error más caro del análisis es asumir el patrón común (`delete` borra, `getX` no muta, la sesión expira sola) donde el proyecto hace la excepción. `[gotcha]` marca exactamente esas líneas, que si no se pierden entre filas que solo confirman lo obvio. Ataca la fuente directa de conclusiones erróneas. | Depende de que quien escribe identifique bien la anti-expectativa; un `[gotcha]` omitido no deja rastro. |
+| [4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) | Media | Menos drift entre documentos: una regla compartida se cita, no se re-redacta, así que no hay que reconciliar dos versiones de la misma afirmación durante el análisis. | Solo aparece cuando la tarea toca varios docs que comparten una invariante. Absorbido por el [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado), que lo hace mejor. |
+| [5](#5-excluir-lo-ya-inferible-por-conocimiento-general-del-modelo) | Media | Menos texto que leer y descartar: lo que ya se infiere por conocimiento general (sigue REST, hashea contraseñas) no ocupa líneas ni distrae de lo específico del proyecto. | Acelera, no cambia lo que se entiende. Y depende de un criterio difuso ("¿esto es obvio para el modelo?") más frágil que las reglas mecánicas. |
+| [6](#6-notación-compacta-en-vez-de-prosa-para-datos-estructurados--aprobado) | **Alta** | El análisis exige la definición completa de cada estructura tocada (tipo, default, opcionalidad de cada campo). `timeout: number = 30s (opcional)` se extrae sin ambigüedad; la misma información en prosa hay que parsearla y es donde se cuela el error ("¿el default era 30 o el mínimo?"). Golpea el núcleo del trabajo, en casi toda tarea. | Ninguna relevante para análisis; es ganancia casi pura. |
+| [7](#7-prohibir-referencias-anafóricas--aprobado) | Media | Resolver "esto" / "dicho campo" / "el mismo" cuesta una pasada extra de desambiguación y a veces se resuelve mal si hay dos candidatos cerca. Repetir el nombre exacto elimina ese coste. | Ambigüedad puntual, no reestructura el contenido. El efecto agregado es real pero pequeño frente a 6 o 13. |
+| [8](#8-prohibir-adjetivosadverbios-de-intensidad-sin-cifra--aprobado) | Baja | Un "muy rápido" / "poco frecuente" sin cifra se descarta como no-información igualmente; forzar la cifra da un dato usable cuando existe. | Sobre todo higiene de redacción. Cuando no hay cifra, el punto solo suprime ruido que ya se ignoraba. |
+| [9](#9-nombres-de-sección-fijos-entre-documentos) | Media | *Jump-to-section* por convención: se localiza "Contracts" / "Invariants" / "Decisions" en cualquier doc sin leer su índice. Acelera la localización dentro de un corpus grande. | No cambia la comprensión del contenido una vez localizado. Y su propia viabilidad (catálogo de secciones universal) está sin cerrar. |
+| [10](#10-un-único-término-por-concepto--absorbido-por-el-15) | Media | Un término único por concepto elimina la resolución de sinonimia (¿"endpoint", "ruta" y "handler" son lo mismo aquí?), que puede fallar y llevar a tratar dos menciones como cosas distintas. | Subconjunto de lo que el [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) hace de forma estructural. Aislado, es solo disciplina léxica. |
+| [11](#11-grafo-de-dependencias-explícito-entre-secciones--descartado) | Baja | En documentos grandes, saber qué otras secciones cargar antes de confiar en una evita leer el doc entero para una consulta puntual. | El coste que ahorra (leer secciones de más) es menor que el que ataca el 13 (entender mal las que sí se leen). Depende de infraestructura (IDs, secciones, índice inverso). Descartado. |
+| [12](#12-invariantes-como-asserts-ejecutables--absorbido-por-el-13) | Media | Un invariante como `assert token.exp - token.iat <= 3600` se lee sin ambigüedad y, si el test existe, se sabe que sigue vivo — no hay que verificarlo contra el código. | Acotado a invariantes evaluables en runtime. Absorbido por el [13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado). |
+| [13](#13-notación-nativa-por-tipo-de-contenido-prosa-solo-donde-no-hay-forma-mejor--aprobado) | **Alta** | Convierte cada contrato, FSM, tabla de decisión, relación y flujo de prosa-a-parsear en estructura que se lee directa. Es el punto que más reduce a la vez el coste (menos parsing) y el error (menos relleno con el patrón) del análisis, y aplica en cada documento, no solo cuando la tarea cruza varios. | Ninguna relevante para análisis. Zona gris solo en la motivación irreducible, que es marginal en volumen. |
+| [14](#14-inglés-técnico-como-idioma-del-documento--aprobado) | Baja | Hipótesis de mejor tokenización del vocabulario técnico en inglés y de un doc monolingüe (sin mezcla español + identificadores en inglés). | No medida (regla 8 del propio documento). Sin cifra que respalde el ahorro, no se puede afirmar ganancia real de análisis. |
+| [15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) | **Alta** | Cada concepto y cada afirmación tiene una ruta canónica única (`auth.token.session.ttl.value`) vinculada al código por `ancla:`. Elimina de golpe la sinonimia, el drift entre docs y la duda "¿esto es lo mismo que aquello?", y da un punto de verificación contra el código para cada nodo. Cubre lo de 4 y 10 y añade el anclaje verificable. | La ganancia plena depende de resolver las notas pendientes (afirmaciones no escalares, orden de segmentos); el esqueleto ya rinde. |
+
 ## Incompatibilidades
 
-Sección de trabajo. Registra pares de propuestas que se pisan, se estorban, o cuya combinación genera un problema que ninguna de las dos tiene por separado. Solo se analizan aquí propuestas en estado ✅ aprobado (la contraparte puede estar en cualquier estado). La columna "Incompatible With" del índice enlaza a la subsección correspondiente.
+Sección de trabajo. Registra pares de propuestas que se pisan, se estorban, o cuya combinación genera un problema que ninguna de las dos tiene por separado. Se analizan aquí las propuestas que estén o hayan estado en estado ✅ aprobado (la contraparte puede estar en cualquier estado). La columna "Incompatible With" del índice enlaza a la subsección correspondiente. Una subsección se mantiene aunque una de las dos propuestas pase luego a descartada — queda como registro de por qué chocaban (ver [punto 11](#11-grafo-de-dependencias-explícito-entre-secciones--descartado), descartado tras el análisis 11.3).
 
 Nomenclatura de severidad:
 - **Bloqueante** — las dos no pueden coexistir sin resolver antes una decisión de diseño; aprobar ambas tal cual produce contradicción.
 - **Fricción** — coexisten, pero una encarece o degrada a la otra; conviene un ajuste explícito.
 - **Solapamiento** — hacen parcialmente lo mismo; riesgo de redundancia o de divergencia entre las dos implementaciones.
+
+### INC-15.1. Punto 15 ↔ Punto 9 (nombres de sección fijos)
+
+**Severidad: fricción.** (Heredada de la antigua 4.1; sigue abierta.)
+
+El [punto 15](#15-namespace-jerárquico-único-vinculado-al-código--aprobado) cuelga la **definición** de cada nodo/hoja del namespace en algún punto de un `.md`. El [punto 9](#9-nombres-de-sección-fijos-entre-documentos) (en análisis) fija un conjunto cerrado de headers de categoría repetidos en todos los docs. El choque es a qué nivel del documento vive esa definición.
+
+| Aspecto | Punto 9 pide | Punto 15 necesita |
+|---|---|---|
+| Unidad con identidad en el `.md` | La sección de categoría (`## Invariants`), compartida entre docs | El nodo/hoja concreto (`auth.token.session.ttl.value = 3600`) |
+| Nº de anclas por doc | Fijo (uno por header del conjunto cerrado) | Variable (uno por nodo/hoja definido en ese doc) |
+| Reutilización del identificador | El mismo header se repite en todos los docs | Cada ruta del namespace es única y global |
+
+Si el punto 9 se aprueba con **secciones atómicas** (una sola "Invariants" con N invariantes dentro), el lector que llega desde una cita `ver auth.token.session.ttl.value` aterriza en la sección "Config" entera y tiene que buscar la hoja. El namespace da el identificador exacto; el 9, tal cual, no da un ancla física igual de exacta.
+
+Resolución candidata (pendiente, ligada a cerrar el punto 9): **dos niveles**. El punto 9 fija los headers de nivel 1; cada nodo/hoja del punto 15 se define en un **bloque identificable dentro de esos headers**, anclado por su ruta del namespace. `jump-to-section` por header sigue funcionando; la cita del namespace apunta al bloque. Requiere que el punto 9, al aprobarse, declare sus secciones como contenedores de bloques identificables, no unidades atómicas. Misma resolución que se había propuesto para la antigua 11.2.
+
+### INC-15.2. Punto 15 ↔ Punto 13 (afirmaciones no escalares)
+
+**Severidad: fricción.** (Sustituye a la antigua 4.2, que era "solapamiento de sintaxis de cita" — ese solapamiento **ya está resuelto por construcción** en el 15: ver más abajo. Lo que queda abierto es otra cosa.)
+
+**Lo que el 15 resolvió y ya no es incompatibilidad:** la antigua 4.2 registraba dos sintaxis de cita compitiendo (`ver docs.tech#id` del punto 4 vs `[ver id]` inline del punto 13). Con el 15 hay **una sola**: la ruta punteada (`auth.token.session.ttl.value`). El `00-glossary.md` del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado) documenta esa sintaxis, no inventa otra. La frontera concepto/afirmación que la antigua 4.3 marcaba como criterio difuso es ahora **sintáctica** (¿tiene `= valor` o cuelga de `.decision.`?), no de juicio. Ninguna de las dos sobrevive como incompatibilidad.
+
+**Lo que sigue abierto:** el [punto 15.1 (esquema)](#151-el-esquema) modela las afirmaciones como `ruta = <escalar>`. Pero muchas afirmaciones de arquitectura **no son escalares**:
+
+```
+"refresh permitido en estado EXPIRED si  now - token.exp < 7d"
+"el breaker abre tras 5 fallos consecutivos en menos de 10s"
+```
+
+Eso no es `clave = valor`; es una expresión lógica — justo el territorio del [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa-solo-excepción--refactorizado) (lógica proposicional, contratos, tablas de decisión). Choque: el 15 quiere una hoja citable con nombre estable; el 13 quiere que el contenido de esa hoja sea notación, no un escalar. Dos escapes malos:
+
+- **(a)** Forzar todo a escalar (`auth.token.session.refresh.grace = 7d`) y perder la condición completa (`estado EXPIRED`, `consecutivos`, la ventana de 10s) — el nombre miente por omisión.
+- **(b)** Meter notación multilínea como "valor" de la hoja, y entonces la hoja deja de ser un identificador citable limpio y pasa a ser un bloque — que es la nota de **notación anidada/híbrida** del punto 13, sin resolver.
+
+Resolución candidata (pendiente, ligada al `00-glossary.md`): la hoja del namespace **identifica** la afirmación (nombre estable, citable) pero su **cuerpo es un bloque de notación del 13**, no un escalar. Es decir:
+
+```
+auth.token.session.refresh.rule:
+    pre:  state ∈ {AUTHENTICATED, EXPIRED} ∧ now - token.exp < 7d
+    post: token'.iat = now ∧ token'.exp = now + auth.token.session.ttl.value
+```
+
+`auth.token.session.refresh.rule` se cita como cualquier hoja; su contenido es notación proposicional, no `= valor`. El `00-glossary.md` define la frontera: **hoja `= <escalar>`** para valores simples (un número, un enum, un booleano); **hoja `:` + bloque de notación** para afirmaciones con estructura lógica. Ambas son citables por ruta; la forma del cuerpo la decide si el hecho es un escalar o una expresión.
+
+### INC-15.3. Punto 15 ↔ Punto 10 (un único término por concepto) — resuelta por construcción
+
+**Sin incompatibilidad.** El [punto 10](#10-un-único-término-por-concepto--absorbido-por-el-15) está **absorbido** por el 15: los nodos del namespace *son* los términos únicos por concepto. La frontera concepto/afirmación que la antigua 4.3 marcaba como criterio difuso ("¿esto es concepto o hecho?") pasa a ser sintáctica en el 15 (`= valor` / `.decision.` → afirmación; en otro caso → concepto). No queda nada que registrar como choque; se deja esta entrada solo como puntero desde la columna del índice.
+
+### INC-15.4. Punto 15 ↔ Punto 1 (metadata de verificación) — histórico
+
+**Sin incompatibilidad activa** ([punto 1](#1-metadata-de-verificación-contra-código--descartado) descartado). Se conserva como **guía de implementación del 15**: el 15 sirve bien a afirmaciones estables (decisiones, invariantes de diseño) y mal a "snapshots del código" (listados de campos, firmas). Un nodo del namespace sobre una firma concreta hereda el drift silencioso que el punto 1 no supo atacar. Guía: dar ruta de namespace a decisiones e invariantes; **no** dar ruta a listados de campos/firmas — esos apuntan al código por la regla 5 (`ancla:`), no se les crea una hoja `=valor` propia.
 
 ### 11.1. Punto 11 ↔ Punto 3 (orden por frecuencia de consulta)
 
@@ -433,7 +628,7 @@ El [punto 13](#13-notación-lógico-matemática-o-formato-nativo-para-todo-prosa
 - El `00-glossary.md` (notación única por proyecto).
 - La regla de notación anidada/híbrida, cuya opción 1 es "referencia por ID en vez de anidar" — es decir, **el mismo mecanismo de citar-por-ID que usan las aristas del punto 11**.
 
-Riesgo de divergencia: si el punto 11 genera su índice inverso de `narrows` por un lado y el punto 13 define su tabla de notación anidada por otro, se acaban con **dos convenciones distintas para "una sección/celda hace referencia a otra por ID"** dentro del mismo proyecto — exactamente el tipo de duplicación que el [punto 4](#4-ids-estables-y-citables-entre-documentos--aprobado) y el [punto 10](#10-un-único-término-por-concepto--aprobado) quieren evitar, un nivel más arriba.
+Riesgo de divergencia: si el punto 11 genera su índice inverso de `narrows` por un lado y el punto 13 define su tabla de notación anidada por otro, se acaban con **dos convenciones distintas para "una sección/celda hace referencia a otra por ID"** dentro del mismo proyecto — exactamente el tipo de duplicación que el [punto 4](#4-ids-estables-y-citables-entre-documentos--absorbido-por-el-15) y el [punto 10](#10-un-único-término-por-concepto--absorbido-por-el-15) quieren evitar, un nivel más arriba.
 
 Resolución candidata (pendiente): el índice inverso de `narrows` del punto 11 **no es un artefacto propio** — es una vista derivada que `pv-internal-doc-technical` genera junto al `00-glossary.md` del punto 13, o dentro de él. Una sola pieza de "grafo de referencias entre bloques del proyecto" que sirve a las aristas del punto 11 y a la notación-por-referencia del punto 13. Pendiente de confirmar al detallar el glosario.
 
