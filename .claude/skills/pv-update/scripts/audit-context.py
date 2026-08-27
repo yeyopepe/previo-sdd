@@ -2,8 +2,10 @@
 """Audits .claude/pv-context.json and everything it configures against the
 real state of the repo: schema shape, referenced skills, on-disk paths,
 skillModels vs each SKILL.md's real frontmatter, the [[[...]]]-marked
-structural labels (see pv-design.en.md's "Marker convention in templates")
-in every template-derived document under workFolder's changes/ subtree, and
+structural labels AND section headings (see pv-design.en.md's "Marker
+convention in templates") in every template-derived document under
+workFolder's changes/ subtree -- catching ones left translated by a
+document written under an older, still-localized framework version, and
 version consistency -- every pv-* skill's metadata.version should share the
 same major.minor (skill-version-mismatch:*), and pv-context.json's
 frameworkStatus.lastVerifiedVersion should match pv-init/SKILL.md's real
@@ -167,7 +169,7 @@ MARKED_TEMPLATES = (
     (".claude/skills/pv-internal-workflow/description.template.md",
      ("changes/inProgress/*/description.md", "changes/implemented/*/description.md")),
     (".claude/skills/pv-how/PLAN.template.md",
-     ("changes/inProgress/*/plan.md",)),
+     ("changes/inProgress/*/plan.md", "changes/implemented/*/plan.md")),
     (".claude/skills/pv-todo/description.template.md",
      ("changes/todo/*/description.md",)),
 )
@@ -210,8 +212,13 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
                     rel = doc_path.relative_to(root).as_posix()
                     add(problems, f"marker-missing:{rel}", "optional", rel,
                         f"'{rel}' is missing the structural marker(s) {', '.join(missing)} "
-                        f"expected from '{template_rel}' -- likely translated or otherwise altered by hand, "
-                        f"which breaks pv-status's literal parsing of them.",
+                        f"expected from '{template_rel}' -- these are field labels AND section headings "
+                        f"(e.g. '## Full description', '## (a) Functional notes') that pv-* scripts/skills "
+                        f"match literally in English; a document written by an older framework version whose "
+                        f"templates were still localized, or hand-edited since, has them translated. Every "
+                        f"marker checked here is one the template guarantees is always present, so a miss is "
+                        f"never a legitimately-omitted optional section. Restore the English label in place "
+                        f"without touching the section body.",
                         expected=", ".join(labels), actual=", ".join(l for l in labels if l not in missing) or "(none found)")
 
 

@@ -426,21 +426,27 @@ A self-contained Python script for anyone who wants to check or close out framew
 
 Every `*.template.md` a `pv-*` skill writes from (`description.template.md`, `PLAN.template.md`, `FEATURE.template.md`, `pv-todo`'s `description.template.md`, etc.) is written in one fixed language (English), but the document it produces follows whichever `language` field applies (`changes.language`, `docs.functional.language`, etc.) — see "Language configuration" above. Most of a template is free text and translates along with everything else. A few field labels and headings, however, are parsed literally by `pv-*` scripts (`pv-status`'s `collect_status.py`/`filter_status.py`, `pv-internal-doc-features`'s `rebuild-index.py`/`next-feature-number.py`) with English-only regular expressions — if the model translates one of those labels instead of just the value that follows it, the script silently stops finding it: the field shows up empty, `—`, or "unknown" in `/pv-status` or `INDEX.md`, with no error anywhere.
 
-To make that distinction unambiguous at the point where it matters — while a template is being followed to write a real file — any span wrapped in **`[[[...]]]`** inside a template is a structural marker that always stays in English, regardless of the target language. Everything else in the template (plain `[placeholder]` text, prose, `<...>` authoring notes) follows the configured language as usual. For example:
+To make that distinction unambiguous at the point where it matters — while a template is being followed to write a real file — any span wrapped in **`[[[...]]]`** inside a template is a structural marker that always stays in English, regardless of the target language. Everything else in the template (plain `[placeholder]` text, prose, `<...>` authoring notes) follows the configured language as usual. A marker can wrap a **field label** or a whole **section heading** — whichever a script or another skill matches by literal English text:
 
 ```
 - **[[[Creation date]]]**: [YYYY-MM-DD]
+## [[[Full description]]]
+## [[[(a) Functional notes]]]
 ```
 
-produces, once written to a real file with `changes.language` set to Spanish:
+produce, once written to a real file with `changes.language` set to Spanish (marker text unchanged, everything else localized):
 
 ```
 - **Creation date**: 2026-08-19
+## Full description
+## (a) Functional notes
 ```
+
+**Only mark items the template guarantees are always present.** A conditional section (one the template says to "omit entirely if it doesn't apply", e.g. `PLAN.template.md`'s `## (c)`/`## (d)`/`## (f)`, or `description.template.md`'s optional `## Technical notes`) must **not** be marked: `pv-update`'s marker check can't tell a legitimately-omitted section from a translated one, so marking it would make every entry that skips that section look broken. Keep writing those headings in English for consistency — they just carry no `[[[...]]]`.
 
 `[[[...]]]` is template-only syntax: it tells whoever is filling in the template what not to translate. It never appears in the generated file — the brackets are stripped the same way `[YYYY-MM-DD]` resolves to an actual date; only the label inside survives, in English, unchanged.
 
-When a new field is added to a template that some script will parse literally, mark it with `[[[...]]]` in the template itself rather than only describing the rule in prose in a `SKILL.md` — the template is the single source of truth for which labels are protected, so there's nothing to keep in sync by hand. A `SKILL.md` that writes from a marked template only needs a short reminder in its "Language." note that marked labels stay fixed — not a restated list of which ones.
+When a new field or heading is added to a template that some script or skill will match literally, mark it with `[[[...]]]` in the template itself (if it's always present — see the conditional-section rule above) rather than only describing the rule in prose in a `SKILL.md` — the template is the single source of truth for which items are protected, so there's nothing to keep in sync by hand. A `SKILL.md` that writes from a marked template only needs a short reminder in its "Language." note that marked items stay fixed — not a restated list of which ones. `pv-update`'s `audit-context.py` reads the marker list fresh from each template every run and flags any marked item missing from a real `description.md`/`plan.md` under `changes/` (`marker-missing:*`), which is how a document carried over from an older, still-localized framework version gets its headings caught and repaired.
 
 ## Workflow diagrams
 

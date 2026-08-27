@@ -428,21 +428,27 @@ Script Python autocontenido pensado para quien quiera consultar o cerrar cambios
 
 Cada `*.template.md` que una skill `pv-*` usa para escribir un fichero (`description.template.md`, `PLAN.template.md`, `FEATURE.template.md`, el `description.template.md` de `pv-todo`, etc.) está redactado en un idioma fijo (inglés), pero el documento que produce sigue el `language` que corresponda (`changes.language`, `docs.functional.language`, etc. — ver "Configuración de idioma" más arriba). La mayor parte de una plantilla es texto libre y se traduce con todo lo demás. Sin embargo, algunas etiquetas de campo y encabezados los parsean literalmente scripts `pv-*` (`collect_status.py`/`filter_status.py` de `pv-status`, `rebuild-index.py`/`next-feature-number.py` de `pv-internal-doc-features`) con expresiones regulares solo en inglés — si el modelo traduce una de esas etiquetas en vez de traducir solo el valor que la sigue, el script deja de encontrarla en silencio: el campo aparece vacío, `—`, o "unknown" en `/pv-status` o en `INDEX.md`, sin ningún error visible.
 
-Para que esa distinción sea inequívoca justo en el momento en que importa —mientras se sigue una plantilla para escribir un fichero real—, cualquier fragmento envuelto en **`[[[...]]]`** dentro de una plantilla es un marcador estructural que se queda siempre en inglés, sea cual sea el idioma de destino. Todo lo demás en la plantilla (texto `[placeholder]` normal, prosa, notas `<...>` para quien redacta) sigue el idioma configurado como de costumbre. Por ejemplo:
+Para que esa distinción sea inequívoca justo en el momento en que importa —mientras se sigue una plantilla para escribir un fichero real—, cualquier fragmento envuelto en **`[[[...]]]`** dentro de una plantilla es un marcador estructural que se queda siempre en inglés, sea cual sea el idioma de destino. Todo lo demás en la plantilla (texto `[placeholder]` normal, prosa, notas `<...>` para quien redacta) sigue el idioma configurado como de costumbre. Un marcador puede envolver una **etiqueta de campo** o un **encabezado de sección** entero — lo que un script u otra skill busque por su texto literal en inglés:
 
 ```
 - **[[[Creation date]]]**: [YYYY-MM-DD]
+## [[[Full description]]]
+## [[[(a) Functional notes]]]
 ```
 
-produce, una vez escrito en un fichero real con `changes.language` en español:
+producen, una vez escritos en un fichero real con `changes.language` en español (el texto del marcador no cambia, todo lo demás se traduce):
 
 ```
 - **Creation date**: 2026-08-19
+## Full description
+## (a) Functional notes
 ```
+
+**Marca solo elementos que la plantilla garantiza que siempre están presentes.** Una sección condicional (una que la plantilla dice "omitir entera si no aplica", p. ej. `## (c)`/`## (d)`/`## (f)` de `PLAN.template.md`, o el `## Technical notes` opcional de `description.template.md`) **no** debe marcarse: el chequeo de marcadores de `pv-update` no puede distinguir una sección omitida legítimamente de una traducida, así que marcarla haría que toda entrada que se salte esa sección pareciera rota. Sigue escribiendo esos encabezados en inglés por consistencia — simplemente no llevan `[[[...]]]`.
 
 `[[[...]]]` es sintaxis exclusiva de la plantilla: le indica a quien la rellena qué no traducir. Nunca aparece en el fichero generado — los corchetes se eliminan igual que `[YYYY-MM-DD]` se resuelve a una fecha real; solo sobrevive la etiqueta, en inglés, sin cambios.
 
-Cuando se añada un campo nuevo a una plantilla que algún script vaya a parsear literalmente, márcalo con `[[[...]]]` en la propia plantilla en vez de limitarte a describir la regla en prosa en un `SKILL.md` — la plantilla es la única fuente de verdad de qué etiquetas están protegidas, así que no hay nada que mantener sincronizado a mano. Un `SKILL.md` que escribe a partir de una plantilla marcada solo necesita un recordatorio breve en su nota "Language." de que las etiquetas marcadas se quedan fijas — no una lista repetida de cuáles son.
+Cuando se añada un campo o encabezado nuevo a una plantilla que algún script o skill vaya a buscar literalmente, márcalo con `[[[...]]]` en la propia plantilla (si siempre está presente — ver la regla de secciones condicionales de arriba) en vez de limitarte a describir la regla en prosa en un `SKILL.md` — la plantilla es la única fuente de verdad de qué elementos están protegidos, así que no hay nada que mantener sincronizado a mano. Un `SKILL.md` que escribe a partir de una plantilla marcada solo necesita un recordatorio breve en su nota "Language." de que los elementos marcados se quedan fijos — no una lista repetida de cuáles son. El `audit-context.py` de `pv-update` lee la lista de marcadores fresca de cada plantilla en cada ejecución y señala cualquier elemento marcado que falte en un `description.md`/`plan.md` real bajo `changes/` (`marker-missing:*`), que es como se detectan y reparan los encabezados de un documento arrastrado desde una versión anterior del framework que todavía localizaba las plantillas.
 
 ## Diagramas de flujo (workflow diagrams)
 
