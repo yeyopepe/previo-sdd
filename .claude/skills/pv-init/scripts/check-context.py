@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 """Validates .claude/pv-context.json against schema.json's required fields.
 
-'framework' no longer has any required field of its own (see schema.json):
-'workFolder' is optional with default "/". So the only thing that determines
-whether the framework is initialized is that the 'framework' section
-exists -- created by pv-init, never any other skill.
+'framework' carries required: ["docs"] (see schema.json), and 'docs' in turn
+requires functional.featuresDocPathDir, tech.architectureDocDir and
+tech.styleBibleDocDir -- pv-init always writes and scaffolds all three, and
+every other pv-* skill requires them. 'workFolder'/'sourcecodeDir' still have
+defaults and are never "required" here. So a project is initialized when the
+'framework' section exists AND none of those four required paths is missing.
 
 Doesn't decide anything on its own (doesn't create or complete the file) --
 only determines which required fields are missing, so pv-init knows whether
-to ask the full questionnaire, only what's missing, or nothing.
+to ask the full questionnaire, treat it as a broken state (delegate to
+pv-update), or do nothing. On a first-ever init (file doesn't exist), a
+non-empty missingRequired is expected; on an already-initialized project it
+means a required field was lost and pv-init routes to its S1Broken branch.
 
 Also reports 'hasLanguage': true if framework.interaction.language exists in
 the file (regardless of its content) -- it's the only field whose absence
@@ -30,7 +35,24 @@ import json
 import sys
 from pathlib import Path
 
-ALWAYS_REQUIRED = ()
+# Dotted paths under 'framework' that schema.json marks required. Checked
+# against the real file so pv-init can tell "needs first-time setup" (file
+# absent) from "a required field was lost" (file present, path missing ->
+# S1Broken -> pv-update).
+REQUIRED_PATHS = (
+    "docs.functional.featuresDocPathDir",
+    "docs.tech.architectureDocDir",
+    "docs.tech.styleBibleDocDir",
+)
+
+
+def _get_path(obj: dict, dotted: str):
+    cur = obj
+    for part in dotted.split("."):
+        if not isinstance(cur, dict) or part not in cur:
+            return None
+        cur = cur[part]
+    return cur
 
 
 def repo_root() -> Path:
@@ -57,7 +79,9 @@ def main() -> None:
         result = {
             "exists": False,
             "hasFramework": False,
-            "missingRequired": list(ALWAYS_REQUIRED),
+            # First-ever init: everything required is "missing" by definition;
+            # pv-init's step 3 writes it. Not a broken state.
+            "missingRequired": list(REQUIRED_PATHS),
             "complete": False,
             "hasLanguage": False,
         }
@@ -69,15 +93,17 @@ def main() -> None:
     framework = context.get("framework") or {}
     has_framework = bool(context.get("framework"))
 
-    missing = [field for field in ALWAYS_REQUIRED if field not in framework]
+    missing = [p for p in REQUIRED_PATHS if _get_path(framework, p) in (None, "")]
     has_language = "language" in (framework.get("interaction") or {})
 
     result = {
         "exists": True,
         "hasFramework": has_framework,
         "missingRequired": missing,
-        # No required fields of its own in 'framework' (workFolder has a
-        # default), so "complete" means the 'framework' section exists.
+        # "complete" means the 'framework' section exists AND every required
+        # path (schema.json's framework.required -> docs -> the three doc
+        # dirs) is present. A non-empty missingRequired on an existing file is
+        # a broken state -> pv-init's S1Broken branch, not S1AskComplete.
         "complete": has_framework and not missing,
         "hasLanguage": has_language,
     }

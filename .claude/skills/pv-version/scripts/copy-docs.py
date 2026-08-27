@@ -8,13 +8,19 @@ and framework.docs.functional.featuresDocPathDir, and saves each .zip at
 including its INDEX.md if it has one) or a single .md file (a valid case for
 featuresDocPathDir in projects that haven't migrated to a folder) -- in both
 cases the resulting .zip is named after the path's base name (folder or file
-without extension) + ".zip". Ones not configured are skipped without error
-(same as the rest of the framework treats these optional fields).
+without extension) + ".zip".
+
+All three doc dirs are required fields (pv-init always configures and
+scaffolds them; schema.json marks them required), so none should be missing.
+If one is absent from pv-context.json, or points at a path that doesn't
+exist, this script exits non-zero -- a broken config that pv-update should
+have fixed, not a case to silently skip. A folder that exists but holds only
+its placeholder INDEX.md is fine and gets zipped as-is.
 
 Prints ONLY a JSON on stdout with what was copied, for the skill to use when
 confirming to the user:
 
-  {"copied": ["docs/architecture", "docs/style"], "skipped": ["featuresDocPathDir"]}
+  {"copied": ["docs/architecture", "docs/style", "docs/features"]}
 
 Usage:
   python copy-docs.py --xxxx 00001
@@ -110,12 +116,14 @@ def main() -> None:
     }
 
     copied: list[str] = []
-    skipped: list[str] = []
 
     for field, doc_path_rel in candidates.items():
         if not doc_path_rel:
-            skipped.append(field)
-            continue
+            raise SystemExit(
+                f"'framework.docs.*.{field}' isn't configured in pv-context.json. "
+                "All three doc dirs are required -- run the pv-update skill to repair "
+                "the config before preparing a release."
+            )
 
         source_path = work_root / doc_path_rel
         if source_path.is_dir():
@@ -126,12 +134,13 @@ def main() -> None:
             zip_file(source_path, dest_zip)
         else:
             raise SystemExit(
-                f"'{field}' points to {source_path}, but that path doesn't exist."
+                f"'{field}' points to {source_path}, but that path doesn't exist. "
+                "Run the pv-update skill to repair the config."
             )
 
         copied.append(doc_path_rel)
 
-    json.dump({"copied": copied, "skipped": skipped}, sys.stdout, ensure_ascii=False)
+    json.dump({"copied": copied}, sys.stdout, ensure_ascii=False)
     print()
 
 

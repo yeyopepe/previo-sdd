@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b4
+  version: 0.9.6b5
   uses: [pv-internal-tech-security]
 ---
 
@@ -23,21 +23,22 @@ The caller must pass a brief summary of **what's being analyzed** (the specific 
 
 ## 0. Load the project context
 
-Read `.claude/pv-context.json` at the repo root (if you haven't already this session). Don't validate here that the framework is initialized — the calling skill has already checked that before invoking this one; if `framework` were missing entirely, just treat all of `docs.tech` as unconfigured and go straight to step 2 with `sourcecodeDir` (or the repo in general) as the sole source.
+Read `.claude/pv-context.json` at the repo root (if you haven't already this session). Don't validate here that the framework is initialized — the calling skill has already checked that before invoking this one. `docs.tech.architectureDocDir` and `docs.tech.styleBibleDocDir` are required fields, so they should always be set. If one is genuinely absent from `pv-context.json`, or configured but its folder doesn't exist on disk, don't work around it: stop and tell the caller the framework config is broken and the user must run `/pv-update`. (A folder that exists but holds only its placeholder `INDEX.md` is **not** broken — it just means nothing is documented for the touched area yet; proceed to step 2 and lean on `sourcecodeDir`.)
 
 ## 1. Read the existing technical documentation first
 
 Before touching code, look at `framework.docs.tech` in `.claude/pv-context.json`:
 
+**Path resolution.** `architectureDocDir` and `styleBibleDocDir` (like `docs.functional.featuresDocPathDir`) are **relative to `framework.workFolder`, not the repo root** — the only path in `pv-context.json` relative to the repo root is `sourcecodeDir` (see the schema's field descriptions). So `architectureDocDir` = `"design/docs/architecture"` with `workFolder` = `/previo-sdd` resolves to `{repo}/previo-sdd/design/docs/architecture`. Resolve every `docs.*` path this way before checking whether it exists. If you find the documentation there, the configuration is correct — do **not** report a path mismatch as an inconsistency just because the same relative path doesn't also resolve from the repo root; that's the intended behaviour, not a misconfiguration. If a `docs.*` path genuinely doesn't resolve to an existing folder either way, that's the broken-config case from step 0 — stop and send the caller to `/pv-update`, don't just skip the source.
+
 - **If you already read a specific file earlier this session** and it hasn't changed since, don't reread it — reuse what you already have in context. This rule applies per individual file, not the whole directory: `architectureDocDir`/`styleBibleDocDir`'s documents are several small files, so in a typical cycle (invoked from `pv-new`/`pv-fix`, then again from `pv-how`) only `INDEX.md` needs rereading the second time, checking whether the already-read sibling files are still the relevant ones — reread only the missing ones, never the whole directory again. This is strictly more efficient than rereading a full monolithic file twice per cycle.
-- For each of `architectureDocDir` and `styleBibleDocDir` that's configured **and** really exists as a folder in the repo:
+- For each of `architectureDocDir` and `styleBibleDocDir` (both always configured — see step 0):
   1. Always read `{dir}/INDEX.md` first (if you don't already have it from this session).
   2. With the summary of what's being analyzed (received as input) and `INDEX.md`'s index table (what each sibling file covers), decide which sibling files are relevant and read only those.
   3. When in reasonable doubt about whether a file is relevant, read it — better to overshoot than fall short.
-- Skip the ones not configured, or configured but whose folder doesn't exist yet — it's not an error, that source is simply unavailable.
-- If `framework.docs.tech` doesn't exist at all, or neither field is configured, there's nothing to read in this step: go straight to step 2.
+- A folder that exists but holds only its placeholder `INDEX.md` (no `{NNN}-*.md`) is fine: it just means nothing is documented for the touched area yet — note it and move on to step 2, where `sourcecodeDir` fills the gap. A folder that doesn't exist at all, or a field absent from `pv-context.json`, is the broken-config case from step 0 — stop and send the caller to `/pv-update`.
 
-Return to the user the list of documents you have in `.claude/pv-context.json` and which you found and which you didn't.
+Return to the caller the list of documents configured in `.claude/pv-context.json` and which you found populated versus empty.
 
 With this, build preliminary context (architecture/layers, style conventions, file and symbol map) before reading a single line of source code.
 
@@ -63,6 +64,7 @@ If after this a genuine definition doubt remains (e.g. what an ambiguous field r
 While reading code during step 2, compare what you find against what step 1's documentation said (if any). If something doesn't match (a layer that no longer works as some `architectureDocDir` file describes, or a `styleBibleDocDir` convention the code no longer follows):
 
 - The real code is always the source of truth, never what the document says.
+- **Scope: an "inconsistency" here is strictly documentation *content* vs. code behaviour.** It is never a remark about how `pv-context.json` is *written*: if you located the documentation (resolving `docs.*` paths relative to `workFolder` per step 1), the paths are fine by definition — don't return "the `docs.*` paths look misconfigured" as an inconsistency. The one `pv-context.json`-related thing you *do* surface is handled in steps 0–1, not here: a `docs.*` dir that genuinely can't be resolved (field absent, or folder missing on disk) → stop and send the caller to `/pv-update`. Auditing `pv-context.json`'s full shape is `pv-update`'s job (`audit-context.py`), not this skill's.
 - Don't fix the document yourself here. Add the inconsistency to the result you return to the caller (see below) as a pending documentation change, so that skill decides how and when to apply it (e.g. `pv-how` integrates it into its `plan.md`'s sections (c)/(d), which `pv-do` will apply in its documentation-update step; `pv-new`/`pv-fix` can note it in **Technical notes**; `pv-fix` can take it as a reason not to qualify as trivial for its `fast` shortcut).
 
 ## 5. Check against the security checklist

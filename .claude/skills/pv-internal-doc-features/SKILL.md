@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b4
+  version: 0.9.6b5
   uses: [pv-internal-doc-files]
 ---
 
@@ -43,7 +43,7 @@ Given `docs.functional.featuresDocPathDir` (e.g. `docs/features/`), each `{NNN}-
 
 ## Expected input from the caller
 
-The caller must give the `action` (`find` or `upsert`) and its own parameters (see below). If `docs.functional.featuresDocPathDir` isn't configured in `.claude/pv-context.json`, say so and stop — it's up to the caller to decide what to do (normally, skip the step without asking anything).
+The caller must give the `action` (`find` or `upsert`) and its own parameters (see below). `docs.functional.featuresDocPathDir` is a required field (`pv-init` always configures it; `schema.json` marks it required), so it should always be set. If it's genuinely missing from `.claude/pv-context.json`, or configured but pointing at a path that doesn't exist, don't improvise — report to the caller that the framework config is broken and the user must run `/pv-update`, then stop.
 
 ## Action `find`
 

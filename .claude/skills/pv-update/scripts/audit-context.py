@@ -222,6 +222,17 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
                         expected=", ".join(labels), actual=", ".join(l for l in labels if l not in missing) or "(none found)")
 
 
+# The three docs.* dirs are resolved relative to workFolder (NOT the repo
+# root) -- only sourcecodeDir is repo-root-relative. This resolution rule is
+# also implemented in .claude/skills/pv-init/scripts/resolve-path.py; keep the
+# two in sync if either changes.
+DOCS_DIR_FIELDS = (
+    ("framework.docs.functional.featuresDocPathDir", ("functional", "featuresDocPathDir"), "docs/features"),
+    ("framework.docs.tech.architectureDocDir", ("tech", "architectureDocDir"), "docs/architecture"),
+    ("framework.docs.tech.styleBibleDocDir", ("tech", "styleBibleDocDir"), "docs/style"),
+)
+
+
 def check_docs_dir(root: Path, work_folder: str, relative_dir: str, field: str,
                     problems: list, requires_index: bool = True) -> None:
     folder = resolve_under(root, f"{work_folder.rstrip('/')}/{relative_dir}")
@@ -355,20 +366,25 @@ def main() -> None:
                 f"'{key}' points to skill '{name}', but '.claude/skills/{name}/SKILL.md' doesn't exist.",
                 expected=f".claude/skills/{name}/SKILL.md", actual="missing")
 
-    # --- docs.* (optional: only checked if configured) ---
+    # --- docs.* (required: all three doc dirs are always configured by
+    # pv-init; a missing one is a broken state, not a legitimately-skipped
+    # optional -- see schema.json's 'required' on framework.docs). ---
     docs = framework.get("docs") or {}
     functional = docs.get("functional") or {}
     tech = docs.get("tech") or {}
+    sub_objects = {"functional": functional, "tech": tech}
     if isinstance(work_folder, str) and work_folder.strip():
-        if functional.get("featuresDocPathDir"):
-            check_docs_dir(root, work_folder, functional["featuresDocPathDir"],
-                            "framework.docs.functional.featuresDocPathDir", problems)
-        if tech.get("architectureDocDir"):
-            check_docs_dir(root, work_folder, tech["architectureDocDir"],
-                            "framework.docs.tech.architectureDocDir", problems)
-        if tech.get("styleBibleDocDir"):
-            check_docs_dir(root, work_folder, tech["styleBibleDocDir"],
-                            "framework.docs.tech.styleBibleDocDir", problems)
+        for field, (sub_key, dir_key), default_rel in DOCS_DIR_FIELDS:
+            configured = sub_objects[sub_key].get(dir_key)
+            if configured:
+                check_docs_dir(root, work_folder, configured, field, problems)
+            else:
+                add(problems, f"docs-dir-unconfigured:{field}", "required", field,
+                    f"'{field}' isn't set in pv-context.json. pv-init always configures all "
+                    f"three doc dirs (functional.featuresDocPathDir, tech.architectureDocDir, "
+                    f"tech.styleBibleDocDir); every pv-* skill now requires them. Write it with "
+                    f"the schema default and scaffold the empty dir.",
+                    expected=f"{default_rel} (relative to workFolder)", actual="unconfigured")
 
     # --- pv.py must match assets/pv.py exactly (required) ---
     pv_py = root / "pv.py"

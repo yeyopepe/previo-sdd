@@ -35,6 +35,7 @@
       "type": "object",
       "description": "Configuration that the pv-* skills understand and use directly (paths for the change-tracking process, language configuration).",
       "additionalProperties": false,
+      "required": ["docs"],
       "properties": {
         "workFolder": {
           "type": "string",
@@ -143,17 +144,19 @@
         },
         "docs": {
           "type": "object",
-          "description": "OPTIONAL. External reference documentation for the project, grouped by area ('functional', 'tech').",
+          "description": "External reference documentation for the project, grouped by area ('functional', 'tech'). Written by pv-init on every init; all three doc dirs (functional.featuresDocPathDir, tech.architectureDocDir, tech.styleBibleDocDir) are always present. A pv-context.json missing 'docs', either of its sub-objects, or any of the three doc dirs is a broken state, repaired by pv-update -- the other skills never tolerate a missing doc dir.",
           "additionalProperties": false,
+          "required": ["functional", "tech"],
           "properties": {
             "functional": {
               "type": "object",
-              "description": "OPTIONAL. Functional documentation that the pv-* skills use as context and keep in sync.",
+              "description": "Functional documentation that the pv-* skills use as context and keep in sync. Always written by pv-init.",
               "additionalProperties": false,
+              "required": ["featuresDocPathDir"],
               "properties": {
                 "featuresDocPathDir": {
                   "type": "string",
-                  "description": "OPTIONAL. Listing of features already implemented in the project (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir). Can be a FOLDER (recommended, e.g. 'docs/features') with one file per feature plus a generated 'INDEX.md' -- in that case pv-do delegates reading/writing to the pv-internal-doc-features skill, which knows that convention -- or, in older projects that haven't migrated yet, a single .md file. pv-do adds or updates the corresponding entry there every time it implements a change/fix, creating the folder/file if it doesn't exist yet. If not configured, this step is skipped without asking anything.",
+                  "description": "Listing of features already implemented in the project (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir). Can be a FOLDER (recommended, e.g. 'docs/features') with one file per feature plus a generated 'INDEX.md' -- in that case pv-do delegates reading/writing to the pv-internal-doc-features skill, which knows that convention -- or, in older projects that haven't migrated yet, a single .md file. pv-do adds or updates the corresponding entry there every time it implements a change/fix, creating the folder/file if it doesn't exist yet. Always configured by pv-init. If absent from pv-context.json, run /pv-update -- every skill requires it.",
                   "examples": ["docs/features", "docs/FEATURES.md"]
                 },
                 "language": {
@@ -166,17 +169,18 @@
             },
             "tech": {
               "type": "object",
-              "description": "OPTIONAL. Technical documentation that the pv-* skills use as context and keep in sync.",
+              "description": "Technical documentation that the pv-* skills use as context and keep in sync. Always written by pv-init.",
               "additionalProperties": false,
+              "required": ["architectureDocDir", "styleBibleDocDir"],
               "properties": {
                 "architectureDocDir": {
                   "type": "string",
-                  "description": "OPTIONAL. Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the architecture/technical-design document, split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the technical topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. If not configured, this step is skipped without asking anything.",
+                  "description": "Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the architecture/technical-design document, split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the technical topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. Always configured by pv-init. If absent from pv-context.json, run /pv-update -- every skill requires it. May legitimately be empty (only its placeholder INDEX.md) in a project whose docs aren't populated yet; that is not the same as unconfigured.",
                   "examples": ["docs/architecture"]
                 },
                 "styleBibleDocDir": {
                   "type": "string",
-                  "description": "OPTIONAL. Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the project's style guide (visual, interaction, writing), split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the style topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. If not configured, this step is skipped without asking anything.",
+                  "description": "Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the project's style guide (visual, interaction, writing), split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the style topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. Always configured by pv-init. If absent from pv-context.json, run /pv-update -- every skill requires it. May legitimately be empty (only its placeholder INDEX.md) in a project with no visual/interaction layer; that is not the same as unconfigured.",
                   "examples": ["docs/style"]
                 },
                 "language": {
@@ -238,6 +242,7 @@
           },
           "tech": {
             "architectureDocDir": "docs/architecture",
+            "styleBibleDocDir": "docs/style",
             "language": "en"
           }
         },

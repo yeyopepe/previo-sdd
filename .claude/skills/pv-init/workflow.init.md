@@ -16,13 +16,13 @@ flowchart TD
 
     S1Run[Ejecutar check-context.py] --> S1Exists{.claude/pv-context.json existe?}
     S1Exists -->|No| S2Explore
-    S1Exists -->|Sí, pero JSON inválido o check-context.py falla| S1Broken[Invocar pv-update]
+    S1Exists -->|Sí, pero JSON inválido, check-context.py falla, o missingRequired no vacío en proyecto ya inicializado| S1Broken[Invocar pv-update]
     S1Broken --> S1Resume{pv-update deja algo pendiente para pv-init?}
     S1Resume -->|No| End1([Fin: resuelto por pv-update])
     S1Resume -->|Sí| S2Explore
 
     S1Exists -->|Sí, JSON válido, framework no existe| S2Explore
-    S1Exists -->|Sí, JSON válido, framework completo| S1Complete{hasLanguage y sin opcionales pendientes?}
+    S1Exists -->|Sí, JSON válido, framework completo (missingRequired vacío)| S1Complete{hasLanguage y sin opcionales pendientes?}
     S1Complete -->|Sí, todo completo| S1AskReset[ASK: reinicializar desde cero?]
     S1AskReset --> S1ResetDec{Usuario confirma reset?}
     S1ResetDec -->|Sí| S1Erase[Borrar framework actual]

@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b4
+  version: 0.9.6b5
   uses: []
 ---
 

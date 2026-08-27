@@ -17,11 +17,11 @@ Order the tasks in the order they should be implemented. Don't include manual ve
 
 ## (c) Architecture changes
 
-*Only if `docs.tech.architectureDocDir` is configured and this solution modifies the project's core architecture.* [Which specific file(s) in that folder need updating and what to change in each. Omit the entire section if it doesn't apply.]
+*Only if this solution modifies the project's core architecture.* [Which specific file(s) in `docs.tech.architectureDocDir` need updating and what to change in each. Omit the entire section if it doesn't apply.]
 
 ## (d) Style changes
 
-*Only if `docs.tech.styleBibleDocDir` is configured and this solution modifies or extends the project's visual style.* [Which specific file(s) in that folder need updating and what to change in each. Omit the entire section if it doesn't apply.]
+*Only if this solution modifies or extends the project's visual style.* [Which specific file(s) in `docs.tech.styleBibleDocDir` need updating and what to change in each. Omit the entire section if it doesn't apply.]
 
 ## [[[(e) Verification]]]
 

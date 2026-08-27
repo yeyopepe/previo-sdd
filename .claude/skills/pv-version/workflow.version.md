@@ -44,7 +44,7 @@ flowchart TD
     S4Stop --> End4([End: build failed])
     S4Ok -->|Yes| S4Copy[copy-build-artifacts.py to versions/XXXX/files/]
 
-    S4Copy --> S5Docs[Run copy-docs.py: zip configured docs.tech/docs.functional]
+    S4Copy --> S5Docs[Run copy-docs.py: zip the three docs.tech/docs.functional dirs]
     S5Docs --> S6Changelog[Invoke pv-internal-changelog on versions/XXXX/]
     S6Changelog --> S7Summary[INFO: summary of deliverable, docs, changelog]
     S7Summary --> EndOK([End: release prepared])

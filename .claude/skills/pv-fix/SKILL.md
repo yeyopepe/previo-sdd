@@ -5,7 +5,7 @@ argument-hint: <description of the bug or change to apply>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b4
+  version: 0.9.6b5
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-new, pv-how]
 ---
 
@@ -60,8 +60,8 @@ Invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary o
 - It doesn't introduce new behavior nor change an existing flow or interaction — at most it adjusts a value, text, or aspect of something that already exists.
 - It has no relevant edge cases to analyze, nor does it affect how different parts of the project coexist with each other.
 - If it's a bug: it's nowhere close to one whose root cause needs investigating — if digging is needed to find out why something fails, it's not `fast` (but it's still a fix: go to step 3).
-- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** (if configured in `.claude/pv-context.json`) only in constant or parameter values, it's `fast`.
-- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** (if configured in `.claude/pv-context.json`) in a meaningful way (an architecture decision, a visual/interaction/writing style convention), it's not `fast`, even if the code change itself is small. If `pv-internal-tech-analysis` reports any inconsistency between those documents and the code, it also doesn't qualify as `fast`: an inconsistency with the technical documentation is, by definition, something that affects those documents.
+- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** only in constant or parameter values, it's `fast`.
+- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** in a meaningful way (an architecture decision, a visual/interaction/writing style convention), it's not `fast`, even if the code change itself is small. If `pv-internal-tech-analysis` reports any inconsistency between those documents and the code, it also doesn't qualify as `fast`: an inconsistency with the technical documentation is, by definition, something that affects those documents.
 - If the change affects **`docs.functional.*`** it's not `fast`.
 
 Illustrative examples that would qualify: fixing a text or typo, changing a one-off color/size/margin, adjusting a constant's or config's value, fixing a misspelled link or path, renaming a visible label, or an obvious at-a-glance bug (e.g. an inverted condition in a single spot).

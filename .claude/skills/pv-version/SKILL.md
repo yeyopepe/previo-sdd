@@ -5,7 +5,7 @@ argument-hint: <XXXX of the version to prepare>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b4
+  version: 0.9.6b5
   uses: [pv-internal-changelog]
 ---
 
@@ -94,7 +94,7 @@ Only if step 4 generated the deliverable correctly. Run from the repo root:
 python .claude/skills/pv-version/scripts/copy-docs.py --xxxx <XXXX>
 ```
 
-Reads `.claude/pv-context.json`'s `framework.docs.tech.architectureDocDir`, `framework.docs.tech.styleBibleDocDir` and `framework.docs.functional.featuresDocPathDir` (whichever are configured; if none are, it's skipped without asking, same as `pv-do` does), zips each one (the whole folder with all its files, including its `INDEX.md`; or the single `.md` file, if that path isn't a folder) and saves it at `{workFolder}/versions/{XXXX}/docs/`. Note what was copied and what was skipped (the script returns this in its JSON output) for step 7's summary.
+Reads `.claude/pv-context.json`'s `framework.docs.tech.architectureDocDir`, `framework.docs.tech.styleBibleDocDir` and `framework.docs.functional.featuresDocPathDir` (all three required and always configured), zips each one (the whole folder with all its files, including its `INDEX.md`; or the single `.md` file, if that path isn't a folder) and saves it at `{workFolder}/versions/{XXXX}/docs/`. If the script exits non-zero because a doc dir is missing from the config or points at a non-existent path, stop and tell the user to run `/pv-update` first — don't work around it. Note what was copied (the script returns this in its JSON `copied` list) for step 7's summary.
 
 ## 6. Generate the changelog
 
@@ -102,4 +102,4 @@ Invoke the `pv-internal-changelog` skill (Skill tool) passing it the destination
 
 ## 7. Confirm to the user
 
-Summarize what was generated: the deliverable in `files/`, zipped docs in `docs/` (or which ones were skipped for not being configured), and that the changelog ended up in `changelog.md` — use the summary `pv-internal-changelog` returns to you (number of entries per section, including Fixes, and whether `{workFolder}/changes/closed/`'s folders were deleted or not).
+Summarize what was generated: the deliverable in `files/`, the three zipped docs in `docs/`, and that the changelog ended up in `changelog.md` — use the summary `pv-internal-changelog` returns to you (number of entries per section, including Fixes, and whether `{workFolder}/changes/closed/`'s folders were deleted or not).
