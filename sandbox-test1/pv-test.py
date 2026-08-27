@@ -449,36 +449,44 @@ def list_implemented_entries() -> list[tuple[str, str]]:
 
 
 def close_entry() -> None:
-    entries = list_implemented_entries()
-    if not entries:
-        show_info(
-            [wrap("There's no entry in changes/implemented/ pending closure.")], framed=False
+    first_pass = True
+    while True:
+        entries = list_implemented_entries()
+        if not entries:
+            if first_pass:
+                show_info(
+                    [wrap("There's no entry in changes/implemented/ pending closure.")],
+                    framed=False,
+                )
+            return
+        first_pass = False
+
+        labels = [f"{code} — {name}" for code, name in entries]
+        choice = show_selection(
+            "Implemented entries, pending closure:",
+            labels,
+            "Choose an entry to close (number, 'a' to close all, or empty to cancel): ",
+            extra_option=("a", "Close all"),
         )
-        return
+        if choice is None:
+            return
 
-    labels = [f"{code} — {name}" for code, name in entries]
-    choice = show_selection(
-        "Implemented entries, pending closure:",
-        labels,
-        "Choose an entry to close (number, 'a' to close all, or empty to cancel): ",
-        extra_option=("a", "Close all"),
-    )
-    if choice is None:
-        return
+        if choice == "a":
+            if confirm(
+                f"Confirm moving the {len(entries)} listed entries to changes/closed/?"
+            ):
+                for code, _ in entries:
+                    close_change(code)
+            else:
+                print("Cancelled.")
+            return
 
-    if choice == "a":
-        if confirm(f"Confirm moving the {len(entries)} listed entries to changes/closed/?"):
-            for code, _ in entries:
-                close_change(code)
+        code, _ = entries[choice]
+        if confirm(f"Confirm moving '{labels[choice]}' to changes/closed/?"):
+            close_change(code)
         else:
             print("Cancelled.")
-        return
-
-    code, _ = entries[choice]
-    if confirm(f"Confirm moving '{labels[choice]}' to changes/closed/?"):
-        close_change(code)
-    else:
-        print("Cancelled.")
+        # Loop back: re-list remaining entries; if none, return to previous menu.
 
 
 def close_change(code: str) -> None:
