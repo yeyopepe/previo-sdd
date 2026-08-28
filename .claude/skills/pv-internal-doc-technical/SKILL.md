@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b7
+  version: 0.9.6b8
   uses: []
 ---
 
@@ -85,14 +85,14 @@ Apply to both `docs.tech.architectureDocDir` and `styleBibleDocDir` content:
 8. **Flat lists over nested paragraphs.** Prefer `-`/table structure over paragraph indentation — structure is cheap to parse, prose is not.
 9. **No anaphora.** Never "this", "that field", "the former", "the above" when the exact name can be repeated. Repeating the identifier is cheaper for the reader than resolving a referent — and never wrong when two candidates are nearby. Style cost of repetition is not a concern (see *Audience*). When the referent has a namespace path (see *Namespace*), the repeated form is that canonical path; never an anaphora, never a synonym.
    ```
-   MAL:  The token carries an expiry. This is checked on every request; if it has passed, the session ends.
-   BIEN: token.exp is checked on every request. If time > token.exp, the session ends.
+   BAD:  The token carries an expiry. This is checked on every request; if it has passed, the session ends.
+   GOOD: token.exp is checked on every request. If time > token.exp, the session ends.
    ```
 10. **No unquantified intensifiers.** Never "very fast", "fairly large", "rarely called", "significant overhead". Either give the figure (`p95 = 12ms`, `~400 rows`, `< 1 call/day`) or drop the claim entirely — an intensifier without a number is discarded as non-information on read, so writing it only costs tokens. This includes comparatives with no baseline ("slower", "heavier") unless the baseline is named. Without a figure the sentence is omitted whole, not softened.
     ```
-    MAL:  This endpoint is very slow and is rarely called.
-    BIEN: p95 = 2.4s. Called < 10 times/day.
-    BIEN: (si no hay cifra) — omit the sentence.
+    BAD:  This endpoint is very slow and is rarely called.
+    GOOD: p95 = 2.4s. Called < 10 times/day.
+    GOOD: (si no hay cifra) — omit the sentence.
     ```
 
 ## Notation-first

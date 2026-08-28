@@ -4,7 +4,7 @@ description: Initializes the pv-* framework (change/fix/workflow) in the current
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b7
+  version: 0.9.6b8
   uses: [pv-update]
 ---
 
@@ -104,14 +104,9 @@ Fields to resolve — `framework` section:
     >
     > **(b) Full**: slower and with higher token consumption (higher the larger/more complex the project). Better result from the start.
 
-    Internal only — what each mode actually generates, not shown to the user in the question above (it drives step 5.5's behavior, not the user's decision). "Minimal"/"Full" here are option (a)/(b) above, whatever language they were shown in:
-    - **Minimal** (option a): look at the app's source code and create:
-      - In `architectureDocDir`: documentation focused only on the main architectural decisions and files and classes, and each one's general responsibility.
-      - In `styleBibleDocDir`: full documentation on the app's style (if applicable).
-      - In `featuresDocPathDir`: basic documentation, just enumerating the detected features.
-    - **Full** (option b): look at all the source code and create full documentation in `architectureDocDir`, `styleBibleDocDir` and `featuresDocPathDir`.
+    This question only captures the user's choice. What each mode (option a = "minimal", option b = "full") actually generates in `architectureDocDir`/`styleBibleDocDir`/`featuresDocPathDir` is defined once, in step 5.5 below — don't restate it here.
 
-    Keep the user's answer (minimal/full) in this conversation's memory only — never write it to `pv-context.json`, it's a one-off action for this run, not persistent configuration. This drives the new step 5.5 below.
+    Keep the user's answer (minimal/full) in this conversation's memory only — never write it to `pv-context.json`, it's a one-off action for this run, not persistent configuration. This drives step 5.5 below.
 - `numberWidth` (optional, default `5`, no need to ask unless the user wants something different): always write it to `pv-context.json` — the default value if the user doesn't want something else, same as `skills.mockups`/`skills.diagrams` below — never leave the field absent. The scripts that consume it (`next-change-number.py`, `get-max-change-codes.py`) have no fallback of their own and fail if it's missing.
 - `skills.mockups` and `skills.diagrams`: always write their defaults (`pv-internal-mockups-html`, `pv-internal-tech-mermaid`) to the file silently, without asking about them or mentioning them anywhere in this init — not in the questions, not in the step 6 summary. If the user ever wants to swap the underlying skill/technology, they'll find that documented in `schema.json` themselves.
 
@@ -160,10 +155,10 @@ Only runs if step 3's `sourcecodeDir` check found existing code and the user pic
 1. Invoke `pv-internal-tech-analysis` (Skill tool) with a summary along the lines of "initial full analysis of the app in `{sourcecodeDir}` to generate architecture and style documentation for the first time", **and `bootstrap: true`**. That flag tells `pv-internal-tech-analysis` not to resolve `docs.tech` via `resolve-path.py` (the folders exist but hold only their scaffolded placeholder `INDEX.md`, which would read as an empty/unsettled resolve) and to go straight to exploring the real code under `sourcecodeDir`, returning already-synthesized context (architecture/layers, style conventions, file/symbol map). Only `pv-init` passes `bootstrap: true`.
 2. Invoke `pv-internal-doc-technical` (Skill tool, no parameters) to load its writing rules before drafting anything for `architectureDocDir`/`styleBibleDocDir` — same as `pv-do`'s step 2.1.
 3. Draft `architectureDocDir`, replacing the placeholder step 5 left there:
-   - **Minimal**: only files/classes and each one's general responsibility.
+   - **Minimal**: the main architectural decisions plus the files/classes and each one's general responsibility — not the full layers/flows treatment.
    - **Full**: full architecture documentation (layers, flows, decisions) — not just the file/class listing.
    - Update that folder's `INDEX.md` too if the content ends up split across more than one file (same convention `pv-do` follows: `NN-slug.md` + index table).
-4. Draft `styleBibleDocDir` — full style documentation in both modes (minimal asks for it "full" too), only if it applies to the project. If the project has no visual/interaction layer to speak of, say so in step 6's summary instead of forcing empty content.
+4. Draft `styleBibleDocDir` — full style documentation in **both** modes (minimal generates it "full" too), only if it applies to the project. If the project has no visual/interaction layer to speak of, say so in step 6's summary instead of forcing empty content.
 5. Determine the app's feature list from the context already gathered in this step's point 1 (`pv-internal-tech-analysis`'s output):
    - **Minimal**: basic enumeration (name + functional area, no extended body).
    - **Full**: full functional description per feature.
