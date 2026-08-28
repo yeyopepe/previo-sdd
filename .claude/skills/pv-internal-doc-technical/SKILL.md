@@ -178,7 +178,7 @@ ui.grid.columns = 16                     afirmación de estilo (mismo árbol)
 | Node with code anchor | `path` + `anchor: file#symbol` | Canonical name **is** the path; definition lives in code. Uniqueness is structural: one term per concept, project-wide. |
 | Leaf `path = value` | terminal segment `= <scalar>` | The citable unit across docs: `see auth.token.session.ttl.value`. One citation syntax project-wide, stable across edits. |
 | Leaf `path:` + notation block | terminal segment `:` then a notation block (see *Notation-first* catalog) | For non-scalar assertions (a logic expression, a contract). Citable exactly like a `=value` leaf. |
-| Branch `path.decision.<slug>` | reserved subtree | Assertion with no code anchor (a design choice). Citable like a leaf. |
+| Branch `path.decision.<slug>` | reserved subtree | Assertion with no code anchor (a design choice). Citable like a leaf. Rationale goes as a `[motivación]` line or a comparison table under the node — never bare prose next to the `decision.` marker. |
 | Node with no anchor and no `=` / `:` | — | **Suspicious**: missing anchor, or general knowledge that shouldn't be named. |
 
 Concept/assertion boundary is **syntactic**: has `= value`, `:` + block, or hangs off `.decision.`? → assertion. Otherwise → concept. No judgment.

@@ -1,9 +1,0 @@
-node_modules/
-dist/
-__pycache__/
-.pytest_cache/
-*.pyc
-*.pyo
-/src/_output/versions/*.*
-/.claude/settings.json
-/.claude/settings.local.json

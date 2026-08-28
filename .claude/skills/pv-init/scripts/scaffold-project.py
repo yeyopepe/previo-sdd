@@ -106,7 +106,7 @@ Compact notation for structured data:
 field: type                  required field
 field?: type                 optional field
 field: type = value          default value
-field: type in {a, b, c}     enum / allowed set
+field: type ∈ {a, b, c}      enum / allowed set
 field: type [min..max]       range
 ```
 
@@ -114,8 +114,8 @@ Invariants -- executable vs declarative:
 
 - `assert <expr>` when there is a program point where the condition can be \
 checked with the values at hand.
-- declarative `inv: ...` / `pre:` / `post:` (propositional logic, `and or not \
--> forall`) when it quantifies over an abstract set, talks about an FSM state, \
+- declarative `inv: …` / `pre:` / `post:` (propositional logic, `∧ ∨ ¬ → ⟹ \
+∀`) when it quantifies over an abstract set, talks about an FSM state, \
 or a non-observable global property.
 - If both forms fit, the `assert` governs and the declarative one is a \
 restatement.
@@ -146,11 +146,15 @@ Commented example (delete once real nodes exist):
 # auth.token.session                       concept.   anchor: src/auth/token.ts#SessionToken
 # auth.token.session.ttl.value = 3600      assertion (scalar)
 # auth.token.session.refresh.rule:         assertion (non-scalar -> notation block)
-#     pre:  state in {AUTHENTICATED, EXPIRED} and now - token.exp < 7d
+#     pre:  state ∈ {AUTHENTICATED, EXPIRED} ∧ now - token.exp < 7d
 #     post: token'.exp = now + auth.token.session.ttl.value
 # auth.decision.circuit-breaker-over-retry decision.  no code anchor
+#     [motivación] downstream SLA is 99.5%; retry storms already caused 2 incidents.
 # ui.grid.columns = 16                     style assertion (same tree)
 ```
+
+A `path.decision.<slug>` node records its rationale as a `[motivación]` line \
+(or a comparison table), never as bare prose alongside the `decision.` marker.
 
 <Empty. pv-do populates this over time.>
 """

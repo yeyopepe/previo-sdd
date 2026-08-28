@@ -4,6 +4,11 @@ Never edit INDEX.md by hand -- this script is the only source of truth for
 its content, so it never drifts out of sync with the real files. Usage:
 
     python rebuild-index.py --folder docs/features
+    python rebuild-index.py --folder docs/architecture --title Architecture
+
+The INDEX.md H1 defaults to the folder name (title-cased, dashes/underscores
+to spaces): docs/architecture -> "# Architecture", docs/style -> "# Style",
+docs/features -> "# Features". Pass --title to override.
 """
 import argparse
 import re
@@ -29,10 +34,15 @@ def parse_feature(path):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", required=True)
+    parser.add_argument(
+        "--title", default=None,
+        help="INDEX.md H1; defaults to the folder name, title-cased",
+    )
     args = parser.parse_args()
 
     folder = Path(args.folder)
     folder.mkdir(parents=True, exist_ok=True)
+    index_title = args.title or folder.name.replace("-", " ").replace("_", " ").title()
 
     by_area = {}
     for path in sorted(folder.glob("*.md")):
@@ -41,7 +51,7 @@ def main():
         title, area = parse_feature(path)
         by_area.setdefault(area, []).append((title, path.name))
 
-    lines = ["# Features", ""]
+    lines = [f"# {index_title}", ""]
     for area in sorted(by_area, key=str.casefold):
         lines.append(f"## {area}")
         lines.append("")
