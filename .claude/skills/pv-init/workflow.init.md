@@ -12,7 +12,7 @@ flowchart TD
     S0Dec -->|No quiere o no puede| S0Proceed[ASK: continuar sin ella o parar aquí?]
     S0Proceed --> S0ProceedDec{Continuar?}
     S0ProceedDec -->|Sí| S1Run
-    S0ProceedDec -->|No| End0([Fin: init detenido]) 
+    S0ProceedDec -->|No| End0([Fin: init detenido])
 
     S1Run[Ejecutar check-context.py] --> S1Exists{.claude/pv-context.json existe?}
     S1Exists -->|No| S2Explore
@@ -22,7 +22,7 @@ flowchart TD
     S1Resume -->|Sí| S2Explore
 
     S1Exists -->|Sí, JSON válido, framework no existe| S2Explore
-    S1Exists -->|Sí, JSON válido, framework completo (missingRequired vacío)| S1Complete{hasLanguage y sin opcionales pendientes?}
+    S1Exists -->|"Sí, JSON válido, framework completo (missingRequired vacío)"| S1Complete{"hasLanguage y sin opcionales pendientes?"}
     S1Complete -->|Sí, todo completo| S1AskReset[ASK: reinicializar desde cero?]
     S1AskReset --> S1ResetDec{Usuario confirma reset?}
     S1ResetDec -->|Sí| S1Erase[Borrar framework actual]
@@ -42,7 +42,7 @@ flowchart TD
     S3Src --> S3SrcCheck[Comprobar si esa carpeta existe y tiene contenido]
     S3SrcCheck --> S3SrcDec{Carpeta vacía o inexistente?}
     S3SrcDec -->|Sí| S3Num
-    S3SrcDec -->|No, ya hay código| S3SrcAsk[ASK: elegir nivel de documentación a generar al terminar -- mínimo o completa]
+    S3SrcDec -->|No, ya hay código| S3SrcAsk["ASK: elegir nivel de documentación a generar al terminar — mínimo o completa"]
     S3SrcAsk --> S3SrcMode[Guardar el modo elegido en memoria de la conversación]
     S3SrcMode --> S3Num
 
