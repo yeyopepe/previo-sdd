@@ -1,82 +1,87 @@
 ```mermaid
 flowchart TD
-    Start([Invocación de pv-init])
+    Start([Invocation of pv-init])
 
-    Start --> S0Base[Comprobar tooling base: git, python]
-    S0Base --> S0Cond{Falta alguna herramienta?}
+    Start --> S0Base[Check base tooling: git, python]
+    S0Base --> S0Cond{Any tool missing?}
     S0Cond -->|No| S1Run
-    S0Cond -->|Sí| S0Ask[ASK: cómo instalar la que falta]
-    S0Ask --> S0Dec{Usuario quiere instalar ahora?}
-    S0Dec -->|Sí, la instala| S0Verify[Reinstalar y reverificar la herramienta]
+    S0Cond -->|Yes| S0Ask[ASK: how to install the missing one]
+    S0Ask --> S0Dec{User wants to install now?}
+    S0Dec -->|Yes, installs it| S0Verify[Reinstall and re-verify the tool]
     S0Verify --> S1Run
-    S0Dec -->|No quiere o no puede| S0Proceed[ASK: continuar sin ella o parar aquí?]
-    S0Proceed --> S0ProceedDec{Continuar?}
-    S0ProceedDec -->|Sí| S1Run
-    S0ProceedDec -->|No| End0([Fin: init detenido])
+    S0Dec -->|Won't or can't| S0Proceed[ASK: continue without it or stop here?]
+    S0Proceed --> S0ProceedDec{Continue?}
+    S0ProceedDec -->|Yes| S1Run
+    S0ProceedDec -->|No| End0([End: init stopped])
 
-    S1Run[Ejecutar check-context.py] --> S1Exists{.claude/pv-context.json existe?}
+    S1Run[Run check-context.py] --> S1Exists{.claude/pv-context.json exists?}
     S1Exists -->|No| S2Explore
-    S1Exists -->|Sí, pero JSON inválido, check-context.py falla, o missingRequired no vacío en proyecto ya inicializado| S1Broken[Invocar pv-update]
-    S1Broken --> S1Resume{pv-update deja algo pendiente para pv-init?}
-    S1Resume -->|No| End1([Fin: resuelto por pv-update])
-    S1Resume -->|Sí| S2Explore
+    S1Exists -->|Yes, but invalid JSON, check-context.py fails, or missingRequired non-empty on an already-initialized project| S1Broken[Invoke pv-update]
+    S1Broken --> S1Resume{Does pv-update leave anything pending for pv-init?}
+    S1Resume -->|No| End1([End: resolved by pv-update])
+    S1Resume -->|Yes| S2Explore
 
-    S1Exists -->|Sí, JSON válido, framework no existe| S2Explore
-    S1Exists -->|"Sí, JSON válido, framework completo (missingRequired vacío)"| S1Complete{"hasLanguage y sin opcionales pendientes?"}
-    S1Complete -->|Sí, todo completo| S1AskReset[ASK: reinicializar desde cero?]
-    S1AskReset --> S1ResetDec{Usuario confirma reset?}
-    S1ResetDec -->|Sí| S1Erase[Borrar framework actual]
+    S1Exists -->|Yes, valid JSON, framework does not exist| S2Explore
+    S1Exists -->|"Yes, valid JSON, framework complete (missingRequired empty)"| S1Complete{"hasLanguage and no optionals pending?"}
+    S1Complete -->|Yes, all complete| S1AskReset[ASK: reinitialize from scratch?]
+    S1AskReset --> S1ResetDec{User confirms reset?}
+    S1ResetDec -->|Yes| S1Erase[Erase current framework]
     S1Erase --> S2Explore
     S1ResetDec -->|No| S5Scaffold
 
-    S1Complete -->|Falta idioma y/o algún opcional| S1AskComplete[ASK: completar los campos pendientes o dejarlo así?]
-    S1AskComplete --> S1CompleteDec{Usuario quiere completar?}
-    S1CompleteDec -->|Sí| S3Ask
+    S1Complete -->|Language and/or some optional missing| S1AskComplete[ASK: complete the pending fields or leave as is?]
+    S1AskComplete --> S1CompleteDec{User wants to complete?}
+    S1CompleteDec -->|Yes| S3Ask
     S1CompleteDec -->|No| S5Scaffold
 
-    S2Explore[Explorar el repo en busca de pistas: arquitectura, features, estilo, código fuente] --> S3Ask
+    S2Explore[Explore the repo for clues: architecture, features, style, source code] --> S3Ask
 
-    S3Ask[Recorrer los campos de framework en schema.json] --> S3Lang[ASK: idioma de interacción y si se reparte por área]
-    S3Lang --> S3Docs[Confirmar/migrar architectureDocDir, styleBibleDocDir, featuresDocPathDir]
-    S3Docs --> S3Src[ASK: confirmar sourcecodeDir propuesto]
-    S3Src --> S3SrcCheck[Comprobar si esa carpeta existe y tiene contenido]
-    S3SrcCheck --> S3SrcDec{Carpeta vacía o inexistente?}
-    S3SrcDec -->|Sí| S3Num
-    S3SrcDec -->|No, ya hay código| S3SrcAsk["ASK: elegir nivel de documentación a generar al terminar — mínimo o completa"]
-    S3SrcAsk --> S3SrcMode[Guardar el modo elegido en memoria de la conversación]
+    S3Ask[Walk the framework fields in schema.json] --> S3Lang[ASK: interaction language and whether it's split by area]
+    S3Lang --> S3Docs[Confirm/migrate architectureDocDir, styleBibleDocDir, featuresDocPathDir]
+    S3Docs --> S3Src[ASK: confirm proposed sourcecodeDir]
+    S3Src --> S3SrcCheck[Check whether that folder exists and has content]
+    S3SrcCheck --> S3SrcDec{Folder empty or nonexistent?}
+    S3SrcDec -->|Yes| S3Num
+    S3SrcDec -->|No, code already there| S3SrcAsk["ASK: choose documentation level to generate at the end — minimal or full"]
+    S3SrcAsk --> S3SrcMode[Keep the chosen mode in conversation memory]
     S3SrcMode --> S3Num
 
-    S3Num[numberWidth: silencioso salvo que el usuario quiera otro valor] --> S3Skills[skills.mockups/diagrams: escribir defaults en silencio]
-    S3Skills --> S3Models[Calcular skillModels con collect-skill-models.py y confirmar con el usuario]
+    S3Num[numberWidth: silent unless the user wants another value] --> S3Skills[skills.mockups/diagrams: write defaults silently]
+    S3Skills --> S3Models[Compute skillModels with collect-skill-models.py and confirm with the user]
     S3Models --> S4Write
 
-    S4Write[Escribir/fusionar .claude/pv-context.json] --> S5Scaffold
+    S4Write[Write/merge .claude/pv-context.json] --> S5Scaffold
 
-    S5Scaffold[Ejecutar scaffold-project.py] --> S5NewDoc{Se generó algún placeholder nuevo de docs.tech?}
-    S5NewDoc -->|Sí| S5Info[INFO: se generó el placeholder de architectureDocDir/styleBibleDocDir]
-    S5Info --> S5Ask[ASK: qué quieres aportar al 01-overview.md?]
-    S5Ask --> S5Edit[Editar 01-overview.md con la respuesta]
+    S5Scaffold[Run scaffold-project.py] --> S5NewDoc{Any new docs.tech placeholder generated?}
+    S5NewDoc -->|Yes| S5Info[INFO: the architectureDocDir/styleBibleDocDir placeholder was generated]
+    S5Info --> S5Ask[ASK: what do you want to contribute to 01-overview.md?]
+    S5Ask --> S5Edit[Edit 01-overview.md with the answer]
     S5Edit --> S55Check
     S5NewDoc -->|No| S55Check
 
-    S55Check{En el paso 3 se detectó código existente y se eligió un modo?}
+    S55Check{Was existing code detected in step 3 and a mode chosen?}
     S55Check -->|No| S6Verify
-    S55Check -->|Sí| S55Analysis[Invocar pv-internal-tech-analysis sobre sourcecodeDir]
-    S55Analysis --> S55Style[Invocar pv-internal-doc-technical para cargar el estilo de redacción]
-    S55Style --> S55Arch[Redactar architectureDocDir según el modo elegido]
-    S55Arch --> S55Bible[Redactar styleBibleDocDir según el modo elegido]
-    S55Bible --> S55Features[Por cada feature detectada: pv-internal-doc-features find + upsert]
-    S55Features --> S55Info[INFO: ficheros de documentación generados]
+    S55Check -->|Yes| S55Analysis["5.5.1 Invoke pv-internal-tech-analysis (bootstrap:true) over sourcecodeDir; keep the context in memory"]
+    S55Analysis --> S55Style["5.5.2 Invoke pv-internal-doc-technical: writing rules + architectureDocDir category checklist"]
+    S55Style --> S55Arch["5.5.3 Write architectureDocDir per the chosen mode (files via pv-internal-doc-files find+upsert) and populate 00-namespace.md"]
+    S55Arch --> S55ArchCheck{"architectureDocDir has real {NNN}-*.md files, INDEX.md up to date, and 00-namespace.md populated?"}
+    S55ArchCheck -->|No| S55Arch
+    S55ArchCheck -->|Yes| S55Pres["5.5.4 Decide whether the project has a presentation layer"]
+    S55Pres --> S55Bible["5.5.5 Invoke pv-internal-doc-style and write styleBibleDocDir at full depth (both modes) if there is a presentation layer; otherwise only naming, or leave it intentionally empty"]
+    S55Bible --> S55Features["5.5.6 Build the EXHAUSTIVE feature list and, for each one, pv-internal-doc-features find + upsert (codes=init)"]
+    S55Features --> S55FeatCheck{"Is there one {NNN}-*.md per feature on the list, and does INDEX.md list them all?"}
+    S55FeatCheck -->|No, features missing| S55Features
+    S55FeatCheck -->|Yes| S55Info["5.5.7 INFO: for each docs dir, file count, depth (minimal/full) and style-bible status; 00-namespace.md populated"]
     S55Info --> S6Verify
 
-    S6Verify[Reverificar con check-context.py] --> S6Scaffold[Comprobar salida de scaffold-project.py]
-    S6Scaffold --> S6PvPy[Confirmar pv.py sobrescrito]
-    S6PvPy --> S6Summary[INFO: resumen final de toda la configuración]
-    S6Summary --> EndOK([Fin: init completado])
+    S6Verify[Re-verify with check-context.py] --> S6Scaffold[Check scaffold-project.py output]
+    S6Scaffold --> S6PvPy[Confirm pv.py overwritten]
+    S6PvPy --> S6Summary[INFO: final summary of the whole configuration]
+    S6Summary --> EndOK([End: init completed])
 ```
 
-Leyenda:
-- `[Texto]` — paso interno, la skill actúa sin hablar con el usuario.
-- `[INFO: Texto]` — la skill informa al usuario; no bloquea, continúa sin esperar respuesta.
-- `[ASK: Texto]` — la skill informa y pide confirmación/datos; bloqueante, no avanza sin respuesta del usuario.
-- `{Texto}` — rama de decisión; cada arista de salida lleva su propia etiqueta.
+Legend:
+- `[Text]` — internal step, the skill acts without talking to the user.
+- `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
+- `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
+- `{Text}` — decision branch; each outgoing edge carries its own label.

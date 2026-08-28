@@ -1,45 +1,45 @@
 ```mermaid
 flowchart TD
-    Start([Invocación de pv-update])
+    Start([Invocation of pv-update])
 
-    Start --> S1Read[Leer .claude/pv-context.json best-effort]
-    S1Read --> S1Exists{El fichero existe?}
-    S1Exists -->|No| S1Info[INFO: el framework no está inicializado, ejecuta pv-init]
-    S1Info --> End1([Fin: nada que auditar])
-    S1Exists -->|Sí| S2Run
+    Start --> S1Read[Read .claude/pv-context.json best-effort]
+    S1Read --> S1Exists{Does the file exist?}
+    S1Exists -->|No| S1Info[INFO: the framework is not initialized, run pv-init]
+    S1Info --> End1([End: nothing to audit])
+    S1Exists -->|Yes| S2Run
 
-    S2Run[Ejecutar audit-context.py] --> S2Empty{problems viene vacío?}
-    S2Empty -->|Sí, y lastVerifiedVersion ya existe| S2Healthy[INFO: configuración saludable]
-    S2Healthy --> End2([Fin: nada que arreglar])
-    S2Empty -->|Sí, pero sin lastVerifiedVersion| S35Run
-    S2Empty -->|No, hay problemas| S3Loop
+    S2Run[Run audit-context.py] --> S2Empty{problems comes back empty?}
+    S2Empty -->|Yes, and lastVerifiedVersion already exists| S2Healthy[INFO: healthy configuration]
+    S2Healthy --> End2([End: nothing to fix])
+    S2Empty -->|Yes, but no lastVerifiedVersion| S35Run
+    S2Empty -->|No, there are problems| S3Loop
 
-    S3Loop[Recorrer cada problema devuelto, en orden] --> S3Kind{Tipo de problema}
-    S3Kind -->|context-invalid-json| S3Invalid[ASK: corregir el JSON a mano o indicar la estructura pretendida]
-    S3Invalid --> S3InvalidDec{JSON ya corregido?}
-    S3InvalidDec -->|Sí| S2Run
-    S3InvalidDec -->|No, sigue esperando| End3Blocked([Fin: bloqueado por JSON inválido])
+    S3Loop[Walk each returned problem, in order] --> S3Kind{Problem type}
+    S3Kind -->|context-invalid-json| S3Invalid[ASK: fix the JSON by hand or state the intended structure]
+    S3Invalid --> S3InvalidDec{JSON already fixed?}
+    S3InvalidDec -->|Yes| S2Run
+    S3InvalidDec -->|No, still waiting| End3Blocked([End: blocked by invalid JSON])
 
-    S3Kind -->|version-check-downgrade| S3Downgrade[Ejecutar mark-verified.py --block]
-    S3Downgrade --> S3DowngradeAsk[ASK: el downgrade fue intencional?]
-    S3DowngradeAsk --> S3DowngradeDec{Respuesta del usuario}
-    S3DowngradeDec -->|Fue intencional| S3DowngradeConfirm[Ejecutar mark-verified.py --confirm-downgrade]
+    S3Kind -->|version-check-downgrade| S3Downgrade[Run mark-verified.py --block]
+    S3Downgrade --> S3DowngradeAsk[ASK: was the downgrade intentional?]
+    S3DowngradeAsk --> S3DowngradeDec{User's answer}
+    S3DowngradeDec -->|It was intentional| S3DowngradeConfirm[Run mark-verified.py --confirm-downgrade]
     S3DowngradeConfirm --> S3Next
-    S3DowngradeDec -->|No fue intencional| S3DowngradeGuide[INFO: cómo restaurar los ficheros correctos]
-    S3DowngradeGuide --> End3Blocked2([Fin: bloqueado, blocked=true se mantiene])
+    S3DowngradeDec -->|It was not intentional| S3DowngradeGuide[INFO: how to restore the correct files]
+    S3DowngradeGuide --> End3Blocked2([End: blocked, blocked=true stays])
 
-    S3Kind -->|Cualquier otro id de problema| S3Fix[Aplicar el fix determinístico correspondiente]
-    S3Fix --> S3Next{Quedan más problemas por procesar?}
-    S3Next -->|Sí| S3Loop
+    S3Kind -->|Any other problem id| S3Fix[Apply the corresponding deterministic fix]
+    S3Fix --> S3Next{More problems left to process?}
+    S3Next -->|Yes| S3Loop
     S3Next -->|No| S35Run
 
-    S35Run[Ejecutar mark-verified.py --clear] --> S4Rerun[Rerun audit-context.py para confirmar]
-    S4Rerun --> S4Report[INFO: informe final agrupado por área]
-    S4Report --> EndOK([Fin: auditoría completada])
+    S35Run[Run mark-verified.py --clear] --> S4Rerun[Rerun audit-context.py to confirm]
+    S4Rerun --> S4Report[INFO: final report grouped by area]
+    S4Report --> EndOK([End: audit completed])
 ```
 
-Leyenda:
-- `[Texto]` — paso interno, la skill actúa sin hablar con el usuario.
-- `[INFO: Texto]` — la skill informa al usuario; no bloquea, continúa sin esperar respuesta.
-- `[ASK: Texto]` — la skill informa y pide confirmación/datos; bloqueante, no avanza sin respuesta del usuario.
-- `{Texto}` — rama de decisión; cada arista de salida lleva su propia etiqueta.
+Legend:
+- `[Text]` — internal step, the skill acts without talking to the user.
+- `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
+- `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
+- `{Text}` — decision branch; each outgoing edge carries its own label.
