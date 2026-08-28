@@ -36,7 +36,7 @@ def main():
 
     by_area = {}
     for path in sorted(folder.glob("*.md")):
-        if path.name == "INDEX.md":
+        if path.name == "INDEX.md" or path.name.startswith("00-"):
             continue
         title, area = parse_feature(path)
         by_area.setdefault(area, []).append((title, path.name))

@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b6
+  version: 0.9.6b7
   uses: []
 ---
 
@@ -13,7 +13,7 @@ metadata:
 
 A single, shared procedure to generate Mermaid diagrams representing a change/fix's behavior — never its visual look (that's `design_*.html`, another skill) nor navigation between UI screens (that's `design_navigation_*.md`, which `pv-new` writes directly). Only invoked by other `pv-*` framework skills — not meant for direct invocation by the user.
 
-**Language.** This skill doesn't talk to the user. The diagram code itself (node/actor labels, message text) follows the target language the caller passes it as input (see "Expected input" below) — this skill doesn't read `.claude/pv-context.json` itself, since it doesn't know which final document each diagram will be inserted into; each caller (`pv-internal-workflow`, `pv-new`, `pv-fix`, `pv-how`) must resolve the right `language` (`changes.language` or `docs.tech.language`, depending on the destination document) before invoking this skill.
+**Language.** This skill doesn't talk to the user. The diagram code itself (node/actor labels, message text) follows the target language the caller passes it as input (see "Expected input" below) — this skill doesn't read `.claude/pv-context.json` itself, since it doesn't know which final document each diagram will be inserted into; each caller (`pv-internal-workflow`, `pv-new`, `pv-fix`, `pv-how`) must resolve the right language before invoking this skill — `changes.language` for a diagram going into a change/fix document; for a diagram destined for `docs.tech` (architecture/style), the language is fixed technical English (there is no `docs.tech.language`).
 
 **This skill doesn't decide which diagrams are needed, nor whether a diagram is the right tool versus prose, nor where the result is inserted.** That's always decided by the caller: this skill is only invoked once it's already known that at least one Mermaid diagram needs generating, never "just in case". Presenting the result to the user for confirmation is also the caller's responsibility.
 

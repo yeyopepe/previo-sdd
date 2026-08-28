@@ -51,7 +51,7 @@
         },
         "interaction": {
           "type": "object",
-          "description": "OPTIONAL. Language the pv-* skills use to talk to the user in chat (questions, confirmations, summaries). Also the fallback value for changes.language, versions.language, and any docs.*.language block without its own language.",
+          "description": "OPTIONAL. Language the pv-* skills use to talk to the user in chat (questions, confirmations, summaries). Also the fallback value for changes.language, versions.language, and docs.functional.language.",
           "additionalProperties": false,
           "properties": {
             "language": {
@@ -180,14 +180,8 @@
                 },
                 "styleBibleDocDir": {
                   "type": "string",
-                  "description": "Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the project's style guide (visual, interaction, writing), split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the style topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. Always configured by pv-init. If absent from pv-context.json, run /pv-update -- every skill requires it. May legitimately be empty (only its placeholder INDEX.md) in a project with no visual/interaction layer; that is not the same as unconfigured.",
+                  "description": "Folder (relative to workFolder, not the repo root -- the only path in this file relative to the repo root is sourcecodeDir) with the project's style guide (visual, interaction, writing), split into several files for selective reading by an LLM. Must contain an 'INDEX.md' summarizing what each sibling file covers, generated from files named '{NNN}-{slug}.md' (3-digit prefix, e.g. '001-', '002-') each with an '**Area**:' field naming the style topic it groups under -- same convention as docs.functional.featuresDocPathDir. pv-do keeps this folder in sync after implementing each change/fix, via the pv-internal-doc-files skill, creating a new file with the next free number if the topic doesn't fit any existing one. Always configured by pv-init. If absent from pv-context.json, run /pv-update -- every skill requires it. May legitimately be empty (only its placeholder INDEX.md) in a project with no visual/interaction layer; that is not the same as unconfigured. No language field: architectureDocDir and styleBibleDocDir content is always fixed technical English (optimized to be read by the pv-* skills themselves, not by a person), regardless of interaction.language.",
                   "examples": ["docs/style"]
-                },
-                "language": {
-                  "type": "string",
-                  "default": "en",
-                  "description": "OPTIONAL. Language shared by architectureDocDir and styleBibleDocDir. Defaults to framework.interaction.language (or 'en' if that's also missing).",
-                  "examples": ["en", "es"]
                 }
               }
             }
@@ -242,8 +236,7 @@
           },
           "tech": {
             "architectureDocDir": "docs/architecture",
-            "styleBibleDocDir": "docs/style",
-            "language": "en"
+            "styleBibleDocDir": "docs/style"
           }
         },
         "sourcecodeDir": "/src",
@@ -255,8 +248,7 @@
           "interaction.language": "Chat with the user in English.",
           "changes.language": "The team documents each in-progress change/fix in Spanish.",
           "versions.language": "The published changelog is written in Spanish.",
-          "docs.functional.language": "Feature documentation in Spanish.",
-          "docs.tech.language": "Architecture and style bible in English, to share with external collaborators."
+          "docs.functional.language": "Feature documentation in Spanish."
         }
       }
     },

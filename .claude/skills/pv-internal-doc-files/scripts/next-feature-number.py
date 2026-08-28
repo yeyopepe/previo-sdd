@@ -22,7 +22,7 @@ def main():
     max_id = 0
     if folder.exists():
         for path in folder.glob("*.md"):
-            if path.name == "INDEX.md":
+            if path.name == "INDEX.md" or path.name.startswith("00-"):
                 continue
             lines = path.read_text(encoding="utf-8").splitlines()
             if not lines:

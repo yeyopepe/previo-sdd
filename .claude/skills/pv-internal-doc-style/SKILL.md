@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b6
+  version: 0.9.6b7
   uses: []
 ---
 
@@ -15,7 +15,7 @@ A single, shared procedure defining **what** `docs.tech.styleBibleDocDir` conten
 
 **This skill writes or edits nothing, nor does it draft any content.** It only states which style categories are relevant to what's being implemented, what each category is expected to record, which of those are already covered by the caller's context versus still pending to document, and the writing rules to apply once the caller drafts the actual prose. Deciding the document's file/section structure, drafting the content, and writing it to disk is always the caller's job (`pv-do`, following `docs.tech.styleBibleDocDir`'s folder convention — `INDEX.md` + numbered files — same as `docs.tech.architectureDocDir`).
 
-**Language.** This skill doesn't talk to the user and doesn't read `.claude/pv-context.json` itself. Category names and guidance returned to the caller are in English, as internal framework vocabulary — the caller translates as needed when drafting into `docs.tech.language`. The fixed English tags this skill's writing rules define (see "Writing rules" below) stay in English regardless of `docs.tech.language`, same convention `pv-internal-doc-technical` already uses.
+**Language.** All `styleBibleDocDir` content is fixed technical English, same as `pv-internal-doc-technical`; there is no `docs.tech.language`. This skill doesn't talk to the user and doesn't read `.claude/pv-context.json` itself. Category names, guidance, and the fixed English tags this skill's writing rules define stay in English, same convention `pv-internal-doc-technical` already uses.
 
 **Relationship with `pv-internal-doc-technical`.** The two are complementary, not redundant: `pv-internal-doc-technical` is the general writing style shared by both `architectureDocDir` and `styleBibleDocDir` (dense fragments, tables, code spans, no narrative). This skill adds the style-specific layer on top of it, only for `styleBibleDocDir` — a content checklist plus a handful of writing rules unique to style/UI conventions (e.g. always show the token or value, never just describe it). The caller invokes both: `pv-internal-doc-technical` for the shared baseline, this skill for the style-specific checklist and additions.
 
@@ -51,7 +51,7 @@ For each category marked applicable in step 1:
 
 ## 3. Writing rules
 
-These extend `pv-internal-doc-technical`'s baseline (still invoke that skill too — this doesn't replace it) with rules specific to style/UI documentation:
+These extend `pv-internal-doc-technical`'s baseline (still invoke that skill too — this doesn't replace it) with rules specific to style/UI documentation. The baseline inherited from `pv-internal-doc-technical` includes: notation-first by default (prose is a tagged exception), the `[gotcha]` tag (style gotchas too — "the grid is NOT 12 columns, it's 16"), no anaphora, no unquantified intensifiers, and the single per-project namespace tree. Style concepts (design tokens, components) get a canonical path on the **`ui.*` branch of `{architectureDocDir}/00-namespace.md`** — `styleBibleDocDir` has no namespace file of its own (`ui.grid.columns = 16`, `ui.color.primary` with `anchor:` to the design token).
 
 1. **Always give the concrete value, never just a description.** A color, spacing, or type rule is written as its actual value (`#1A73E8`, `8px`/`0.5rem`, `font-weight: 600`) in a code span or table cell — never as prose like "a shade of blue" or "medium spacing".
 2. **One row per token/state/variant, in a table.** Any enumerable set (color tokens, spacing scale, component states, breakpoints) is a table with at minimum `Name | Value | Usage` — never a paragraph listing them in prose. This is `pv-internal-doc-technical`'s table rule made concrete for the shapes this kind of documentation actually has.

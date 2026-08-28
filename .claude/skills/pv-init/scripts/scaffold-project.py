@@ -18,6 +18,11 @@ overwrites or touches existing content):
   pv-do over time); featuresDocPathDir gets no placeholder file, just the
   empty folder with its INDEX.md regenerated (pv-internal-doc-files's
   rebuild-index.py already handles the zero-file case).
+  architectureDocDir additionally gets a "00-namespace.md" seed (the single
+  per-project namespace tree) -- created only if absent, never overwritten,
+  even when the folder itself already exists (status "namespace_seeded" in
+  that case). styleBibleDocDir gets no namespace file: its concepts hang off
+  the `ui.*` branch of architectureDocDir's tree.
 
 Always overwrites (it's a generated file, not user content):
 - assets/pv.py -> {repo root}/pv.py
@@ -47,8 +52,10 @@ Prints ONLY a JSON summary on stdout, e.g.:
   }
 
 'status' is one of "created", "skipped" (something already existed at that
-path -- folder or, for docs, even a legacy single file -- left untouched) or
-"not_configured" (the field isn't set in pv-context.json).
+path -- folder or, for docs, even a legacy single file -- left untouched),
+"namespace_seeded" (architecture folder already existed but was missing
+00-namespace.md, now added) or "not_configured" (the field isn't set in
+pv-context.json).
 
 Usage:
   python .claude/skills/pv-init/scripts/scaffold-project.py
@@ -76,6 +83,76 @@ OVERVIEW_TEMPLATE = """# 001 — {title}
 <Placeholder, generated empty by scaffold-project.py. Filled in afterwards \
 with what's known about the project (type, stack, conventions) -- by \
 pv-init on first setup, or expanded by pv-do over time.>
+"""
+
+# Seed for {architectureDocDir}/00-namespace.md -- the single per-project
+# namespace tree (see pv-internal-doc-technical's "## Namespace"). The `00-`
+# prefix is reserved: rebuild-index.py / next-feature-number.py skip it, so it
+# never lands in INDEX.md or the {NNN} numbering. Only architectureDocDir gets
+# one -- styleBibleDocDir concepts hang off the `ui.*` branch of this same tree.
+# The literal headings `## Notation` and `## Tree` are normative: pv-update
+# checks for them and pv-do locates them to insert nodes.
+NAMESPACE_SEED = """# 00 — Namespace
+
+Single canonical name tree for this project. Every concept and every assertion \
+(architecture and style alike) has exactly one path here. Style concepts live \
+on the `ui.*` branch -- there is no separate namespace file for the style bible.
+
+## Notation
+
+Compact notation for structured data:
+
+```
+field: type                  required field
+field?: type                 optional field
+field: type = value          default value
+field: type in {a, b, c}     enum / allowed set
+field: type [min..max]       range
+```
+
+Invariants -- executable vs declarative:
+
+- `assert <expr>` when there is a program point where the condition can be \
+checked with the values at hand.
+- declarative `inv: ...` / `pre:` / `post:` (propositional logic, `and or not \
+-> forall`) when it quantifies over an abstract set, talks about an FSM state, \
+or a non-observable global property.
+- If both forms fit, the `assert` governs and the declarative one is a \
+restatement.
+
+Boundary between a leaf's two forms:
+
+- `path = <scalar>` -- a simple value (number, enum, boolean).
+- `path:` then a notation block -- an assertion with logical structure (a \
+contract, a logic expression).
+
+## Tree
+
+Segment order: aggregate to part, module to detail. \
+`<area>.<aggregate>.<entity>.<field-or-assertion>`.
+
+- `auth.token.session.exp` -- OK (area auth -> aggregate token -> entity \
+session -> field exp)
+- `auth.session.token.exp` -- wrong (inverts aggregate and entity)
+
+Domain terms with no standard English translation: if the concept has a code \
+symbol, the path uses the symbol name; if it has none, the slug may stay in the \
+project's language for that one node (e.g. `billing.recargo-equivalencia`), \
+noted here as an explicit exception with a one-line approximate-English gloss.
+
+Commented example (delete once real nodes exist):
+
+```
+# auth.token.session                       concept.   anchor: src/auth/token.ts#SessionToken
+# auth.token.session.ttl.value = 3600      assertion (scalar)
+# auth.token.session.refresh.rule:         assertion (non-scalar -> notation block)
+#     pre:  state in {AUTHENTICATED, EXPIRED} and now - token.exp < 7d
+#     post: token'.exp = now + auth.token.session.ttl.value
+# auth.decision.circuit-breaker-over-retry decision.  no code anchor
+# ui.grid.columns = 16                     style assertion (same tree)
+```
+
+<Empty. pv-do populates this over time.>
 """
 
 
@@ -118,16 +195,27 @@ def rebuild_index(root: Path, folder: Path) -> None:
 
 
 def ensure_overview_doc(
-    root: Path, work_folder: str, relative_dir: str | None, title: str
+    root: Path, work_folder: str, relative_dir: str | None, title: str,
+    seed_namespace: bool = False,
 ) -> dict:
     if not relative_dir:
         return {"path": None, "status": "not_configured"}
     folder = resolve_inside_repo(root, f"{work_folder.rstrip('/')}/{relative_dir}")
     rel = folder.relative_to(root).as_posix()
     if folder.exists():
+        # Folder already there: still seed 00-namespace.md if it's the
+        # architecture dir and the file is missing (idempotent -- never
+        # overwrite an existing one).
+        if seed_namespace:
+            ns_file = folder / "00-namespace.md"
+            if not ns_file.exists():
+                ns_file.write_text(NAMESPACE_SEED, encoding="utf-8")
+                return {"path": rel, "status": "namespace_seeded"}
         return {"path": rel, "status": "skipped"}
     folder.mkdir(parents=True, exist_ok=True)
     (folder / "001-overview.md").write_text(OVERVIEW_TEMPLATE.format(title=title), encoding="utf-8")
+    if seed_namespace:
+        (folder / "00-namespace.md").write_text(NAMESPACE_SEED, encoding="utf-8")
     rebuild_index(root, folder)
     return {"path": rel, "status": "created"}
 
@@ -169,7 +257,8 @@ def main() -> None:
         "workFolderSubfolders": ensure_workfolder_subfolders(root, work_folder),
         "docs": {
             "architecture": ensure_overview_doc(
-                root, work_folder, tech.get("architectureDocDir"), "Architecture"
+                root, work_folder, tech.get("architectureDocDir"), "Architecture",
+                seed_namespace=True,
             ),
             "style": ensure_overview_doc(
                 root, work_folder, tech.get("styleBibleDocDir"), "Style bible"

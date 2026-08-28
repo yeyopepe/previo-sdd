@@ -4,7 +4,7 @@ description: Initializes the pv-* framework (change/fix/workflow) in the current
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b6
+  version: 0.9.6b7
   uses: [pv-update]
 ---
 
@@ -48,7 +48,7 @@ The comparison against the fields in [`schema.json`](schema.json) is done determ
 python .claude/skills/pv-init/scripts/check-context.py
 ```
 
-It prints a single JSON on stdout: `{"exists", "hasFramework", "missingRequired", "complete", "hasLanguage"}`. `framework` itself carries `required: ["docs"]` in `schema.json`, and `docs` in turn requires `functional.featuresDocPathDir`, `tech.architectureDocDir` and `tech.styleBibleDocDir` — `check-context.py` reports any of those four missing in `missingRequired` (dotted paths). `workFolder`/`sourcecodeDir` still have defaults and are never in `missingRequired`. `complete` is `true` only when the `framework` section exists **and** `missingRequired` is empty. A non-empty `missingRequired` on an already-initialized project means a required field was lost (hand-edit, or a project from before the doc dirs became mandatory) — that's a **broken state, not a completion gap**: follow the `S1Broken` branch (invoke `pv-update`), don't try to fill it in via the `S1AskComplete` questionnaire. `hasLanguage` is `true` when `framework.interaction.language` exists in the file, regardless of its value — it's the only field whose absence unconditionally triggers the language question in step 3; `changes.language`/`versions.language`/`docs.*.language` are optional refinements asked in the same round but don't gate `hasLanguage`. To know which genuinely-optional fields are still unconfigured (needed for `workflow.init.md`'s `S1Complete` branch), read `.claude/pv-context.json` yourself and compare it field by field against the optional `framework` properties in `schema.json` (`workFolder`, `sourcecodeDir`, `skillModels`, the `language` sub-fields) to build your own "unconfigured optionals" list — the three doc dirs are **not** on that list, they're required.
+It prints a single JSON on stdout: `{"exists", "hasFramework", "missingRequired", "complete", "hasLanguage"}`. `framework` itself carries `required: ["docs"]` in `schema.json`, and `docs` in turn requires `functional.featuresDocPathDir`, `tech.architectureDocDir` and `tech.styleBibleDocDir` — `check-context.py` reports any of those four missing in `missingRequired` (dotted paths). `workFolder`/`sourcecodeDir` still have defaults and are never in `missingRequired`. `complete` is `true` only when the `framework` section exists **and** `missingRequired` is empty. A non-empty `missingRequired` on an already-initialized project means a required field was lost (hand-edit, or a project from before the doc dirs became mandatory) — that's a **broken state, not a completion gap**: follow the `S1Broken` branch (invoke `pv-update`), don't try to fill it in via the `S1AskComplete` questionnaire. `hasLanguage` is `true` when `framework.interaction.language` exists in the file, regardless of its value — it's the only field whose absence unconditionally triggers the language question in step 3; `changes.language`/`versions.language`/`docs.functional.language` are optional refinements asked in the same round but don't gate `hasLanguage`. To know which genuinely-optional fields are still unconfigured (needed for `workflow.init.md`'s `S1Complete` branch), read `.claude/pv-context.json` yourself and compare it field by field against the optional `framework` properties in `schema.json` (`workFolder`, `sourcecodeDir`, `skillModels`, the `language` sub-fields — note `docs.tech` has no `language` field) to build your own "unconfigured optionals" list — the three doc dirs are **not** on that list, they're required.
 
 Detail for this step's nodes:
 
@@ -77,11 +77,12 @@ Go through **all** the `framework` fields described in `schema.json`, section by
 
 Fields to resolve — `framework` section:
 - `workFolder`: always write the fixed default `"/previo-sdd"` silently, without asking or confirming it — same pattern as `skills.mockups`/`skills.diagrams` below, never mentioned in the questions nor in the step 6 summary. If the user ever wants a different `workFolder`, they change it themselves directly in `pv-context.json`, at their own risk — `pv-init` never offers or migrates towards an alternative. Inside `workFolder`, the `changes/`, `versions/` and `stuff/` subfolders always have fixed names — they're never asked about or configured; [`scripts/scaffold-project.py`](scripts/scaffold-project.py) (step 5) creates them right after the file is written.
-- **Language** (new, always ask on a first-time init — see below for the partial-update case): first ask only the interaction language (`framework.interaction.language`) with `AskUserQuestion` — propose English as the default, making clear it can be any other language (free text, or an ISO 639-1 code like `es`, `fr`). Then ask, as a separate yes/no `AskUserQuestion`, whether they want that same language for everything else the framework writes, or want to set a different language per area. If they want the same for everything: set `changes.language`, `versions.language`, `docs.functional.language` and `docs.tech.language` to the interaction language and move on — don't ask the four questions below. If they want to configure areas individually, ask these four, in this order, each proposing the interaction language as its default and only diverging if the user says so:
+- **Language** (new, always ask on a first-time init — see below for the partial-update case): first ask only the interaction language (`framework.interaction.language`) with `AskUserQuestion` — propose English as the default, making clear it can be any other language (free text, or an ISO 639-1 code like `es`, `fr`). Then ask, as a separate yes/no `AskUserQuestion`, whether they want that same language for everything else the framework writes, or want to set a different language per area. If they want the same for everything: set `changes.language`, `versions.language` and `docs.functional.language` to the interaction language and move on — don't ask the three questions below. If they want to configure areas individually, ask these three, in this order, each proposing the interaction language as its default and only diverging if the user says so:
   1. **Language of in-progress change/fix documents** (`framework.changes.language`) — language of the documents for a change/fix in progress (`description.md`, `plan.md`, `history.md`, and the sample text in `design_*.html`/`.txt` mockups) under `{workFolder}/changes/**`.
   2. **Language of the release changelog** (`framework.versions.language`) — language of `changelog.md`, generated by `pv-internal-changelog` under `{workFolder}/versions/{XXXX}/` from `changes/closed`.
   3. **Language of the feature documentation** (`framework.docs.functional.language`) — language of the feature listing (`featuresDocPathDir`) that `pv-do` keeps up to date after every implemented change/fix. Only ask if `docs.functional.featuresDocPathDir` is being configured in this same run.
-  4. **Language of the technical documentation** (`framework.docs.tech.language`) — language shared by the architecture documentation (`architectureDocDir`) and the style bible (`styleBibleDocDir`) that `pv-do` keeps up to date after every implemented change/fix. Only ask if `docs.tech.architectureDocDir` and/or `docs.tech.styleBibleDocDir` are being configured in this same run.
+
+  Technical documentation (`docs.tech`) has no language option — `architectureDocDir` and `styleBibleDocDir` are always technical English. Never ask about it.
 
   When you write or update `language`, also write (or complete) `framework._comments` with a short explanation of what each configured `language` field affects and why it was set that way — free text, one entry per field, ignored at runtime by every skill (same pattern as `skillModels._instructions`). Base each explanation on the field's description above (what it affects), plus the user's stated reason if they gave one.
 - `docs.tech.architectureDocDir`, `docs.tech.styleBibleDocDir` and `docs.functional.featuresDocPathDir` (**required** in `schema.json` — `framework.docs` and both its sub-objects carry `required`). All three are always written and scaffolded, without exception. **Whether they're wanted is never asked** — never ask "do you want technical/style/features documentation?": that decision is already made, you only confirm paths and content. Not optional in any practical sense; the other skills refuse to run against a `pv-context.json` missing any of them and send the user to `/pv-update`.
@@ -95,22 +96,22 @@ Fields to resolve — `framework` section:
 
   **Existing code check.** Once `sourcecodeDir` is confirmed, check whether that folder already exists and has content beyond an empty scaffold (e.g. more than just a `.gitkeep`) — a plain directory listing, no script needed.
   - **If it doesn't exist, or exists but is empty**: continue the normal flow below, without mentioning anything about analysis.
-  - **If it already contains code** (an app already in progress): tell the user, with `AskUserQuestion`, using this exact fixed text (copy it verbatim every time — don't redraft it):
+  - **If it already contains code** (an app already in progress): tell the user, with `AskUserQuestion`, using this exact fixed text — don't redraft or reword it, only translate it into `framework.interaction.language` (same rule as every other user-facing string in this skill; the source below is the English baseline):
 
-    > Cuando termine toda la configuración, analizaré la app en `{sourcecodeDir}` para escribir su documentación técnica y de features. ¿Qué nivel de documentación quieres que genere?
+    > Once all the configuration is done, I'll analyze the app in `{sourcecodeDir}` to write its technical and feature documentation. What level of documentation do you want me to generate?
     >
-    > **(a) Mínimo**: más rápido y con un consumo de tokens menor. Es menos precisa al principio, pero se irá completando y mejorando automáticamente según se añadan nuevos cambios y fixes.
+    > **(a) Minimal**: faster and with lower token consumption. Less accurate at first, but it fills in and improves automatically as new changes and fixes are added.
     >
-    > **(b) Completa**: más lento y con mayor consumo de tokens (mayor cuánto mayor sea el tamaño/complejidad del proyecto). Mejor resultado desde el primer momento.
+    > **(b) Full**: slower and with higher token consumption (higher the larger/more complex the project). Better result from the start.
 
-    Internal only — what each mode actually generates, not shown to the user in the question above (it drives step 5.5's behavior, not the user's decision):
-    - **Mínimo**: look at the app's source code and create:
-      - In `architectureDocDir`: documentation focused only on files and classes, and each one's general responsibility.
+    Internal only — what each mode actually generates, not shown to the user in the question above (it drives step 5.5's behavior, not the user's decision). "Minimal"/"Full" here are option (a)/(b) above, whatever language they were shown in:
+    - **Minimal** (option a): look at the app's source code and create:
+      - In `architectureDocDir`: documentation focused only on the main architectural decisions and files and classes, and each one's general responsibility.
       - In `styleBibleDocDir`: full documentation on the app's style (if applicable).
       - In `featuresDocPathDir`: basic documentation, just enumerating the detected features.
-    - **Completa**: look at all the source code and create full documentation in `architectureDocDir`, `styleBibleDocDir` and `featuresDocPathDir`.
+    - **Full** (option b): look at all the source code and create full documentation in `architectureDocDir`, `styleBibleDocDir` and `featuresDocPathDir`.
 
-    Keep the user's answer (mínimo/completa) in this conversation's memory only — never write it to `pv-context.json`, it's a one-off action for this run, not persistent configuration. This drives the new step 5.5 below.
+    Keep the user's answer (minimal/full) in this conversation's memory only — never write it to `pv-context.json`, it's a one-off action for this run, not persistent configuration. This drives the new step 5.5 below.
 - `numberWidth` (optional, default `5`, no need to ask unless the user wants something different): always write it to `pv-context.json` — the default value if the user doesn't want something else, same as `skills.mockups`/`skills.diagrams` below — never leave the field absent. The scripts that consume it (`next-change-number.py`, `get-max-change-codes.py`) have no fallback of their own and fail if it's missing.
 - `skills.mockups` and `skills.diagrams`: always write their defaults (`pv-internal-mockups-html`, `pv-internal-tech-mermaid`) to the file silently, without asking about them or mentioning them anywhere in this init — not in the questions, not in the step 6 summary. If the user ever wants to swap the underlying skill/technology, they'll find that documented in `schema.json` themselves.
 
@@ -140,6 +141,7 @@ It reads the `.claude/pv-context.json` just written in step 4 and deterministica
 
 - `workFolder`'s fixed subfolders — `changes/{inProgress,implemented,todo,closed}`, `versions/`, `stuff/` — empty, with a `.gitkeep` so git tracks them.
 - The folder + placeholder for whichever of `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir`/`docs.functional.featuresDocPathDir` are configured. `docs.functional.featuresDocPathDir` follows a different convention from the other two (an `INDEX.md` regenerated via `pv-internal-doc-features`, never hand-written, and no `01-overview.md`) — the script already applies that difference on its own, nothing to decide here.
+- `{architectureDocDir}/00-namespace.md` — the single per-project namespace tree seed (only for `architectureDocDir`, not `styleBibleDocDir`). Created only if absent; an already-present one is never overwritten. If the folder already existed but lacked the file, the script reports `status: "namespace_seeded"` for `architecture` instead of `"skipped"`.
 
 It also copies [`assets/pv.py`](assets/pv.py) to `{repo root}/pv.py`, always overwriting whatever was there — it's a generated file, not user content, copied as-is without modifying a single line of it.
 
@@ -153,18 +155,18 @@ For each of `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir` the scri
 
 ## 5.5 Analyze existing code and generate initial documentation
 
-Only runs if step 3's `sourcecodeDir` check found existing code and the user picked a mode (mínimo/completa). If there was no existing code, skip this step entirely — don't mention it in step 6's summary either.
+Only runs if step 3's `sourcecodeDir` check found existing code and the user picked a mode (minimal/full). If there was no existing code, skip this step entirely — don't mention it in step 6's summary either.
 
 1. Invoke `pv-internal-tech-analysis` (Skill tool) with a summary along the lines of "initial full analysis of the app in `{sourcecodeDir}` to generate architecture and style documentation for the first time", **and `bootstrap: true`**. That flag tells `pv-internal-tech-analysis` not to resolve `docs.tech` via `resolve-path.py` (the folders exist but hold only their scaffolded placeholder `INDEX.md`, which would read as an empty/unsettled resolve) and to go straight to exploring the real code under `sourcecodeDir`, returning already-synthesized context (architecture/layers, style conventions, file/symbol map). Only `pv-init` passes `bootstrap: true`.
 2. Invoke `pv-internal-doc-technical` (Skill tool, no parameters) to load its writing rules before drafting anything for `architectureDocDir`/`styleBibleDocDir` — same as `pv-do`'s step 2.1.
 3. Draft `architectureDocDir`, replacing the placeholder step 5 left there:
-   - **Mínimo**: only files/classes and each one's general responsibility.
-   - **Completa**: full architecture documentation (layers, flows, decisions) — not just the file/class listing.
+   - **Minimal**: only files/classes and each one's general responsibility.
+   - **Full**: full architecture documentation (layers, flows, decisions) — not just the file/class listing.
    - Update that folder's `INDEX.md` too if the content ends up split across more than one file (same convention `pv-do` follows: `NN-slug.md` + index table).
-4. Draft `styleBibleDocDir` — full style documentation in both modes (mínimo already asks for it "completa" too), only if it applies to the project. If the project has no visual/interaction layer to speak of, say so in step 6's summary instead of forcing empty content.
+4. Draft `styleBibleDocDir` — full style documentation in both modes (minimal asks for it "full" too), only if it applies to the project. If the project has no visual/interaction layer to speak of, say so in step 6's summary instead of forcing empty content.
 5. Determine the app's feature list from the context already gathered in this step's point 1 (`pv-internal-tech-analysis`'s output):
-   - **Mínimo**: basic enumeration (name + functional area, no extended body).
-   - **Completa**: full functional description per feature.
+   - **Minimal**: basic enumeration (name + functional area, no extended body).
+   - **Full**: full functional description per feature.
    - For each one, invoke `pv-internal-doc-features` with `action=find` (normally no match — this is the first pass) and then `action=upsert` with the drafted content — same contract `pv-do` uses in its step 2.1 (`area`, `title`, `body`, `available_in`, `codes`; use a neutral reference like `init` for `codes` since there's no real change/fix `xxxx` in this context).
 6. Tell the user (as part of step 6's summary, not a separate report) which documentation files were generated by this step.
 
@@ -176,4 +178,4 @@ Before considering the initialization done:
 2. Check step 5's `scaffold-project.py` output: every folder it reports as `"created"` or `"skipped"` should be configured and real on disk — a `docs.*` field with no matching entry in that JSON means it wasn't picked up correctly. If any of the three was left undefined because the user explicitly declined it, confirm no trace was left on disk or in the JSON (see step 5's decline handling).
 3. Confirm `{repo root}/pv.py` exists and matches [`assets/pv.py`](assets/pv.py) (step 5's `pvPy.status` should read `"overwritten"`).
 
-Show the user a complete summary of what was configured: the file's path, every `framework` field resolved (including ones left unconfigured and why), the resolved language configuration (`interaction.language`/`changes.language`/`versions.language`/`docs.*.language`, and what was written to `framework._comments`), the `skillModels` baseline written (`default`, and `overrides` if any skill differs from it — always written now, even with no customization), with the reminder to run `sync-skill-models.py` only if the user changed something beyond the mirrored baseline, and that they can now run `python3 pv.py` from the repo root to check the framework's status without going through Claude Code. If step 5.5 ran, include in this same summary which documentation files it generated or updated (`architectureDocDir`/`styleBibleDocDir`/`featuresDocPathDir`, as applicable) and at which level (mínimo/completa). Remind the user they can invoke this skill again to reconfigure any field later.
+Show the user a complete summary of what was configured: the file's path, every `framework` field resolved (including ones left unconfigured and why), the resolved language configuration (`interaction.language`/`changes.language`/`versions.language`/`docs.functional.language` — `docs.tech` has no language option, it's always technical English — and what was written to `framework._comments`), the `skillModels` baseline written (`default`, and `overrides` if any skill differs from it — always written now, even with no customization), with the reminder to run `sync-skill-models.py` only if the user changed something beyond the mirrored baseline, and that they can now run `python3 pv.py` from the repo root to check the framework's status without going through Claude Code. If step 5.5 ran, include in this same summary which documentation files it generated or updated (`architectureDocDir`/`styleBibleDocDir`/`featuresDocPathDir`, as applicable) and at which level (minimal/full). Remind the user they can invoke this skill again to reconfigure any field later.

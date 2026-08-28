@@ -74,18 +74,16 @@ Ejemplo de `.claude/pv-context.json` ya configurado:
       },
       "tech": {
         "architectureDocDir": "docs/architecture",
-        "styleBibleDocDir": "docs/style",
-        "language": "en"
+        "styleBibleDocDir": "docs/style"
       }
     },
     "_comments": {
       "workFolder": "Es la carpeta de trabajo principal del framework, relativa siempre a la raíz del repo.",
       "sourcecodeDir": "Es la carpeta del código fuente del proyecto, relativa siempre a la raíz del repo.",
-      "interaction.language": "El equipo habla con Claude en inglés.",
-      "changes.language": "Cada change/fix en curso se documenta en español, idioma del equipo.",
-      "versions.language": "El changelog publicado se redacta en español.",
-      "docs.functional.language": "Documentación de funcionalidades en español.",
-      "docs.tech.language": "Arquitectura y biblia de estilo en inglés, para compartir con colaboradores externos."
+      "interaction.language": "El equipo habla con Claude (en inglés en este ejemplo).",
+      "changes.language": "Cada change/fix en curso se documenta (en español en este ejemplo), idioma del equipo.",
+      "versions.language": "El changelog publicado se redacta (en español en este ejemplo).",
+      "docs.functional.language": "Documentación de funcionalidades (en español en este ejemplo)."
     }
   }
 }
@@ -334,9 +332,10 @@ Previo separa el idioma en el que hablas con el framework del idioma en el que s
 - **`changes.language`**: idioma de los documentos de cada change/fix en curso (`description.md`, `plan.md`, `history.md` y los textos de los mockups `design_*.html`/`.txt`) dentro de `changes/`.
 - **`versions.language`**: idioma de `changelog.md`, generado por `pv-internal-changelog` a partir de `changes/closed`.
 - **`docs.functional.language`**: idioma de la documentación de funcionalidades (`featuresDocPathDir`) que `pv-do` mantiene actualizada tras cada change/fix implementado.
-- **`docs.tech.language`**: idioma compartido por la documentación de arquitectura (`architectureDocDir`) y la biblia de estilo (`styleBibleDocDir`), que `pv-do` mantiene actualizadas tras cada change/fix implementado.
 
-Todos los puntos salvo `interaction.language` son opcionales: si no los configuras, heredan el idioma de `interaction.language` (y si tampoco está configurado, se usa inglés). Esto te permite, por ejemplo, hablar con Previo en español mientras la documentación técnica queda en inglés para compartirla con colaboradores externos:
+La documentación técnica (`docs.tech.architectureDocDir` + `docs.tech.styleBibleDocDir`) **no** tiene punto de idioma: es siempre inglés técnico, no se configura.
+
+Todos los puntos salvo `interaction.language` son opcionales: si no los configuras, heredan el idioma de `interaction.language` (y si tampoco está configurado, se usa inglés). Esto te permite, por ejemplo, hablar con Previo en español mientras el changelog y las funcionalidades salen en español — la documentación técnica va siempre en inglés, no se configura:
 
 ```json
 "framework": {
@@ -344,15 +343,14 @@ Todos los puntos salvo `interaction.language` son opcionales: si no los configur
   "changes": { "language": "es" },
   "versions": { "language": "es" },
   "docs": {
-    "functional": { "language": "es" },
-    "tech": { "language": "en" }
+    "functional": { "language": "es" }
   }
 }
 ```
 
-`pv-init` siempre pregunta por el idioma en una inicialización desde cero, proponiendo inglés por defecto para `interaction` y ofreciendo reutilizar el mismo valor para el resto salvo que quieras algo distinto. Si inicializaste este proyecto antes de que existiera el soporte de idioma, la próxima vez que ejecutes `pv-init` te preguntará solo esto, sin repetir el resto del cuestionario. Puedes editar los valores a mano en `.claude/pv-context.json` en cualquier momento después.
+`pv-init` siempre pregunta por el idioma en una inicialización desde cero, proponiendo inglés por defecto para `interaction` y ofreciendo reutilizar el mismo valor para el resto salvo que quieras algo distinto — "el resto" ya no incluye la documentación técnica. Si inicializaste este proyecto antes de que existiera el soporte de idioma, la próxima vez que ejecutes `pv-init` te preguntará solo esto, sin repetir el resto del cuestionario. Puedes editar los valores a mano en `.claude/pv-context.json` en cualquier momento después.
 
-Dos cosas se quedan siempre en inglés, se configure lo que se configure: la tabla del informe de `pv-status` (la generan scripts deterministas, no el modelo, para que sea gratis en tokens y consistente — solo la frase que la introduce sigue `interaction.language`), y las etiquetas de campo markdown que los scripts parsean literalmente en `description.md` y `plan.md` (`**Type**`, `**Name**`, `**Creation date**`, `**Risk**`, `## Idea`, `## Notes`...). Estas están marcadas con `[[[...]]]` en el `*.template.md` de cada skill — ver la sección "Convención de marcadores en plantillas" de `pv-design.es.md` para la regla completa — así que solo el texto que sigue a cada etiqueta sigue el idioma configurado.
+**Tres** cosas se quedan siempre en inglés, se configure lo que se configure: la tabla del informe de `pv-status` (la generan scripts deterministas, no el modelo, para que sea gratis en tokens y consistente — solo la frase que la introduce sigue `interaction.language`); las etiquetas de campo markdown que los scripts parsean literalmente en `description.md` y `plan.md` (`**Type**`, `**Name**`, `**Creation date**`, `**Risk**`, `## Idea`, `## Notes`...) — marcadas con `[[[...]]]` en el `*.template.md` de cada skill, ver la sección "Convención de marcadores en plantillas" de `pv-design.es.md`, así que solo el texto que sigue a cada etiqueta sigue el idioma configurado; y **toda la documentación técnica** (`architectureDocDir` + `styleBibleDocDir`), que está optimizada para que la lean las propias skills, no una persona, y por eso no se puede configurar. Si configuraste español y tu documentación técnica sale en inglés, es esto: no es un bug.
 
 ### 3. Modelo/esfuerzo de cada skill: `skillModels`
 

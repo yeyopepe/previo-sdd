@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b6
+  version: 0.9.6b7
   uses: [pv-internal-tech-security]
 ---
 
@@ -48,6 +48,12 @@ Each prints the absolute path on success. If either exits non-zero, **stop this 
 Return to the caller the list of documents configured in `.claude/pv-context.json` and which you found populated versus empty.
 
 With this, build preliminary context (architecture/layers, style conventions, file and symbol map) before reading a single line of source code.
+
+**How `docs.tech` content is written now** (applies while reading it in this step):
+
+- The content comes in notation — `pre:`/`post:` contracts, FSMs, decision tables, `assert` expressions, compact `field: type = default` — not narrative prose. Parse it as such; don't expect explanatory sentences.
+- When the content cites a **namespace path** (e.g. `auth.token.session.ttl.value`), resolve it against `{architectureDocDir}/00-namespace.md` (the single per-project tree, resolved the same way even when the citing document is under `styleBibleDocDir`). If the resolved node has an `anchor:`, that anchored code is the canonical definition and prevails over any wording — consistent with "code is the source of truth" (step 4).
+- Raise attention on `[gotcha]` lines: each one corrects a default assumption from general software patterns, so it can't be skimmed as one more fact.
 
 ## 2. Fill in with real code only if needed
 
