@@ -28,6 +28,14 @@ Three options modify something:
   submenu): delegates to pv-init's sync-skill-models.py, which propagates
   pv-context.json's skillModels to each 'pv-*' SKILL.md's frontmatter
   (model/effort).
+- "Change max character width" (inside the "Configuration" submenu): the
+  only place pv.py *writes* pv-context.json -- it stores a single integer
+  at framework.onescript.width (>= 40; empty input keeps the current
+  value), read back on every launch to set this file's WIDTH. A minimal
+  read-modify-write that preserves every other field and key order; still
+  gated behind a confirm(). Under --testconfig the same value is read from
+  / written to pv-config-test.json at the identical framework.onescript.width
+  path, so the exact same code handles both.
 
 "Changes info" opens a submenu with three ways to look up entries under
 {workFolder}/changes/: "Search by id" (exact id match, cheap -- doesn't
@@ -46,12 +54,18 @@ submenu, or screen type.
 
 --testconfig is a test-harness-only flag, not for normal end-user use: it
 takes no argument -- it reads pv-config-test.json from this same script's
-own folder ({"repoRoot": "...", "workFolder": "..."}), used instead of the
-repo's real .claude/pv-context.json, letting pv.py be run against
+own folder, whose node tree mirrors pv-context.json's own
+({"repoRoot": "..", "framework": {"workFolder": "...", "onescript": {...}}})
+so the same code finds each value at the same path. repoRoot stays
+top-level -- it has no pv-context.json equivalent (test-only: where the
+real repo root is when pv.py runs as a copy outside it). Used instead of
+the repo's real .claude/pv-context.json, letting pv.py be run against
 throwaway fixture data (e.g. test/previo-sdd/) without touching the real
 workFolder. The framework's real scripts are still invoked as-is (never
 copied) -- only the --work-folder value forwarded to the ones that
-support it changes. See test/pv-test.py and test/pv-config-test.json for
+support it changes. pv.py's own persisted settings (framework.onescript.*)
+are also read from / written to this file instead of pv-context.json, at
+the identical nested path. See test/pv-test.py and test/pv-config-test.json for
 the intended setup (a plain copy of this same file, run with --testconfig
 from inside test/, where its sibling pv-config-test.json lives).
 
@@ -75,6 +89,13 @@ WORKFLOW_SCRIPTS = ROOT / ".claude" / "skills" / "pv-internal-workflow" / "scrip
 INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
 INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
 CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
+
+# The config file pv.py reads its own settings from and writes them back to:
+# CONTEXT_PATH normally, or the --testconfig file when that flag is passed
+# (set in main()). Both carry pv.py's settings at the same nested path
+# (framework.onescript.*), so load_onescript_width()/save_onescript_width()
+# don't branch on which one it is.
+ACTIVE_CONFIG_PATH = CONTEXT_PATH
 
 # Set by main() when --testconfig is passed: the workFolder value to use
 # instead of reading it from CONTEXT_PATH, and to forward as --work-folder
@@ -114,7 +135,8 @@ SCRIPTS_ACCEPTING_WIDTH = {"filter_status.py", "render_status.py", "list_todo.py
 # See .claude/pv-doc/pv-design-onescript/pv-design-onescript.es.md > "Estilo por Tipo de Pantalla" for
 # the full rationale and exact mockups.
 
-WIDTH = 80
+WIDTH = 80  # default; overridden at startup by framework.onescript.width if set
+MIN_WIDTH = 40  # below this, RING_ART and the delegated detail cards break
 COLOR_RESET = "\033[0m"
 GOLD = "\033[38;5;220m"
 DARK_GRAY = "\033[38;5;238m"
@@ -359,6 +381,37 @@ def work_root() -> Path:
     return ROOT / (work_folder_rel or "").lstrip("/")
 
 
+def load_onescript_width() -> int:
+    """Reads framework.onescript.width from the active config file
+    (ACTIVE_CONFIG_PATH -- pv-context.json, or the --testconfig file, both
+    using the same nested path). Returns the module default WIDTH if the
+    file, the section, or the field is absent, or if the value isn't an int
+    >= MIN_WIDTH -- a malformed setting falls back silently rather than
+    failing a launch, matching how the rest of this file treats config."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return WIDTH
+    value = config.get("framework", {}).get("onescript", {}).get("width")
+    if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_WIDTH:
+        return value
+    return WIDTH
+
+
+def save_onescript_width(width: int) -> None:
+    """Writes framework.onescript.width into the active config file,
+    preserving every other field and the existing key order (read-modify-
+    write with json.load + json.dump, indent=2). Creates the
+    framework/onescript objects if missing. This is the only place pv.py
+    writes its config file -- a single validated integer, always confirmed
+    by the caller first."""
+    config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    config.setdefault("framework", {}).setdefault("onescript", {})["width"] = width
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
 def changes_dir() -> Path:
     return work_root() / "changes"
 
@@ -377,15 +430,25 @@ def framework_version() -> str:
 
 
 def load_test_config(path: Path) -> dict[str, str]:
-    """Reads pv-config-test.json ({"repoRoot": "...", "workFolder": "..."}),
-    expected next to this script (--testconfig takes no argument).
+    """Reads pv-config-test.json, expected next to this script (--testconfig
+    takes no argument). Shape mirrors pv-context.json's own node tree so the
+    same code finds each value at the same path:
 
-    "repoRoot" is resolved by the caller relative to this file's own
-    location, not the process cwd.
+      {"repoRoot": "..", "framework": {"workFolder": "...", "onescript": {...}}}
+
+    - "repoRoot" stays top-level: it has no equivalent in pv-context.json
+      (it's test-harness-only -- it tells pv.py where the real repo root is
+      when it runs as a copy outside it). Resolved by the caller relative to
+      this file's own location, not the process cwd.
+    - "workFolder" lives at framework.workFolder, the same path pv-context.json
+      uses. framework.onescript.* (pv.py's persisted settings) is read/written
+      in place by load_onescript_width()/save_onescript_width(), which point
+      at this file via ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch
+      it.
 
     Exits with a clear message (no raw traceback) if the file doesn't
-    exist, isn't valid JSON, or is missing either required field -- this
-    flag is test-harness-only, so a broken/misconfigured pointer should
+    exist, isn't valid JSON, or is missing repoRoot / framework.workFolder --
+    this flag is test-harness-only, so a broken/misconfigured pointer should
     fail loudly rather than silently fall back to the real repo state.
     """
     if not path.is_file():
@@ -396,11 +459,17 @@ def load_test_config(path: Path) -> dict[str, str]:
     except json.JSONDecodeError as exc:
         sys.exit(f"--testconfig: {path} isn't valid JSON: {exc}")
 
-    missing = [key for key in ("repoRoot", "workFolder") if key not in config]
+    repo_root = config.get("repoRoot")
+    work_folder = (config.get("framework") or {}).get("workFolder")
+    missing = []
+    if not repo_root:
+        missing.append("repoRoot")
+    if not work_folder:
+        missing.append("framework.workFolder")
     if missing:
         sys.exit(f"--testconfig: {path} is missing required field(s): {', '.join(missing)}")
 
-    return {"repoRoot": config["repoRoot"], "workFolder": config["workFolder"]}
+    return {"repoRoot": repo_root, "workFolder": work_folder}
 
 
 # =============================================================================
@@ -507,10 +576,54 @@ def sync_skill_models() -> None:
     run_script(INIT_SCRIPTS / "sync-skill-models.py")
 
 
+def change_width() -> None:
+    """Persists framework.onescript.width. Empty input keeps the current
+    value; anything under MIN_WIDTH is rejected without writing. Follows
+    the state-mutating pattern (show + confirm before writing) even though
+    the "mutation" is a single integer."""
+    global WIDTH
+
+    show_info(
+        [wrap(f"Current max character width: {WIDTH} (minimum {MIN_WIDTH}).")],
+        framed=False,
+    )
+    answer = read_input(
+        f"New width (Enter to keep {WIDTH}): "
+    ).strip()
+    if not answer:
+        print("Unchanged.")
+        return
+
+    if not answer.isdigit() or int(answer) < MIN_WIDTH:
+        print(f"Width must be a whole number >= {MIN_WIDTH}. Unchanged.")
+        return
+
+    new_width = int(answer)
+    if new_width == WIDTH:
+        print("Unchanged.")
+        return
+
+    if not confirm(
+        f"Set max character width to {new_width} in {ACTIVE_CONFIG_PATH.name}?"
+    ):
+        print("Cancelled.")
+        return
+
+    save_onescript_width(new_width)
+    WIDTH = new_width
+    show_info(
+        [wrap(f"Saved. Width is now {new_width}.")],
+        framed=False,
+    )
+
+
 def show_settings_menu() -> None:
     run_menu(
         "Previo: settings",
-        [("Sync skill models per pv-context.json", sync_skill_models)],
+        [
+            ("Sync skill models per pv-context.json", sync_skill_models),
+            ("Change max character width", change_width),
+        ],
         "Back",
     )
 
@@ -811,6 +924,7 @@ def run_menu(
 
 def main() -> None:
     global ROOT, STATUS_SCRIPTS, WORKFLOW_SCRIPTS, INIT_SCRIPTS, INIT_SKILL_PATH, CONTEXT_PATH, TEST_WORK_FOLDER
+    global ACTIVE_CONFIG_PATH, WIDTH
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -836,6 +950,11 @@ def main() -> None:
         INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
         CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
         TEST_WORK_FOLDER = config["workFolder"]
+        # pv.py's own settings still come from (and are written back to) the
+        # --testconfig file, at the same framework.onescript.* path they'd
+        # use in pv-context.json -- so load/save_onescript_width() need no
+        # special case for test mode.
+        ACTIVE_CONFIG_PATH = testconfig_path
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -846,6 +965,8 @@ def main() -> None:
         print(wrap("This project doesn't have the pv-* framework initialized."))
         print(wrap("Run /pv-init first from Claude Code."))
         return
+
+    WIDTH = load_onescript_width()
 
     print(colorize_ring_art(RING_ART))
 

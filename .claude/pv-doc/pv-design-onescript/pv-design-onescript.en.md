@@ -84,7 +84,10 @@ LEVEL 1 (Main Navigation)
     ├── [5] Submenu: Configuration
     │   └── "Previo: settings"
     │       ├── [1] Action: Sync Models (→ external)
-    │       └── [2] Back
+    │       ├── [2] Action: Change max character width
+    │       │   └── Info (current width) + Input (new width, empty = keep)
+    │       │       └── Confirmation: "Set max character width to N..." → writes framework.onescript.width
+    │       └── [3] Back
     ├── [6] Submenu: Versions
     │   └── "Previo: versions"
     │       ├── [1] Action: Changelog
@@ -120,6 +123,7 @@ graph TD
     S["🗑️ Delete idea<br/>Selection + Confirmation + delete-todo.py"]
     T["🗑️ Delete this idea<br/>Inline Selection + Confirmation + delete-todo.py<br/>(only if the id is an idea)"]
     J["🔄 Sync Models<br/>sync-skill-models.py"]
+    W["📏 Change width<br/>Info + Input + Confirmation<br/>writes framework.onescript.width"]
     K["📜 Read Changelog<br/>Selection + Display"]
     L["🧹 Check Temp<br/>Show status"]
 
@@ -159,6 +163,8 @@ graph TD
     H -->|Back| C
     H -->|Sync| J
     J -->|Return| H
+    H -->|Change width| W
+    W -->|Return| H
 
     C -->|6| I
     I -->|Back| C
@@ -244,7 +250,7 @@ graph TD
 - None of these components import each other, except `terminal_output.py` by `pv-status`'s three scripts — they're all independent processes connected only by argument convention (`--terminal`, `--xxxx`, etc.) and by the framework's paths (`changes/`, `versions/`). In particular, `render_status.py` **no longer invokes** `filter_status.py` — it only prints its three pages and exits.
 - **The id prompt after "Project status"'s page 3 is `pv.py`'s own, not `render_status.py`'s.** It used to live inside `render_status.py`, forwarding the id as a subprocess to `filter_status.py --search-id`, with no involvement from `pv.py`. Now `render_status.py` only prints the three pages; the id loop lives in `show_general_status()` (`pv.py`), which calls the same `show_id_detail_card()` used by `search_by_id()` — so both routes produce the exact same screen, including the "Delete this idea" Inline Selection when it applies. The ownership moved precisely because a `pv-status` script running as a child subprocess has no access to `pv.py`'s helpers and can't invoke `delete-todo.py` with the right menu context.
 - **`terminal_output.py` has no fixed `WIDTH` of its own** — every function (`hr()`, `title()`, `heading()`, `wrap()`) takes `width` as an explicit parameter (`DEFAULT_WIDTH = 70` when the caller doesn't have an opinion). The caller decides the width, not the module: `pv.py` passes `--width 80` (its own `WIDTH`) to the three `pv-status` scripts via `run_script()`, so delegated screens (general status, searches, the detail card, the ideas listing) measure exactly the same as its own menu/selection screens. The `pv-status` skill (invoked from chat, no `--terminal`) never passes `--width` — it doesn't apply there, it only produces markdown.
-- `pv-config-test.json` (dashed line, only active with the `--testconfig` flag — see "Command-Line Configuration") fully replaces `pv-context.json` as the source of `workFolder`, and also supplies `repoRoot` so `pv.py` can still locate the real `.claude/skills/...` scripts even when run as `test/pv-test.py`, outside the repo root. `pv.py` never reads both files in the same run — it's one or the other, never a mix.
+- `pv-config-test.json` (dashed line, only active with the `--testconfig` flag — see "Command-Line Configuration") fully replaces `pv-context.json`: its node tree **mirrors `pv-context.json`'s own** so the same code finds each value at the same path — `workFolder` at `framework.workFolder`, `pv.py`'s own settings at `framework.onescript.*` — plus a top-level `repoRoot` (no `pv-context.json` equivalent: only the harness needs it, so `pv.py` can locate the real `.claude/skills/...` scripts when run as a copy — `sandbox-test1/pv-test.py` — outside the repo root). `pv.py` never reads both files in the same run — it's one or the other, never a mix.
 
 ---
 
@@ -254,11 +260,11 @@ The file is split into blocks delimited by `# ====...====` comments, in this fix
 
 | Block | Contains | Touch it when... |
 |---|---|---|
-| `Rendering primitives` | `WIDTH`, colors (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Almost never — changes the global color/width system |
+| `Rendering primitives` | `WIDTH` (default), `MIN_WIDTH`, colors (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Almost never — changes the global color/width system |
 | `Screen-type helpers` | `print_header()`, `show_selection()`, `show_info()`, `confirm()` | Almost never — changes the behavior of a screen type across **all** options at once |
-| `Framework paths and shared lookups` | `work_root()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` | When adding a new framework path or subfolder several options need |
+| `Framework paths and shared lookups` | `work_root()`, `load_onescript_width()`, `save_onescript_width()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` — plus the module globals `CONTEXT_PATH` and `ACTIVE_CONFIG_PATH` (the config file pv.py reads its settings from / writes them to: `CONTEXT_PATH` normally, the `--testconfig` file otherwise) | When adding a new framework path or subfolder several options need |
 | `Actions -- root menu` | Action functions for the root menu | When adding a new option to "Previo: MAIN MENU" |
-| `Actions -- Configuration submenu` | Action functions for "Previo: settings" | When adding a new option to Configuration |
+| `Actions -- Configuration submenu` | Action functions for "Previo: settings" (`sync_skill_models()`, `change_width()`) | When adding a new option to Configuration |
 | `Actions -- Versions submenu` | Action functions for "Previo: versions" | When adding a new option to Versions |
 | `Actions -- Changes info submenu` | Action functions for "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`) | When adding a new option to Changes info |
 | `Actions -- Ideas (root menu)` | Functions for the "Ideas in todo/" root option (`show_todo_ideas()`, `list_todo_entries()`, `find_todo_code()`, `delete_idea_by_code()`, `delete_idea()`, `show_ideas_menu()`) — also `show_id_detail_card()`, one id's detail card (with an Inline Selection when it's an idea), reused by `search_by_id()` (Changes info) and `show_general_status()` (root menu) | When adding a new idea-related option |
@@ -476,29 +482,36 @@ python3 pv.py
 
 No arguments, in normal use. Reads configuration from:
 - `pv-context.json` for `workFolder`
+- `pv-context.json`'s `framework.onescript.width` for its own `WIDTH` (default 80 if absent/malformed)
 - Checks that the framework directory exists
+
+**`pv.py` writes `pv-context.json`** — the only place it does — through the "Configuration > Change max character width" option. It's a minimal read-modify-write (`json.load` → set `framework.onescript.width` → `json.dump(indent=2)`) that preserves every other field and key order, creating the `framework`/`onescript` objects if missing, always gated behind a `confirm()`. The written value is an integer `>= 40` (empty input keeps the current one; anything below 40 is rejected without writing — below that the ring-art splash and detail cards break). `framework.onescript.width` is an optional field in `schema.json`; `pv-init` never asks about it, and its absence just means `pv.py` uses the built-in default.
 
 ### `--testconfig` — for testing `pv.py` only, not normal use
 
 ```bash
-python3 test/pv-test.py --testconfig
+python3 sandbox-test1/pv-test.py --testconfig
 ```
 
-Flag exclusive to the framework's own test harness (`test/pv-test.py`, a plain identical copy of `pv.py` with no code of its own, placed under `test/` for convenience). **It takes no argument** — it assumes a file named `pv-config-test.json` sits in the same folder as the script being run (`Path(__file__).resolve().parent`), and exits with an error if it's not there. When passed, `pv.py` **doesn't read** `.claude/pv-context.json` to resolve `workFolder` — instead it reads that `pv-config-test.json`, with two required fields:
+Flag exclusive to the framework's own test harness (`pv-test.py`, a plain identical copy of `pv.py` with no code of its own, placed next to its `pv-config-test.json` for convenience — `sandbox-test1/` in this repo). **It takes no argument** — it assumes a file named `pv-config-test.json` sits in the same folder as the script being run (`Path(__file__).resolve().parent`), and exits with an error if it's not there. When passed, `pv.py` **doesn't read** `.claude/pv-context.json` at all — instead it reads that `pv-config-test.json`, whose **node tree mirrors `pv-context.json`'s own** so the same code finds each value at the same path:
 
 ```json
 {
   "repoRoot": "..",
-  "workFolder": "/sandbox-test1/previo-sdd"
+  "framework": {
+    "workFolder": "/sandbox-test1/previo-sdd",
+    "onescript": { "width": 80 }
+  }
 }
 ```
 
-- `repoRoot`: path to the real repo root (where `.claude/skills/...` lives), **resolved relative to the config file's own location** (itself always next to the script), not the directory the script is invoked from. Needed because `pv.py` still invokes the framework's real scripts (`filter_status.py`, `render_status.py`, etc.) — never copies — so it needs to know where they are.
-- `workFolder`: the test `workFolder` to use instead of the one configured in `pv-context.json` (e.g. `/sandbox-test1/previo-sdd`), so the project's real data is never touched.
+- `repoRoot` (**required, top-level**): path to the real repo root (where `.claude/skills/...` lives), **resolved relative to the config file's own location** (itself always next to the script), not the directory the script is invoked from. Needed because `pv.py` still invokes the framework's real scripts (`filter_status.py`, `render_status.py`, etc.) — never copies — so it needs to know where they are. It stays top-level because it has **no equivalent in `pv-context.json`** — it's purely test-harness metadata (the real script, at the repo root, derives its root from `__file__`).
+- `framework.workFolder` (**required**): the test `workFolder`, at the **same path `pv-context.json` uses** (`framework.workFolder`), so `work_root()`-style resolution needs no test-mode branch. Points at throwaway fixture data (e.g. `/sandbox-test1/previo-sdd`) so the project's real data is never touched.
+- `framework.onescript.width` (**optional**): `pv.py`'s own persisted setting, read from — and written to by "Change max character width" — this file, at the **identical nested path** it would use in `pv-context.json`. `ACTIVE_CONFIG_PATH` (set in `main()`) just points `load_onescript_width()`/`save_onescript_width()` at whichever file is active; no test-mode branch there either. Absent → `pv.py` uses its built-in default (80).
 
-`run_script()` forwards this `workFolder` as `--work-folder <value>` to the 4 scripts that already support that override (`filter_status.py`, `render_status.py`, `list_todo.py`, `move-change.py`) — `sync-skill-models.py` is excluded since it doesn't touch `changes/`/`workFolder` at all and has no such flag.
+`run_script()` forwards `framework.workFolder` as `--work-folder <value>` to the 4 scripts that already support that override (`filter_status.py`, `render_status.py`, `list_todo.py`, `move-change.py`) — `sync-skill-models.py` is excluded since it doesn't touch `changes/`/`workFolder` at all and has no such flag.
 
-If `pv-config-test.json` isn't found next to the script, has invalid JSON, or is missing `repoRoot`/`workFolder`, `pv.py` exits with a clear error message (`sys.exit`, no traceback) — it never proceeds with a silent default.
+If `pv-config-test.json` isn't found next to the script, has invalid JSON, or is missing `repoRoot` / `framework.workFolder`, `pv.py` exits with a clear error message (`sys.exit`, no traceback) — it never proceeds with a silent default. A missing `framework.onescript.width` is **not** an error (it's optional).
 
 ---
 
@@ -536,6 +549,8 @@ Any new option must be either:
 
 More complex mutations (deleting, creating versions, drafting file content) stay **out of `pv.py`'s scope** — they need context only the corresponding skill can provide via Claude Code. Don't add that logic here even if it seems convenient.
 
+**The one config-write exception.** "Change max character width" writes `framework.onescript.width` into `pv-context.json` directly from `pv.py` (`save_onescript_width()`), with no external script. This is deliberately allowed because it's a single already-validated integer (range-checked in the action, `confirm()`ed first) written by a minimal read-modify-write that touches nothing else — the same "simple mutation" tier as moving a folder. It is **not** a precedent for `pv.py` writing anything richer into `pv-context.json`: any setting that isn't a single scalar with an obvious validation rule still belongs to `pv-init`/`pv-update`. If a second `pv.py`-owned setting ever appears, it goes under the same `framework.onescript.*` object, read/written by the same two helpers.
+
 ### Common Mistakes When Extending
 
 Real friction points in this design — watch out for them when adding new code.
@@ -570,7 +585,7 @@ Real friction points in this design — watch out for them when adding new code.
 
 | Path | Purpose |
 |------|-----------|
-| `pv-context.json` | Framework configuration |
+| `pv-context.json` | Framework configuration. Read for `workFolder` and `framework.onescript.width`. **Also written** (the only file `pv.py` writes) by "Configuration > Change max character width" — see "Command-Line Configuration" and the config-write exception under "How to Extend". Under `--testconfig`, `pv-config-test.json` takes its place for both reads and that write. |
 | `pv-init/SKILL.md` | Read (not executed) by `framework_version()` to get the `pv-*` framework's own version (YAML frontmatter's `metadata.version`) shown in the main menu's title — distinct from the project's own version under `versions/{XXXX}/` |
 | `changes/` | Changes directory (states) |
 | `changes/implemented/` | Completed changes |
@@ -586,7 +601,7 @@ Real friction points in this design — watch out for them when adding new code.
 - **Windows ANSI support:** Enables ENABLE_VIRTUAL_TERMINAL_PROCESSING on Windows 11
 - **No color:** Detects the `NO_COLOR` environment variable and disables colors
 - **Terminal-responsive:** Detects `sys.stdout.isatty()` for colors
-- **Maximum width:** 80 characters for readability in small terminals
+- **Maximum width:** 80 characters by default for readability in small terminals; user-adjustable (minimum 40) and persisted via "Configuration > Change max character width" (`framework.onescript.width` in `pv-context.json`), read on every launch
 - **UTF-8 encoding:** Forces UTF-8 on Python's output
 
 ---
@@ -594,7 +609,9 @@ Real friction points in this design — watch out for them when adding new code.
 ## Reference Configuration File
 
 ```python
-WIDTH = 80                      # Maximum line width
+WIDTH = 80                      # Default max line width; main() overrides it at
+                               # startup with framework.onescript.width if set
+MIN_WIDTH = 40                 # floor for a persisted width (ring art / detail cards break below)
 COLOR_RESET = "\033[0m"         # ANSI reset
 GOLD = "\033[38;5;220m"         # Gold color (menus, delegated status)
 DARK_GRAY = "\033[38;5;238m"    # Dark gray color (selection, framed info)

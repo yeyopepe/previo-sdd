@@ -84,7 +84,10 @@ NIVEL 1 (Main Navigation)
     ├── [5] Submenu: Configuration
     │   └── "Previo: settings"
     │       ├── [1] Acción: Sync Models (→ externo)
-    │       └── [2] Back
+    │       ├── [2] Acción: Change max character width
+    │       │   └── Info (ancho actual) + Input (nuevo ancho, vacío = mantener)
+    │       │       └── Confirmation: "Set max character width to N..." → escribe framework.onescript.width
+    │       └── [3] Back
     ├── [6] Submenu: Versions
     │   └── "Previo: versions"
     │       ├── [1] Acción: Changelog
@@ -120,6 +123,7 @@ graph TD
     S["🗑️ Delete idea<br/>Selección + Confirmación + delete-todo.py"]
     T["🗑️ Delete this idea<br/>Selección incrustada + Confirmación + delete-todo.py<br/>(solo si el id es una idea)"]
     J["🔄 Sync Models<br/>sync-skill-models.py"]
+    W["📏 Change width<br/>Info + Input + Confirmación<br/>escribe framework.onescript.width"]
     K["📜 Read Changelog<br/>Selección + Mostrar"]
     L["🧹 Check Temp<br/>Mostrar estado"]
 
@@ -159,6 +163,8 @@ graph TD
     H -->|Back| C
     H -->|Sync| J
     J -->|Return| H
+    H -->|Change width| W
+    W -->|Return| H
 
     C -->|6| I
     I -->|Back| C
@@ -244,7 +250,7 @@ graph TD
 - Ninguno de estos componentes se importa entre sí salvo `terminal_output.py` por los tres scripts de `pv-status` — son todos procesos independientes conectados solo por convención de argumentos (`--terminal`, `--xxxx`, etc.) y por las rutas del framework (`changes/`, `versions/`). En particular, `render_status.py` **ya no invoca** `filter_status.py` — solo imprime sus tres páginas y termina.
 - **El prompt de id tras la página 3 de "Project status" es de `pv.py`, no de `render_status.py`.** Antes, `render_status.py` pedía el id y lo reenviaba como subproceso a `filter_status.py --search-id`, sin que `pv.py` interviniera. Ahora `render_status.py` solo imprime las tres páginas; el bucle de id vive en `show_general_status()` (`pv.py`), que llama a la misma `show_id_detail_card()` que usa `search_by_id()` — así ambas rutas producen exactamente la misma pantalla, incluida la Selección incrustada "Delete this idea" cuando aplica. El cambio de dueño existió precisamente porque un script `pv-status` corriendo como subproceso hijo no tiene acceso a los helpers de `pv.py` ni puede invocar `delete-todo.py` con el contexto de menú correcto.
 - **`terminal_output.py` no tiene un `WIDTH` propio fijo** — cada función (`hr()`, `title()`, `heading()`, `wrap()`) recibe `width` como parámetro explícito (`DEFAULT_WIDTH = 70` si el caller no opina). Quien decide el ancho es quien invoca, no el módulo: `pv.py` pasa `--width 80` (su propio `WIDTH`) a los tres scripts de `pv-status` vía `run_script()`, así las pantallas delegadas (status general, búsquedas, ficha detalle, listado de ideas) miden exactamente lo mismo que sus propias pantallas de menú/selección. La skill `pv-status` (invocada desde chat, sin `--terminal`) nunca pasa `--width` — no le aplica, solo genera markdown.
-- `pv-config-test.json` (línea discontinua, solo activa con el flag `--testconfig` — ver "Configuración de Línea de Comandos") sustituye por completo a `pv-context.json` como fuente de `workFolder`, y además aporta `repoRoot` para que `pv.py` siga localizando los scripts reales de `.claude/skills/...` aunque se ejecute como `test/pv-test.py`, fuera de la raíz del repo. `pv.py` nunca lee ambos ficheros en la misma ejecución — es uno u otro, nunca una mezcla.
+- `pv-config-test.json` (línea discontinua, solo activa con el flag `--testconfig` — ver "Configuración de Línea de Comandos") sustituye por completo a `pv-context.json`: su árbol de nodos **imita el de `pv-context.json`** para que el mismo código encuentre cada valor en la misma ruta — `workFolder` en `framework.workFolder`, los ajustes propios de `pv.py` en `framework.onescript.*` — más un `repoRoot` a nivel raíz (sin equivalente en `pv-context.json`: solo el harness lo necesita, para que `pv.py` localice los scripts reales de `.claude/skills/...` al ejecutarse como copia — `sandbox-test1/pv-test.py`— fuera de la raíz del repo). `pv.py` nunca lee ambos ficheros en la misma ejecución — es uno u otro, nunca una mezcla.
 
 ---
 
@@ -254,11 +260,11 @@ El fichero está dividido en bloques delimitados por comentarios `# ====...====`
 
 | Bloque | Contiene | Tocar cuando... |
 |---|---|---|
-| `Rendering primitives` | `WIDTH`, colores (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Casi nunca — cambia el sistema de color/ancho global |
+| `Rendering primitives` | `WIDTH` (default), `MIN_WIDTH`, colores (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Casi nunca — cambia el sistema de color/ancho global |
 | `Screen-type helpers` | `print_header()`, `show_selection()`, `show_info()`, `confirm()` | Casi nunca — cambia el comportamiento de un tipo de pantalla en **todas** las opciones a la vez |
-| `Framework paths and shared lookups` | `work_root()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` | Al añadir una nueva ruta o subcarpeta del framework que varias opciones necesiten |
+| `Framework paths and shared lookups` | `work_root()`, `load_onescript_width()`, `save_onescript_width()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` — más los globales de módulo `CONTEXT_PATH` y `ACTIVE_CONFIG_PATH` (el fichero de config del que `pv.py` lee sus ajustes / al que los escribe: `CONTEXT_PATH` normalmente, el fichero de `--testconfig` en su defecto) | Al añadir una nueva ruta o subcarpeta del framework que varias opciones necesiten |
 | `Actions -- root menu` | Funciones de acción del menú raíz | Al añadir una opción nueva a "Previo: MAIN MENU" |
-| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" | Al añadir una opción nueva a Configuration |
+| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" (`sync_skill_models()`, `change_width()`) | Al añadir una opción nueva a Configuration |
 | `Actions -- Versions submenu` | Funciones de acción de "Previo: versions" | Al añadir una opción nueva a Versions |
 | `Actions -- Changes info submenu` | Funciones de acción de "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`) | Al añadir una opción nueva a Changes info |
 | `Actions -- Ideas (root menu)` | Funciones de la opción raíz "Ideas in todo/" (`show_todo_ideas()`, `list_todo_entries()`, `find_todo_code()`, `delete_idea_by_code()`, `delete_idea()`, `show_ideas_menu()`) — también `show_id_detail_card()`, la ficha detalle de un id (con Selección incrustada si es idea), reutilizada por `search_by_id()` (Changes info) y `show_general_status()` (root menu) | Al añadir una opción nueva relacionada con ideas |
@@ -476,29 +482,36 @@ python3 pv.py
 
 Sin argumentos, en el uso normal. Lee configuración de:
 - `pv-context.json` para `workFolder`
+- `framework.onescript.width` de `pv-context.json` para su propio `WIDTH` (default 80 si falta o está mal formado)
 - Verifica existencia de directorio framework
+
+**`pv.py` escribe `pv-context.json`** — el único sitio donde lo hace — a través de la opción "Configuration > Change max character width". Es un read-modify-write mínimo (`json.load` → fija `framework.onescript.width` → `json.dump(indent=2)`) que preserva todos los demás campos y el orden de claves, creando los objetos `framework`/`onescript` si faltan, siempre tras un `confirm()`. El valor escrito es un entero `>= 40` (input vacío mantiene el actual; por debajo de 40 se rechaza sin escribir — bajo ese umbral el splash de arte ASCII y las fichas detalle se rompen). `framework.onescript.width` es un campo opcional en `schema.json`; `pv-init` nunca pregunta por él, y su ausencia solo significa que `pv.py` usa el default interno.
 
 ### `--testconfig` — solo para probar `pv.py`, no para uso normal
 
 ```bash
-python3 test/pv-test.py --testconfig
+python3 sandbox-test1/pv-test.py --testconfig
 ```
 
-Flag exclusivo del test harness del propio framework (`test/pv-test.py`, una copia idéntica de `pv.py` sin lógica propia, colocada en `test/` por comodidad). **No recibe ningún argumento** — asume que hay un fichero llamado `pv-config-test.json` en la misma carpeta que el script que se está ejecutando (`Path(__file__).resolve().parent`), y sale con error si no existe ahí. Cuando se pasa, `pv.py` **no lee** `.claude/pv-context.json` para resolver `workFolder` — en su lugar lee ese `pv-config-test.json`, con dos campos obligatorios:
+Flag exclusivo del test harness del propio framework (`pv-test.py`, una copia idéntica de `pv.py` sin lógica propia, colocada junto a su `pv-config-test.json` por comodidad — `sandbox-test1/` en este repo). **No recibe ningún argumento** — asume que hay un fichero llamado `pv-config-test.json` en la misma carpeta que el script que se está ejecutando (`Path(__file__).resolve().parent`), y sale con error si no existe ahí. Cuando se pasa, `pv.py` **no lee** `.claude/pv-context.json` en absoluto — en su lugar lee ese `pv-config-test.json`, cuyo **árbol de nodos imita el de `pv-context.json`** para que el mismo código encuentre cada valor en la misma ruta:
 
 ```json
 {
   "repoRoot": "..",
-  "workFolder": "/sandbox-test1/previo-sdd"
+  "framework": {
+    "workFolder": "/sandbox-test1/previo-sdd",
+    "onescript": { "width": 80 }
+  }
 }
 ```
 
-- `repoRoot`: ruta a la raíz real del repo (donde vive `.claude/skills/...`), **resuelta relativa a la ubicación del propio fichero de config** (que a su vez está siempre junto al script), no al directorio desde el que se invoca. Necesaria porque `pv.py` sigue invocando los scripts reales del framework (`filter_status.py`, `render_status.py`, etc.) — nunca copias — así que necesita saber dónde están.
-- `workFolder`: el `workFolder` de prueba a usar en vez del configurado en `pv-context.json` (p.ej. `/sandbox-test1/previo-sdd`), para no tocar los datos reales del proyecto.
+- `repoRoot` (**obligatorio, nivel raíz**): ruta a la raíz real del repo (donde vive `.claude/skills/...`), **resuelta relativa a la ubicación del propio fichero de config** (que a su vez está siempre junto al script), no al directorio desde el que se invoca. Necesaria porque `pv.py` sigue invocando los scripts reales del framework (`filter_status.py`, `render_status.py`, etc.) — nunca copias — así que necesita saber dónde están. Se queda a nivel raíz porque **no tiene equivalente en `pv-context.json`** — es metadato exclusivo del harness (el script real, en la raíz del repo, deriva su raíz de `__file__`).
+- `framework.workFolder` (**obligatorio**): el `workFolder` de prueba, en la **misma ruta que usa `pv-context.json`** (`framework.workFolder`), para que la resolución tipo `work_root()` no necesite un caso especial de modo test. Apunta a datos de fixture desechables (p.ej. `/sandbox-test1/previo-sdd`) para no tocar los datos reales del proyecto.
+- `framework.onescript.width` (**opcional**): el ajuste persistido propio de `pv.py`, leído de — y escrito por "Change max character width" en — este fichero, en la **misma ruta anidada** que usaría en `pv-context.json`. `ACTIVE_CONFIG_PATH` (fijado en `main()`) solo apunta `load_onescript_width()`/`save_onescript_width()` al fichero que esté activo; tampoco hay rama de modo test ahí. Ausente → `pv.py` usa su default interno (80).
 
-`run_script()` reenvía este `workFolder` como `--work-folder <valor>` a los 4 scripts que ya soportan ese override (`filter_status.py`, `render_status.py`, `list_todo.py`, `move-change.py`) — `sync-skill-models.py` queda excluido porque no toca `changes/`/`workFolder` en absoluto y no tiene ese flag.
+`run_script()` reenvía `framework.workFolder` como `--work-folder <valor>` a los 4 scripts que ya soportan ese override (`filter_status.py`, `render_status.py`, `list_todo.py`, `move-change.py`) — `sync-skill-models.py` queda excluido porque no toca `changes/`/`workFolder` en absoluto y no tiene ese flag.
 
-Si `pv-config-test.json` no existe junto al script, tiene JSON inválido, o le falta `repoRoot`/`workFolder`, `pv.py` termina con un mensaje de error claro (`sys.exit`, sin traceback) — nunca sigue adelante con un valor por defecto silencioso.
+Si `pv-config-test.json` no existe junto al script, tiene JSON inválido, o le falta `repoRoot` / `framework.workFolder`, `pv.py` termina con un mensaje de error claro (`sys.exit`, sin traceback) — nunca sigue adelante con un valor por defecto silencioso. Un `framework.onescript.width` ausente **no** es un error (es opcional).
 
 ---
 
@@ -536,6 +549,8 @@ Cualquier opción nueva debe ser:
 
 Mutaciones más complejas (borrar, crear versiones, redactar contenido de ficheros) quedan **fuera del alcance de `pv.py`** — necesitan contexto que solo la skill correspondiente puede aportar vía Claude Code. No añadas esa lógica aquí aunque parezca conveniente.
 
+**La única excepción de escritura de config.** "Change max character width" escribe `framework.onescript.width` en `pv-context.json` directamente desde `pv.py` (`save_onescript_width()`), sin script externo. Se permite a propósito porque es un único entero ya validado (rango comprobado en la acción, `confirm()` antes) escrito con un read-modify-write mínimo que no toca nada más — el mismo nivel de "mutación simple" que mover una carpeta. **No** es un precedente para que `pv.py` escriba nada más rico en `pv-context.json`: cualquier ajuste que no sea un único escalar con regla de validación obvia sigue siendo de `pv-init`/`pv-update`. Si algún día aparece un segundo ajuste propio de `pv.py`, va bajo el mismo objeto `framework.onescript.*`, leído/escrito por los mismos dos helpers.
+
 ### Errores Comunes al Extender
 
 Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir código nuevo.
@@ -570,7 +585,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 
 | Ruta | Propósito |
 |------|-----------|
-| `pv-context.json` | Configuración del framework |
+| `pv-context.json` | Configuración del framework. Leído para `workFolder` y `framework.onescript.width`. **También escrito** (el único fichero que `pv.py` escribe) por "Configuration > Change max character width" — ver "Configuración de Línea de Comandos" y la excepción de escritura de config en "Cómo extender". Bajo `--testconfig`, `pv-config-test.json` ocupa su lugar tanto para las lecturas como para esa escritura. |
 | `pv-init/SKILL.md` | Leído (no ejecutado) por `framework_version()` para obtener la versión del propio framework `pv-*` (`metadata.version` de su frontmatter YAML), mostrada en el título del menú principal — distinta de la versión del proyecto bajo `versions/{XXXX}/` |
 | `changes/` | Directorio de cambios (estados) |
 | `changes/implemented/` | Cambios completados |
@@ -586,7 +601,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 - **Soporte Windows ANSI:** Activa ENABLE_VIRTUAL_TERMINAL_PROCESSING en Windows 11
 - **Sin color:** Detecta variable de entorno `NO_COLOR` y desactiva colores
 - **Responsivo a terminal:** Detecta `sys.stdout.isatty()` para colores
-- **Ancho máximo:** 80 caracteres para legibilidad en terminales pequeñas
+- **Ancho máximo:** 80 caracteres por defecto para legibilidad en terminales pequeñas; ajustable por el usuario (mínimo 40) y persistido vía "Configuration > Change max character width" (`framework.onescript.width` en `pv-context.json`), leído en cada arranque
 - **Encodificación UTF-8:** Fuerza UTF-8 en salida de Python
 
 ---
@@ -594,7 +609,9 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 ## Archivo de Configuración de Referencia
 
 ```python
-WIDTH = 80                      # Ancho máximo de líneas
+WIDTH = 80                      # Ancho máximo de líneas por defecto; main() lo
+                               # sobrescribe al arrancar con framework.onescript.width si existe
+MIN_WIDTH = 40                 # suelo de un ancho persistido (bajo eso el arte / fichas se rompen)
 COLOR_RESET = "\033[0m"         # ANSI reset
 GOLD = "\033[38;5;220m"         # Color dorado (menús, status delegado)
 DARK_GRAY = "\033[38;5;238m"    # Color gris oscuro (selección, info framed)

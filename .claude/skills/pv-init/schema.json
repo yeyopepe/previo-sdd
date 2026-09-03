@@ -119,6 +119,20 @@
           "description": "OPTIONAL (default 5). Number of digits of the sequential 'xxxx' code, zero-padded. Always written to pv-context.json even when the default is used -- the scripts that consume it have no fallback of their own. No need to ask the user unless they want something different from the default.",
           "examples": [5]
         },
+        "onescript": {
+          "type": "object",
+          "description": "OPTIONAL. Persisted settings for the interactive one-file launcher (pv.py / {repo root}/pv.py). The ONLY section of this file that pv.py itself writes -- via its \"Configuration > Change max character width\" menu option, a minimal read-modify-write that preserves every other field. pv-init never asks about it (like skills.mockups/numberWidth); if absent, pv.py uses its built-in defaults. Read as-is by pv.py on every launch; ignored by every other skill.",
+          "additionalProperties": false,
+          "properties": {
+            "width": {
+              "type": "integer",
+              "minimum": 40,
+              "default": 80,
+              "description": "OPTIONAL (default 80). Maximum line width pv.py uses for its menus, selections, framed info, and the --width it forwards to the pv-status terminal scripts. Minimum 40 -- below that pv.py's ring-art splash and the delegated detail cards break. Written by pv.py's own \"Change max character width\" option; a value outside spec makes pv.py silently fall back to 80 rather than fail a launch.",
+              "examples": [80, 100, 120]
+            }
+          }
+        },
         "frameworkStatus": {
           "type": "object",
           "description": "OPTIONAL. Written exclusively by pv-update (scripts/mark-verified.py) at the end of a successful run -- no other skill writes here. Tracks whether the installed pv-* skill files (metadata.version in each SKILL.md's frontmatter) are in sync with what pv-update last verified, so every other user-invocable skill can do a one-line, zero-cost check at its own step 0 instead of re-running the full audit. Absent entirely on a project that has never run pv-update after pv-init -- that's the expected initial state, not itself a problem.",
