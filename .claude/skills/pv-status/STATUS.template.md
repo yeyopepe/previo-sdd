@@ -26,20 +26,20 @@
 
 ### 🟢 Ready to review and close (in the changes/implemented folder, includes both change/fix and fast) — {toCloseTotal}
 
-| Code | Description | Risk |
-| --- | --- | --- |
+| Flags | Code | Description | Risk |
+| --- | --- | --- | --- |
 {readyRows}
 
 ### 🟠 Planned, pending implementation (`description.md` + `plan.md`, pending implementation) — {toImplementTotal}
 
-| Code | Description | Risk |
-| --- | --- | --- |
+| Flags | Code | Description | Risk |
+| --- | --- | --- | --- |
 {toImplementRows}
 
 ### 🟡 Pending technical analysis (only `description.md`, pending planning with `pv-how`) — {pendingTotal}
 
-| Code | Description | Risk |
-| --- | --- | --- |
+| Flags | Code | Description | Risk |
+| --- | --- | --- | --- |
 {pendingRows}
 
 <!-- SECTION:noDescription -->
@@ -62,8 +62,8 @@
 {warningRows}
 <!-- /SECTION:warnings -->
 
-<!-- ROW_ENTRY: | {icon} {xxxx} | {name} | {risk} | -->
-<!-- EMPTY_ENTRY: | — | *(none)* | — | -->
+<!-- ROW_ENTRY: | {flags} | {icon} {xxxx} | {name} | {risk} | -->
+<!-- EMPTY_ENTRY: | — | — | *(none)* | — | -->
 <!-- ROW_FAST: -   ⚡ {code} — {name} ({date}) -->
 <!-- ROW_IDEA: -   {code}: {idea} -->
 <!-- ROW_WARNING: -   {warning} -->

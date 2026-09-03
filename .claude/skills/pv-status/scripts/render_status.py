@@ -145,6 +145,9 @@ def entry_lines(entries: list[dict], row_template: str, empty_template: str) -> 
             type=entry["type"],
             icon=TYPE_ICONS.get(entry["type"], "❓"),
             risk=format_risk(entry),
+            # Chat/markdown report: always emoji (never a NO_COLOR terminal).
+            # Rendered as its own leading "Flags" column (see STATUS.template.md).
+            flags=term.flags_prefix(entry.get("flags"), color=True).strip() or "—",
         )
         for entry in entries
     )
@@ -306,11 +309,16 @@ def render_terminal_entries(
     if not entries:
         block.append(term.wrap("(none)", indent="  ", width=width))
     else:
+        color = term.supports_color()
         for entry in entries:
             name = entry["name"] or "(no name)"
             risk = format_risk(entry)
             icon = TYPE_ICONS.get(entry["type"], "❓")
-            block.append(term.wrap(f"{entry['code']} [{icon} {entry['type']}] — {name} (Risk: {risk})", indent="  ", width=width))
+            # Canonical order (decision 6.14): flags · code · [type] · Risk
+            # ((status) is implicit here -- these blocks are already grouped
+            # by state under their own heading).
+            prefix = term.flags_prefix(entry.get("flags"), color=color)
+            block.append(term.wrap(f"{prefix}{entry['code']} [{icon} {entry['type']}] — {name} (Risk: {risk})", indent="  ", width=width))
     return block
 
 
@@ -377,12 +385,14 @@ def render_terminal_page_rest(
     lines = []
 
     if show_fast and fast_entries:
+        color = term.supports_color()
         lines.append(term.heading("⚡ IMPLEMENTED FAST CHANGES", width=width))
         for entry in fast_entries:
             state_dir = "implemented" if entry in implemented_entries else "closed"
             date = extract_date(changes_dir / state_dir / entry["code"])
             name = entry["name"] or "(no name)"
-            lines.append(term.wrap(f"- {entry['code']} — {name} ({date})", indent="  ", width=width))
+            prefix = term.flags_prefix(entry.get("flags"), color=color)
+            lines.append(term.wrap(f"- {prefix}{entry['code']} — {name} ({date})", indent="  ", width=width))
         lines.append("")
 
     lines.append(term.heading("💡 IDEAS IN TODO/", width=width))

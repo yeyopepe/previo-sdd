@@ -22,6 +22,45 @@ import unicodedata
 
 DEFAULT_WIDTH = 70
 
+# =============================================================================
+# Canonical flag catalogue -- the ONE place the pv-* framework maps a flag
+# value (the enum in pv-internal-workflow/metadata.schema.json) to its emoji
+# icon, ASCII fallback icon, and human label.
+#
+# Every list of changes -- in pv-status (render_status.py, filter_status.py)
+# or in pv.py (via read-flags.py) -- prefixes flags_prefix(entry["flags"])
+# to the identifier. pv.py's flag show_selection()s show flag_label(v) per
+# value. Adding a flag = one entry in each of the four maps below + the
+# schema enum. Nothing else.
+# =============================================================================
+
+FLAG_ICONS = {"priority": "⭐", "workinprogress": "⚙️"}
+FLAG_ICONS_ASCII = {"priority": "[P]", "workinprogress": "[W]"}
+FLAG_LABELS = {"priority": "Priority", "workinprogress": "Work in progress"}
+# Fixed paint order, independent of the on-disk array order.
+FLAG_ORDER = ["priority", "workinprogress"]
+
+
+def flags_prefix(flags, *, color: bool = True) -> str:
+    """'⭐ ⚙️  ' for ['workinprogress', 'priority']; '' for []/None.
+
+    No fixed-width padding (decision 6.3b): in color mode ⚙️'s real width
+    is unpredictable between terminals, but the prefix always sits at the
+    left margin of a line/row with no columns to line up to its right, so
+    the slight shift of a flagged row is accepted as cosmetic. The ASCII
+    fallback (color=False) IS deterministic width.
+    """
+    table = FLAG_ICONS if color else FLAG_ICONS_ASCII
+    flags = flags or []
+    icons = [table[f] for f in FLAG_ORDER if f in flags]
+    return (" ".join(icons) + "  ") if icons else ""
+
+
+def flag_label(value: str, *, color: bool = True) -> str:
+    """'⭐ Priority' -- for pv.py's flag show_selection()s."""
+    icon = (FLAG_ICONS if color else FLAG_ICONS_ASCII)[value]
+    return f"{icon} {FLAG_LABELS[value]}"
+
 # Same gold as pv.py's ring core (RING_CHAR_COLORS['#']), reused here for
 # section titles.
 TITLE_COLOR = "\033[38;5;220m"

@@ -172,6 +172,88 @@ def read_skill_version(path: Path) -> str | None:
 
 MARKER_RE = re.compile(r"\[\[\[(.+?)\]\]\]")
 
+# Canonical flag catalogue -- mirrors
+# .claude/skills/pv-internal-workflow/metadata.schema.json's 'flags' enum
+# and pv-status's terminal_output.FLAG_ORDER. Kept as a literal here so
+# this script has no JSON-Schema-library dependency for the check.
+KNOWN_FLAGS = ("priority", "workinprogress")
+METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk"}
+
+
+def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
+    """Audits every .metadata.json under {workFolder}/changes/ against the
+    metadata.schema.json contract (see pv-internal-workflow): valid JSON
+    object, no unknown keys, 'flags' an array of known enum values, 'risk'
+    an int 0-10 or null. Also flags any .metadata.json that appears under
+    todo/ -- todo entries must never carry one."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    if not changes_dir.is_dir():
+        return
+
+    # .metadata.json under todo/ -- always an error.
+    todo_dir = changes_dir / "todo"
+    if todo_dir.is_dir():
+        for meta in sorted(todo_dir.glob("*/.metadata.json")):
+            rel = meta.relative_to(root).as_posix()
+            add(problems, f"metadata-in-todo:{rel}", "optional", rel,
+                f"'{rel}' -- a todo/ entry must never carry .metadata.json "
+                f"(flags don't apply to loose ideas outside the change/fix flow). "
+                f"Delete it.",
+                expected="no .metadata.json under todo/", actual="present")
+
+    for state_dir in sorted(p for p in changes_dir.iterdir() if p.is_dir()):
+        if state_dir.name == "todo":
+            continue
+        for meta in sorted(state_dir.glob("*/.metadata.json")):
+            rel = meta.relative_to(root).as_posix()
+            try:
+                data = json.loads(meta.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                add(problems, f"metadata-invalid-json:{rel}", "optional", rel,
+                    f"'{rel}' isn't valid JSON: {exc}. Fix or delete it -- pv-status "
+                    f"reads it defensively (treats it as no flags), but it should be valid.",
+                    expected="valid JSON object", actual="invalid JSON")
+                continue
+            if not isinstance(data, dict):
+                add(problems, f"metadata-not-object:{rel}", "optional", rel,
+                    f"'{rel}' must contain a JSON object, got {type(data).__name__}.",
+                    expected="JSON object", actual=type(data).__name__)
+                continue
+
+            unknown = sorted(set(data.keys()) - METADATA_ALLOWED_KEYS)
+            if unknown:
+                add(problems, f"metadata-unknown-key:{rel}", "optional", rel,
+                    f"'{rel}' has key(s) {', '.join(unknown)} not in metadata.schema.json "
+                    f"(additionalProperties: false). Allowed: {', '.join(sorted(METADATA_ALLOWED_KEYS))}.",
+                    expected=", ".join(sorted(METADATA_ALLOWED_KEYS)), actual=", ".join(sorted(data.keys())))
+
+            flags = data.get("flags")
+            if flags is not None:
+                if not isinstance(flags, list):
+                    add(problems, f"metadata-flags-not-array:{rel}", "optional", rel,
+                        f"'{rel}': 'flags' must be an array, got {type(flags).__name__}.",
+                        expected="array of strings", actual=type(flags).__name__)
+                else:
+                    bad = sorted({f for f in flags if f not in KNOWN_FLAGS})
+                    if bad:
+                        add(problems, f"metadata-flags-unknown-value:{rel}", "optional", rel,
+                            f"'{rel}': 'flags' contains value(s) {', '.join(map(str, bad))} not in "
+                            f"the metadata.schema.json enum ({', '.join(KNOWN_FLAGS)}).",
+                            expected=", ".join(KNOWN_FLAGS), actual=", ".join(map(str, flags)))
+                    if len(flags) != len(set(flags)):
+                        add(problems, f"metadata-flags-duplicate:{rel}", "optional", rel,
+                            f"'{rel}': 'flags' has duplicate entries (schema requires uniqueItems).",
+                            expected="unique values", actual=", ".join(map(str, flags)))
+
+            risk = data.get("risk")
+            if risk is not None and not (
+                isinstance(risk, int) and not isinstance(risk, bool) and 0 <= risk <= 10
+            ):
+                add(problems, f"metadata-risk-invalid:{rel}", "optional", rel,
+                    f"'{rel}': 'risk' must be an integer 0-10 or null, got {risk!r}.",
+                    expected="integer 0-10 or null", actual=repr(risk))
+
 # Maps each template that uses the [[[...]]] marker convention (see
 # pv-design.en.md's "Marker convention in templates") to the glob(s), relative
 # to workFolder, of the real files derived from it. The template itself is the
@@ -421,6 +503,10 @@ def main() -> None:
     # --- structural markers in changes/**-derived documents (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
         check_marked_documents(root, work_folder, problems)
+
+    # --- .metadata.json contract under changes/** (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_metadata_files(root, work_folder, problems)
 
     # --- sourcecodeDir (required to exist if set, has a default) ---
     source_dir = framework.get("sourcecodeDir", "/src")

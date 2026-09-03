@@ -1,0 +1,26 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "metadata.schema.json",
+  "title": "pv-* change/fix .metadata.json",
+  "description": "Mutable per-change state stored at {workFolder}/changes/{state}/{xxxx}/.metadata.json, alongside description.md / plan.md / history.md. A dotfile: it only exists once a change has at least one flag (or, from the risk plan, a risk value). 'Missing file' / 'missing field' / '[]' all mean 'no flags'. todo/ folders NEVER carry this file. The 'flags' enum is the canonical catalogue of framework flags: adding a flag = one enum value here + its icon/label in pv-status's FLAG_* maps, nothing else.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["priority", "workinprogress"] },
+      "description": "Active status flags for this change. Order is not significant; consumers normalise to a fixed paint order (priority before workinprogress)."
+    },
+    "flagsLastModified": {
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) of the last effective change to 'flags' (any add or remove). A single global timestamp, not one per flag. set-metadata.py writes it; no consumer reads it yet (reserved for future 'sort by recent activity' / 'stale flag' features)."
+    },
+    "risk": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Declared here for the 'move risk to .metadata.json' plan (change 2). This plan (flags) never writes it; set-metadata.py preserves it untouched if another writer added it."
+    }
+  }
+}

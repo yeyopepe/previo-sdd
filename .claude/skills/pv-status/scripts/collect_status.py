@@ -28,6 +28,13 @@ For each entry it determines:
     there's no plan.md yet, or plan.md exists but doesn't have that field
     written (shouldn't normally happen once pv-how finishes, but handled
     defensively).
+  - flags: list[str] of the change's status flags, read from the folder's
+    .metadata.json (a dotfile owned by pv-internal-workflow; see its
+    metadata.schema.json). [] when there's no .metadata.json, no 'flags'
+    field, or it's malformed -- values outside the known enum are filtered
+    out defensively. 'todo' entries never carry flags.
+  - flagsLastModified: str | None -- .metadata.json's 'flagsLastModified'
+    if present (informational; no consumer reads it yet).
 
 Writes nothing: prints a single JSON on stdout with the full detail and the
 aggregated totals, for the skill to use when drafting the report.
@@ -58,6 +65,11 @@ NOTES_FULL_RE = re.compile(
 )
 
 KNOWN_TYPES = {"change", "fix", "fast"}
+
+# Canonical flag catalogue lives in metadata.schema.json / terminal_output.py;
+# duplicated here as a plain literal so collect_status.py has no import or
+# JSON-Schema dependency for the defensive enum filter.
+KNOWN_FLAGS = ("priority", "workinprogress")
 
 
 def repo_root() -> Path:
@@ -131,6 +143,32 @@ def parse_risk(plan_path: Path) -> int | None:
     return int(match.group(1)) if match else None
 
 
+def read_metadata(entry_dir: Path) -> dict:
+    """Reads a change folder's .metadata.json (dotfile owned by
+    pv-internal-workflow). Returns {} for a missing or malformed file --
+    never raises, since a broken metadata file must not break the status
+    report."""
+    path = entry_dir / ".metadata.json"
+    if not path.is_file():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def read_flags(entry_dir: Path) -> list[str]:
+    """The change's status flags, from .metadata.json. [] if absent or
+    malformed; values outside KNOWN_FLAGS are dropped, and the result is
+    normalised to KNOWN_FLAGS order."""
+    raw = read_metadata(entry_dir).get("flags")
+    if not isinstance(raw, list):
+        return []
+    present = {f for f in raw if isinstance(f, str)}
+    return [f for f in KNOWN_FLAGS if f in present]
+
+
 def parse_todo_description(description_path: Path) -> dict:
     """Extracts the full 'Idea' and 'Notes' text from a pv-todo description.md.
 
@@ -184,6 +222,15 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
 
     risk = parse_risk(plan_path) if has_plan else None
 
+    # todo/ entries never carry flags (pv-internal-workflow rejects it);
+    # skip the .metadata.json read for them entirely.
+    flags = [] if state_name == "todo" else read_flags(entry_dir)
+    flags_last_modified = (
+        None if state_name == "todo" else read_metadata(entry_dir).get("flagsLastModified")
+    )
+    if not isinstance(flags_last_modified, str):
+        flags_last_modified = None
+
     return {
         "code": entry_dir.name,
         "type": entry_type,
@@ -193,6 +240,8 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
         "hasPlan": has_plan,
         "subStatus": sub_status,
         "risk": risk,
+        "flags": flags,
+        "flagsLastModified": flags_last_modified,
     }
 
 

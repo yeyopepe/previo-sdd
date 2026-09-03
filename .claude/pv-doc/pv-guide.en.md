@@ -405,7 +405,7 @@ It's generated and updated automatically — both when installing/updating Previ
 The menu contains options for managing in-progress changes:
 
 1. **Overall project status** — the same summary as `/pv-status`.
-2. **Listing filtered by state** (`todo`, `inProgress`, `implemented`, and so on) — it asks you to pick one from the list before showing it.
+2. **Changes info** — opens a submenu with five options: search by id, search by content, list by state (`todo`, `inProgress`, `implemented`, and so on), **toggle a flag on a change**, and **list changes by flag**. See "Flags: work focus" below.
 3. **Ideas in `todo/`** — the same as `/pv-status todo`.
 4. **Close an implemented entry** (move it to `changes/closed/`) — it lets you choose a specific entry or close them all at once, asking for confirmation (`y`/`N`) before moving anything.
 5. **Configuration** — opens a submenu:
@@ -416,6 +416,23 @@ The menu contains options for managing in-progress changes:
 7. **Exit**.
 
 Each submenu has its own "Back" option to return to the main menu. No option spends tokens: everything is deterministic scripts, the same kind of operation you'd run yourself from the terminal. Useful for a quick look at the project or for closing changes without opening Claude Code.
+
+### Flags: work focus
+
+Each change can carry one or more **flags** — status labels orthogonal to the lifecycle (`inProgress`/`implemented`/`closed`), meant as a layer of *personal focus*:
+
+| Flag | Icon | Meaning |
+|---|---|---|
+| `priority` | ⭐ | Marked as a priority, so it moves up the queue |
+| `workinprogress` | ⚙️ | Actively being worked on right now |
+
+A change can have both, one, or none. **`todo/` ideas never carry flags** (a loose idea outside the flow has nothing "in progress" or "prioritized within the flow" to mark).
+
+- **Toggle**: `pv.py` → *Changes info* → *Toggle a flag on a change* → the change list comes out **grouped the same way as "Overall project status"** (ready to close / planned / pending analysis); changes in `closed/` don't appear (they're frozen in a release — nothing left to prioritise). Pick the change, pick the flag (`[x]`/`[ ]` depending on whether it's active), and it applies instantly (no confirmation prompt — a toggle is undone by the same action). The list is re-shown, updated, and you can keep toggling flags or pick another change without leaving. Also from Claude Code, though there's no dedicated command: the system is handled by `pv-internal-workflow`'s `set-metadata.py` script.
+- **List by flag**: `pv.py` → *Changes info* → *Show changes by flag*, or `/pv-status` shows the ⭐/⚙️ icons in all its change listings (a `Flags` column in chat; an icon prefix in the terminal).
+- **Where it's stored**: in a hidden `.metadata.json` file inside the change's folder, next to `description.md`/`plan.md`. It only appears once the change has at least one flag; a change with no flags has no such file. It travels with the folder when the change moves between states.
+
+`/pv-update` audits that file: valid JSON, flags within the known catalogue, and no `.metadata.json` showing up under `todo/`.
 
 ## Other tips
 

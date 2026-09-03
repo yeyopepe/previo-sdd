@@ -405,7 +405,7 @@ Se genera y actualiza automáticamente — tanto al instalar/actualizar Previo c
 El menú contiene opciones para gestionar los cambios en curso:
 
 1. **Estado general del proyecto** — el mismo resumen que `/pv-status`.
-2. **Listado filtrado por estado** (`todo`, `inProgress`, `implemented`...) — te pide elegir uno de la lista antes de mostrarlo.
+2. **Changes info** — abre un submenú con cinco opciones: buscar por id, buscar por contenido, listar por estado (`todo`, `inProgress`, `implemented`...), **marcar/desmarcar una flag en un cambio**, y **listar cambios por flag**. Ver "Flags: foco de trabajo" más abajo.
 3. **Ideas en `todo/`** — igual que `/pv-status todo`.
 4. **Cerrar una entrada implementada** (mover a `changes/closed/`) — te deja elegir una entrada concreta o cerrarlas todas de golpe, pidiéndote confirmación (`y`/`N`) antes de mover nada.
 5. **Configuración** — abre un submenú:
@@ -416,6 +416,23 @@ El menú contiene opciones para gestionar los cambios en curso:
 7. **Salir**.
 
 Cada submenú tiene su propia opción "Volver" para regresar al menú principal. Ninguna opción gasta tokens: todo son scripts deterministas, el mismo tipo de operación que ejecutarías tú mismo desde la terminal. Útil para un vistazo rápido del proyecto o para cerrar cambios sin abrir Claude Code.
+
+### Flags: foco de trabajo
+
+Cada cambio puede llevar una o varias **flags** — etiquetas de estado ortogonales al ciclo de vida (`inProgress`/`implemented`/`closed`), pensadas como una capa de *foco personal*:
+
+| Flag | Icono | Significado |
+|---|---|---|
+| `priority` | ⭐ | Marcado como prioritario, para que suba en la cola |
+| `workinprogress` | ⚙️ | Se está trabajando activamente en él ahora mismo |
+
+Un cambio puede tener las dos, una, o ninguna. Las **ideas de `todo/` nunca llevan flags** (una idea suelta fuera del flujo no tiene nada "en progreso" ni "priorizado dentro del flujo" que marcar).
+
+- **Marcar/desmarcar**: `pv.py` → *Changes info* → *Toggle a flag on a change* → la lista de cambios sale **agrupada igual que "Estado general del proyecto"** (listos para cerrar / planificados / pendientes de análisis); los cambios en `closed/` no aparecen (ya están congelados en una entrega, no hay nada que priorizar). Eliges el cambio, eliges la flag (`[x]`/`[ ]` según esté activa) y se aplica al instante (sin pedir confirmación — un toggle se deshace con la misma acción). La lista se vuelve a mostrar actualizada, y puedes seguir tocando flags o elegir otro cambio sin salir. También desde Claude Code, aunque no hay un comando dedicado: el sistema lo gestiona el script `set-metadata.py` de `pv-internal-workflow`.
+- **Listar por flag**: `pv.py` → *Changes info* → *Show changes by flag*, o `/pv-status` muestra los iconos ⭐/⚙️ en todos sus listados de cambios (columna `Flags` en el chat; prefijo de iconos en la terminal).
+- **Dónde se guardan**: en un fichero oculto `.metadata.json` dentro de la carpeta del cambio, junto a `description.md`/`plan.md`. Solo aparece cuando el cambio tiene al menos una flag; un cambio sin flags no tiene ese fichero. Viaja con la carpeta al mover el cambio entre estados.
+
+`/pv-update` audita ese fichero: JSON válido, flags dentro del catálogo conocido, y que no haya aparecido ninguno bajo `todo/`.
 
 ## Otros trucos
 
