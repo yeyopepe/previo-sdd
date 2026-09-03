@@ -410,7 +410,7 @@ The menu contains options for managing in-progress changes:
 4. **Close an implemented entry** (move it to `changes/closed/`) — it lets you choose a specific entry or close them all at once, asking for confirmation (`y`/`N`) before moving anything.
 5. **Configuration** — opens a submenu:
    - **Sync skill models according to `pv-context.json`** — applies the changes you made by hand in `skillModels` (see [Model/effort per skill](#3-modeleffort-per-skill-skillmodels) above), without you having to run the script by hand or invoke `pv-init` again.
-6. **Check versions** — opens a submenu:
+6. **Check Previo versions** — opens a submenu:
    - **List versions and read their changelog** — lists the folders in `{workFolder}/versions/{XXXX}/` and, after you pick one, shows its `changelog.md`.
    - **Check that `changes/closed/temp/` is empty** — this folder should always be empty or nonexistent; if it has something inside, it means a `pv-version` run failed partway through or is still running, and this option warns you and lists what got stuck there.
 7. **Exit**.

@@ -410,7 +410,7 @@ El menú contiene opciones para gestionar los cambios en curso:
 4. **Cerrar una entrada implementada** (mover a `changes/closed/`) — te deja elegir una entrada concreta o cerrarlas todas de golpe, pidiéndote confirmación (`y`/`N`) antes de mover nada.
 5. **Configuración** — abre un submenú:
    - **Sincronizar modelos de las skills según `pv-context.json`** — aplica los cambios que hayas hecho a mano en `skillModels` (ver [Modelo/esfuerzo de cada skill](#3-modeloesfuerzo-de-cada-skill-skillmodels) más arriba), sin que tengas que ejecutar el script a mano ni volver a invocar `pv-init`.
-6. **Comprobar versiones** — abre un submenú:
+6. **Comprobar versiones de Previo** — abre un submenú:
    - **Listar versiones y leer su changelog** — lista las carpetas de `{workFolder}/versions/{XXXX}/` y, tras elegir una, muestra su `changelog.md`.
    - **Comprobar que `changes/closed/temp/` está vacío** — esta carpeta debería estar siempre vacía o no existir; si tiene algo dentro, significa que una ejecución de `pv-version` falló a medias o sigue en marcha, y esta opción te avisa y lista lo que ha quedado atascado ahí.
 7. **Salir**.
