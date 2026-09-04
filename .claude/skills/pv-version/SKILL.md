@@ -5,7 +5,7 @@ argument-hint: <XXXX of the version to prepare>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b11
+  version: 0.9.6b12
   uses: [pv-internal-changelog]
 ---
 
