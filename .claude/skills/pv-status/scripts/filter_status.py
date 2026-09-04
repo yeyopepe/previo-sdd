@@ -18,10 +18,10 @@ For each entry in the state folder, five columns are computed:
     that section is empty or missing. history.md is never used as a
     fallback: it's prompt history for the exclusive use of pv-new/pv-fix,
     no other skill (including pv-status) should read it.
-  - risk: plan.md's '**Risk**' header field (written by pv-how once the
-    technical solution is planned), shown as '{value}/10'; None if there's
-    no plan.md yet or it doesn't have that field written (e.g. 'fast'
-    entries, which skip plan.md entirely, or entries still pending
+  - risk: the folder's .metadata.json 'risk' field (written by pv-how in
+    step 3.1, via set-metadata.py --set-risk, once the technical solution
+    is planned), shown as '{value}/10'; None if there's no .metadata.json
+    or no 'risk' in it (e.g. 'fast' entries, or entries still pending
     pv-how).
   - date: description.md's '**Creation date**' field if present (verbatim
     as written); otherwise description.md's modification time (mtime)
@@ -79,14 +79,13 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from collect_status import parse_todo_description, read_flags  # noqa: E402
+from collect_status import parse_todo_description, read_flags, read_risk  # noqa: E402
 import terminal_output as term  # noqa: E402
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "STATUS.filtered.template.md"
 
 DATE_RE = re.compile(r"\*\*Creation date\*\*\s*[:—-]\s*(.+)")
 TYPE_RE = re.compile(r"\*\*Type\*\*\s*[:—-]\s*([A-Za-z]+)", re.IGNORECASE)
-RISK_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
 # pv-todo doesn't use pv-new/pv-fix's "**Field**:" format -- description.md
 # uses a plain markdown heading ('## Creation date') instead of a bold
@@ -190,11 +189,6 @@ def extract_name(text: str) -> str | None:
     return match.group(1).splitlines()[0].strip().strip("` ")
 
 
-def extract_risk(text: str) -> str | None:
-    match = RISK_RE.search(text)
-    return match.group(1) if match else None
-
-
 def mtime_str(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
 
@@ -237,7 +231,8 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         date = mtime_str(entry_dir)
 
     plan_text = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else None
-    risk = extract_risk(plan_text) if plan_text else None
+    # risk lives in .metadata.json now (int 0-10 | None), not plan.md's header.
+    risk = read_risk(entry_dir)
     # plan.md uses the same "**Creation date**: [YYYY-MM-DD]" bold-inline
     # field as description.md (see PLAN.template.md) -- reuse extract_date()
     # rather than a second date pattern. None here (no plan.md, or a plan.md
@@ -399,7 +394,7 @@ def render_report(result: dict) -> str:
                 code=entry["code"],
                 type=TYPE_LABELS.get(entry["type"], entry["type"]),
                 description=entry["description"] or "—",
-                risk=f"{entry['risk']}/10" if entry["risk"] else "?",
+                risk=f"{entry['risk']}/10" if entry["risk"] is not None else "?",
                 date=entry["date"] or "—",
                 # Chat/markdown: always emoji. Own leading "Flags" column.
                 flags=term.flags_prefix(entry.get("flags"), color=True).strip() or "—",
@@ -469,7 +464,7 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
             lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
             continue
 
-        risk = f"{entry['risk']}/10" if entry["risk"] else "?"
+        risk = f"{entry['risk']}/10" if entry["risk"] is not None else "?"
         description = entry["description"] or "—"
         if len(description) > TERMINAL_DESCRIPTION_MAX_CHARS:
             description = description[:TERMINAL_DESCRIPTION_MAX_CHARS].rstrip() + "..."

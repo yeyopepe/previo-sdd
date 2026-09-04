@@ -23,11 +23,11 @@ For each entry it determines:
   - hasDescription / hasPlan: whether description.md / plan.md exist.
   - subStatus: only relevant for the 'inProgress' state (to distinguish
     'described' from 'ready_to_implement'); null for every other state.
-  - risk: integer 0-10 parsed from plan.md's '**Risk**' header field
-    (written by pv-how once the technical solution is planned). Null if
-    there's no plan.md yet, or plan.md exists but doesn't have that field
-    written (shouldn't normally happen once pv-how finishes, but handled
-    defensively).
+  - risk: integer 0-10 read from the folder's .metadata.json 'risk' field
+    (written by pv-how in step 3.1, via set-metadata.py --set-risk, once
+    the technical solution is planned). Null if there's no .metadata.json,
+    no 'risk' field, or it's outside 0-10 -- e.g. 'fast' entries and
+    changes still pending pv-how.
   - flags: list[str] of the change's status flags, read from the folder's
     .metadata.json (a dotfile owned by pv-internal-workflow; see its
     metadata.schema.json). [] when there's no .metadata.json, no 'flags'
@@ -52,7 +52,6 @@ from pathlib import Path
 
 TYPE_RE = re.compile(r"\*\*Type\*\*\s*[:—-]\s*([A-Za-z]+)", re.IGNORECASE)
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
-RISK_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
 # pv-todo doesn't use pv-new/pv-fix's "- **Field**:" format; it uses
 # markdown headings ('## Idea', '## Notes') without bold.
 # Both capture the whole block of each section, up to the next '##' heading
@@ -127,22 +126,6 @@ def parse_description(description_path: Path) -> dict:
     return result
 
 
-def parse_risk(plan_path: Path) -> int | None:
-    """Extracts the numeric median from plan.md's '**Risk**: {median}/10 — ...' field.
-
-    Returns None if plan.md doesn't exist or the field isn't written yet
-    (pv-how always writes it before considering plan.md finished, but older
-    or in-progress entries may not have it).
-    """
-    try:
-        text = plan_path.read_text(encoding="utf-8")
-    except OSError:
-        return None
-
-    match = RISK_RE.search(text)
-    return int(match.group(1)) if match else None
-
-
 def read_metadata(entry_dir: Path) -> dict:
     """Reads a change folder's .metadata.json (dotfile owned by
     pv-internal-workflow). Returns {} for a missing or malformed file --
@@ -167,6 +150,17 @@ def read_flags(entry_dir: Path) -> list[str]:
         return []
     present = {f for f in raw if isinstance(f, str)}
     return [f for f in KNOWN_FLAGS if f in present]
+
+
+def read_risk(entry_dir: Path) -> int | None:
+    """The change's risk median (0-10), from .metadata.json's 'risk' field.
+    None if absent, malformed, or outside 0-10. bool is a subclass of int
+    in Python, so exclude it explicitly. Also reused by filter_status.py
+    (imported), same as read_flags/read_metadata."""
+    raw = read_metadata(entry_dir).get("risk")
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return None
+    return raw if 0 <= raw <= 10 else None
 
 
 def parse_todo_description(description_path: Path) -> dict:
@@ -220,7 +214,7 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
         else:
             sub_status = "no_description"
 
-    risk = parse_risk(plan_path) if has_plan else None
+    risk = read_risk(entry_dir)
 
     # todo/ entries never carry flags (pv-internal-workflow rejects it);
     # skip the .metadata.json read for them entirely.

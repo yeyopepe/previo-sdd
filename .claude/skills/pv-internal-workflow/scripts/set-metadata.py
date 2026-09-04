@@ -4,9 +4,13 @@
 Single entry point for every write to
 {workFolder}/changes/{state}/{xxxx}/.metadata.json -- the per-change file
 of mutable state that sits next to description.md / plan.md / history.md.
-This plan only handles the 'flags' array (a set of extensible status
-labels: today 'priority' and 'workinprogress'); the risk plan (change 2)
-will add --set-risk here without changing anything about flags.
+Handles two independent pieces of state:
+  - the 'flags' array (a set of extensible status labels: today 'priority'
+    and 'workinprogress'), via --add-flag / --remove-flag / --toggle-flag.
+  - the 'risk' integer 0-10 (the median of pv-internal-tech-risks' 9
+    factors), via --set-risk. Written by pv-how in step 3.1, right after
+    plan.md is drafted. Absent = not yet assessed.
+A single invocation can touch flags, risk, or both; each is optional.
 
 State resolution: given --xxxx, the script looks for the change folder
 under every direct subfolder of {workFolder}/changes/ (inProgress,
@@ -23,13 +27,14 @@ and one from a Claude Code session in parallel can't clobber each other.
 No last-write-wins.
 
 The file is created on first write and NEVER deleted, even if 'flags'
-ends up []. Unknown fields (e.g. the 'risk' the change-2 plan adds) are
-preserved verbatim.
+ends up []. Unknown fields are preserved verbatim.
 
-Every effective mutation refreshes 'flagsLastModified' to today's date.
-An operation that changes nothing (e.g. --remove-flag on a flag that
-isn't set, or --add-flag on one already set) leaves the file untouched
-and reports it as a no-op.
+Every effective FLAG mutation refreshes 'flagsLastModified' to today's
+date. 'risk' has no timestamp of its own and never touches
+'flagsLastModified'. An operation that changes nothing (e.g. --remove-flag
+on a flag that isn't set, --add-flag on one already set, or --set-risk to
+the value already stored) leaves the file untouched and reports it as a
+no-op.
 
 Output: one plain-text confirmation line (no ANSI), like delete-todo.py.
 With --print, the resulting .metadata.json is also emitted as JSON on
@@ -43,6 +48,7 @@ Usage:
   python set-metadata.py --xxxx 00192 --toggle-flag priority
   python set-metadata.py --xxxx 00192 --add-flag workinprogress --print
   python set-metadata.py --xxxx 00192 --state inProgress --remove-flag priority
+  python set-metadata.py --xxxx 00192 --set-risk 5
 """
 
 import argparse
@@ -258,6 +264,15 @@ def main() -> None:
         help="Toggle a flag (repeatable): add it if absent, remove it if present.",
     )
     parser.add_argument(
+        "--set-risk",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Set the change's risk median (integer 0-10), from "
+        "pv-internal-tech-risks. Independent of flags; doesn't touch "
+        "flagsLastModified.",
+    )
+    parser.add_argument(
         "--work-folder",
         help="Path to workFolder, relative to the repo root. If not given, "
         "read from .claude/pv-context.json (default '/').",
@@ -274,16 +289,20 @@ def main() -> None:
         sys.stdout.reconfigure(encoding="utf-8")
 
     requested = args.add_flag + args.remove_flag + args.toggle_flag
-    if not requested:
+    if not requested and args.set_risk is None:
         parser.error(
             "nothing to do: pass at least one of --add-flag / --remove-flag / "
-            "--toggle-flag."
+            "--toggle-flag / --set-risk."
         )
     unknown = sorted({f for f in requested if f not in VALID_FLAGS})
     if unknown:
         parser.error(
             f"unknown flag(s): {', '.join(unknown)}. "
             f"Valid flags: {', '.join(VALID_FLAGS)}."
+        )
+    if args.set_risk is not None and not (0 <= args.set_risk <= 10):
+        parser.error(
+            f"--set-risk must be an integer 0-10, got {args.set_risk}."
         )
 
     root = repo_root()
@@ -306,32 +325,54 @@ def main() -> None:
             current, args.add_flag, args.remove_flag, args.toggle_flag
         )
 
-        changed = new_flags != current
-        if changed:
+        flags_changed = new_flags != current
+
+        old_risk = data.get("risk")
+        risk_changed = args.set_risk is not None and old_risk != args.set_risk
+
+        if flags_changed:
             data["flags"] = new_flags
             data["flagsLastModified"] = date.today().isoformat()
+        if risk_changed:
+            data["risk"] = args.set_risk
+
+        if flags_changed or risk_changed:
             write_metadata(entry_dir, data)
-        else:
+        elif not (entry_dir / METADATA_FILENAME).is_file():
             # Still materialise the file if it was absent and the caller
             # asked for a concrete (even if unchanged) state -- keeps
-            # "--add-flag X" idempotent from the caller's point of view.
-            if not (entry_dir / METADATA_FILENAME).is_file():
-                data.setdefault("flags", new_flags)
-                data.setdefault("flagsLastModified", date.today().isoformat())
-                write_metadata(entry_dir, data)
+            # "--add-flag X" / "--set-risk N" idempotent from the caller's
+            # point of view.
+            data.setdefault("flags", new_flags)
+            data.setdefault("flagsLastModified", date.today().isoformat())
+            if args.set_risk is not None:
+                data.setdefault("risk", args.set_risk)
+            write_metadata(entry_dir, data)
 
     rel = entry_dir.relative_to(root).as_posix()
-    if changed:
+    parts: list[str] = []
+    if flags_changed:
         added = sorted(set(new_flags) - set(current))
         removed = sorted(set(current) - set(new_flags))
-        parts = []
         if added:
             parts.append("added " + ", ".join(added))
         if removed:
             parts.append("removed " + ", ".join(removed))
-        print(f"{rel}: {'; '.join(parts)} -> flags now [{', '.join(new_flags)}]")
+        parts.append(f"flags now [{', '.join(new_flags)}]")
+    elif requested:
+        parts.append(f"flags unchanged [{', '.join(new_flags)}]")
+    if risk_changed:
+        if old_risk is None:
+            parts.append(f"risk set to {args.set_risk}")
+        else:
+            parts.append(f"risk {old_risk} -> {args.set_risk}")
+    elif args.set_risk is not None:
+        parts.append(f"risk unchanged ({args.set_risk})")
+
+    if flags_changed or risk_changed:
+        print(f"{rel}: {'; '.join(parts)}")
     else:
-        print(f"{rel}: no change -> flags remain [{', '.join(new_flags)}]")
+        print(f"{rel}: no change -> {'; '.join(parts)}")
 
     if args.print_json:
         print(json.dumps(read_metadata(entry_dir), ensure_ascii=False, indent=2))

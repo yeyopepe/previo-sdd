@@ -41,10 +41,10 @@ flowchart TD
     S3Doubt -->|Yes| S3Ask[ASK: resolve technical doubt]
     S3Ask --> S3Analysis
     S3Doubt -->|No| S3Analysis
-    S3Analysis[Invoke pv-internal-tech-analysis for context] --> S3WritePlan[Write plan.md sections a-e, without Risk field yet]
+    S3Analysis[Invoke pv-internal-tech-analysis for context] --> S3WritePlan[Write plan.md sections a-e]
     S3WritePlan --> S31Risk
 
-    S31Risk[Invoke pv-internal-tech-risks on plan.md/description.md] --> S31Write[Add Risk field to plan.md header]
+    S31Risk[Invoke pv-internal-tech-risks on plan.md/description.md] --> S31Write[Write risk median to .metadata.json via set-metadata.py --set-risk]
     S31Write --> S31Detail{User asks for the 9-factor detail, now or later?}
     S31Detail -->|Yes| S31AddSection[Show detail and add section f Risk analysis to plan.md]
     S31AddSection --> S32Ask

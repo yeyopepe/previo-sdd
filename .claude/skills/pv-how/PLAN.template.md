@@ -1,5 +1,4 @@
 - **[[[Creation date]]]**: [YYYY-MM-DD]
-- **[[[Risk]]]**: [median 0-10 returned by pv-internal-tech-risks] — [description of the "Meaning" matching that median per the table in section (f)]
 
 ## [[[(a) Functional notes]]]
 
@@ -32,7 +31,7 @@ Always include this section (unless the solution has no observable behavior to c
 
 ## (f) Risk analysis
 
-*Only if the user asked for the risk detail — by default this section is omitted and only the header's **Risk** field remains.* List of the 9 factors evaluated by `pv-internal-tech-risks` with their 0-10 value, and the final median.
+*Only if the user asked for the risk detail — by default this section is omitted (the median always lives in `.metadata.json`'s `risk` field; this section just spells out the 9 factors behind it).* List of the 9 factors evaluated by `pv-internal-tech-risks` with their 0-10 value, and the final median.
 
 | Factor | Value |
 |---|---|
@@ -47,6 +46,10 @@ Always include this section (unless the solution has no observable behavior to c
 | Sensitive data | [0-10] |
 
 **Median**: [0-10]
+
+### Risk median meaning
+
+Reference table for the `.metadata.json` `risk` value written by `pv-how` (step 3.1). `pv-how` uses it to describe the median in chat; `pv-status` can use it to derive the textual meaning from the stored integer.
 
 | Value | Meaning |
 |---|---|

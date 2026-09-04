@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "metadata.schema.json",
   "title": "pv-* change/fix .metadata.json",
-  "description": "Mutable per-change state stored at {workFolder}/changes/{state}/{xxxx}/.metadata.json, alongside description.md / plan.md / history.md. A dotfile: it only exists once a change has at least one flag (or, from the risk plan, a risk value). 'Missing file' / 'missing field' / '[]' all mean 'no flags'. todo/ folders NEVER carry this file. The 'flags' enum is the canonical catalogue of framework flags: adding a flag = one enum value here + its icon/label in pv-status's FLAG_* maps, nothing else.",
+  "description": "Mutable per-change state stored at {workFolder}/changes/{state}/{xxxx}/.metadata.json, alongside description.md / plan.md / history.md. A dotfile: it only exists once a change has at least one flag or a risk value. 'Missing file' / 'missing field' / '[]' all mean 'no flags'; a missing 'risk' means 'not yet assessed'. todo/ folders NEVER carry this file. The 'flags' enum is the canonical catalogue of framework flags: adding a flag = one enum value here + its icon/label in pv-status's FLAG_* maps, nothing else.",
   "type": "object",
   "additionalProperties": false,
   "properties": {
@@ -20,7 +20,7 @@
       "type": ["integer", "null"],
       "minimum": 0,
       "maximum": 10,
-      "description": "Declared here for the 'move risk to .metadata.json' plan (change 2). This plan (flags) never writes it; set-metadata.py preserves it untouched if another writer added it."
+      "description": "Median of pv-internal-tech-risks' 9 factors (0-10). Written by pv-how in step 3.1, right after plan.md is drafted, via set-metadata.py --set-risk. Absent = not yet assessed (fast entries, or a change still pending pv-how); no framework path ever writes null, but it's accepted for robustness when a file is hand-edited. Setting risk never touches flagsLastModified."
     }
   }
 }

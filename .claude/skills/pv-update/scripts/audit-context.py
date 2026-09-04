@@ -179,6 +179,66 @@ MARKER_RE = re.compile(r"\[\[\[(.+?)\]\]\]")
 KNOWN_FLAGS = ("priority", "workinprogress")
 METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk"}
 
+# plan.md's old '**Risk**: {median}/10 — ...' header field, moved to
+# .metadata.json's 'risk'. Same pattern pv-status's collect_status.py used
+# to parse before the move. Used only for the one-shot migration check.
+RISK_HEADER_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
+
+
+def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> None:
+    """One-shot migration detector: a plan.md still carrying the retired
+    '**Risk**' header field (median moved to .metadata.json's 'risk'). Fires
+    per plan.md under inProgress/, implemented/ and closed/ that has the
+    field AND whose sibling .metadata.json has no valid 'risk' yet. Fixed
+    idempotently by pv-update: parse the value into .metadata.json, then --
+    for inProgress/ and implemented/ only -- strip the dead header line
+    (closed/ plan.md is frozen history, left as-is)."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    if not changes_dir.is_dir():
+        return
+    for state in ("inProgress", "implemented", "closed"):
+        state_dir = changes_dir / state
+        if not state_dir.is_dir():
+            continue
+        for plan_path in sorted(state_dir.glob("*/plan.md")):
+            try:
+                text = plan_path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            match = RISK_HEADER_RE.search(text)
+            if not match:
+                continue
+            entry_dir = plan_path.parent
+            meta_path = entry_dir / ".metadata.json"
+            existing_risk = None
+            if meta_path.is_file():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    if isinstance(meta, dict):
+                        existing_risk = meta.get("risk")
+                except (OSError, json.JSONDecodeError):
+                    existing_risk = None
+            valid_existing = (
+                isinstance(existing_risk, int)
+                and not isinstance(existing_risk, bool)
+                and 0 <= existing_risk <= 10
+            )
+            if valid_existing:
+                continue
+            rel = plan_path.relative_to(root).as_posix()
+            strip = state in ("inProgress", "implemented")
+            add(problems, f"risk-in-plan-header:{rel}", "optional", rel,
+                f"'{rel}' still carries the retired '**Risk**: {match.group(1)}/10' "
+                f"header field. The risk median lives in .metadata.json's 'risk' "
+                f"now. Migrate: write risk {match.group(1)} into "
+                f"'{entry_dir.relative_to(root).as_posix()}/.metadata.json' "
+                f"(merge, preserving flags/flagsLastModified)"
+                + (", then delete the '- **Risk**: ...' line from the header."
+                   if strip else " -- leave the closed/ plan.md untouched (frozen history)."),
+                expected="risk in .metadata.json, not plan.md's header",
+                actual=f"**Risk**: {match.group(1)}/10 in plan.md header")
+
 
 def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
     """Audits every .metadata.json under {workFolder}/changes/ against the
@@ -507,6 +567,10 @@ def main() -> None:
     # --- .metadata.json contract under changes/** (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
         check_metadata_files(root, work_folder, problems)
+
+    # --- retired plan.md '**Risk**' header field -> .metadata.json (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_risk_in_plan_headers(root, work_folder, problems)
 
     # --- sourcecodeDir (required to exist if set, has a default) ---
     source_dir = framework.get("sourcecodeDir", "/src")
