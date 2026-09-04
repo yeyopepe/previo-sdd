@@ -59,12 +59,19 @@ Decisiones que esto fija (antes eran preguntas abiertas):
    otros dos hooks van después y sí tienen `{XXXX}` y las rutas de `versions/{XXXX}/`.
 4. **"Al final" va antes del resumen** (no después), para que el paso 7 pueda mencionar
    lo que produjo el hook ("subido a X", "release notes en `notes.pdf`").
-5. **Fichero ausente = comportamiento actual, sin cambios.** No se crea por defecto en
-   `scaffold-project.py` (igual que `how-to-compile-version.md` tampoco se crea hasta la
-   primera `pv-version`). Se documenta cómo crearlo, con plantilla.
-6. **`pv-version` no lo autogenera ni avisa.** 100% opt-in manual: si no existe,
-   `pv-version` no pregunta ni menciona nada. Silencio total (un aviso "una sola vez"
-   necesitaría estado persistente, y eso contradice "sin schema nuevo").
+5. **El fichero existe siempre — se crea con las 3 secciones vacías.** A diferencia de
+   `how-to-compile-version.md` (opt-in, no se crea hasta la primera `pv-version`), este
+   fichero lo crea `scaffold-project.py` desde el inicio y `pv-update` lo repara si
+   falta (ver §5 más abajo). Razón: si no existe, el paso 0.6 lo trata como "no hay
+   pipeline" y sigue en silencio — el usuario **nunca descubre** que existía la vía para
+   inyectar sus pasos. Un fichero con `## Before starting` / `## In the middle` /
+   `## At the end` y cero pasos **es** el estado "no hago nada custom", pero
+   autodocumentado y descubrible. Nunca se sobrescribe si ya tiene contenido.
+6. **`pv-version` no lo autogenera preguntando ni improvisa avisos.** No hay diálogo de
+   "¿quieres añadir pasos?": el fichero ya está ahí con su plantilla. El paso 0.6 lo
+   lee; secciones vacías se omiten sin ruido. (Un proyecto viejo que aún no pasó
+   `pv-update` puede no tenerlo: en ese caso, mismo comportamiento actual — se omite y
+   sigue.)
 7. **Qué es un "paso".** Prosa + bloque de comando(s) desde la raíz del repo, con nota
    de qué produce / cómo verificar. `pv-version` los ejecuta en orden; **si uno falla,
    para y lo explica** (mismo criterio que el paso 4 actual), sin inventar alternativa.
@@ -183,13 +190,43 @@ Diagrama cara al usuario: **un único nodo genérico** "Pasos personalizados del
 (stuff/custom-version-pipeline.md)" conectado como punto de extensión, sin detalle de
 las 3 secciones ni de parámetros. Basta con señalar que el flujo es extensible.
 
-### 5. `.claude/skills/pv-init/schema.json` — **no tocar**
+### 5. Crear el fichero siempre: `scaffold-project.py` + reparación en `pv-update`
+
+Para que el fichero sea **descubrible** (ver decisión 5), se crea desde el inicio y se
+repara si falta:
+
+**`.claude/skills/pv-init/scripts/scaffold-project.py`**
+- Nueva constante `CUSTOM_PIPELINE_SEED` con el contenido de la plantilla (cabecera
+  corta + las 3 secciones `##` con su párrafo de "cuándo corre / uso típico" y **cero**
+  `### Step`).
+- Nueva función `ensure_custom_pipeline_file(root, work_folder)` que escribe
+  `{workFolder}/stuff/custom-version-pipeline.md` **solo si no existe** (nunca
+  sobrescribe: si el usuario ya metió pasos, intacto). Devuelve status
+  `created` / `skipped`, añadido al JSON de salida bajo una clave nueva
+  (p.ej. `"customPipeline"`).
+- Llamarla desde `main()` después de `ensure_workfolder_subfolders` (la carpeta `stuff/`
+  ya existe a esa altura).
+- Actualizar el docstring: hoy dice *"Never invent content for changes/, versions/,
+  stuff/ — they're meant to start empty"*. Matizar: `stuff/` arranca con
+  `custom-version-pipeline.md` (secciones vacías), igual que `docs/*` arranca con su
+  `INDEX.md` / `001-overview.md`.
+
+**`.claude/skills/pv-update/`**
+- `scripts/audit-context.py`: nuevo check que, si `{workFolder}/stuff/` existe pero no
+  contiene `custom-version-pipeline.md`, emite un código tipo
+  `stuff-custom-pipeline-missing`.
+- `SKILL.md`: documentar el fix de ese código → re-ejecutar `scaffold-project.py`, que
+  ahora crea el fichero. Encaja en la familia de fixes ya existente
+  (`workfolder-subfolder-missing`, `*-missing-index`, `namespace-missing`): "recrear la
+  semilla, nunca inventar contenido".
+
+### 7. `.claude/skills/pv-init/schema.json` — **no tocar**
 
 El fichero vive en `stuff/` por convención (como `how-to-compile-version.md`, que
 tampoco está en el schema salvo la mención en prosa de `workFolder`). Si acaso, ampliar
 esa frase en prosa para nombrar el segundo fichero — opcional.
 
-### 6. Guardrail: `pv-version` no se edita desde un proyecto consumidor
+### 8. Guardrail: `pv-version` no se edita desde un proyecto consumidor
 
 Problema observado: al pedir algo relacionado con el flujo de versión en un proyecto
 consumidor, el modelo a veces propone **editar `pv-version/SKILL.md` o
@@ -224,8 +261,9 @@ mano las deja en estado inconsistente (ya lo comprueba el paso 0 comparando vers
 - Replicar el guardrail de §6 ("no editar la skill desde un proyecto consumidor") en las
   demás skills de orquestación (`pv-new`, `pv-fix`, `pv-do`, `pv-init`): el mismo fallo
   puede darse con cualquiera, pero es un cambio más ancho. Seguimiento aparte.
-- Campo nuevo en `pv-context.json` / `scaffold-project.py` creando el fichero por
-  defecto.
+- Campo nuevo en `pv-context.json` para el fichero (sigue viviendo en `stuff/` por
+  convención, fuera del schema). Nota: `scaffold-project.py` **sí** lo crea ahora
+  (con secciones vacías) — ver §5; lo que queda fuera es añadirle un campo declarativo.
 - Idioma dedicado para `stuff/*` (sigue `interaction.language`).
 - Un cuarto hook "después del resumen": "Al final" ya corre antes del resumen para que
   este pueda reportar lo que produjo; subir/publicar encaja ahí.

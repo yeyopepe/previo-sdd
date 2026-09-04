@@ -6,6 +6,7 @@ General diagram of the release-preparation process, with no script or parameter-
 flowchart LR
     Guard{"implemented/\nempty?"}
     Resolve["Resolve each entry\n(user confirms → closed)"]
+    Custom["Project's own custom steps\n(stuff/custom-version-pipeline.md)"]
     Folder["Create versions/XXXX\n(files/, docs/)"]
     Compile["Generate the deliverable\n(how-to-compile-version.md)"]
     Docs["Zip and copy current technical\nand functional documentation to docs/"]
@@ -13,16 +14,18 @@ flowchart LR
     Confirm["Confirm the release\nto the user"]
 
     Guard -- No --> Resolve --> Guard
-    Guard -- Yes --> Folder --> Compile --> Docs --> Changelog --> Confirm
+    Guard -- Yes --> Custom --> Folder --> Compile --> Docs --> Changelog --> Confirm
 
     classDef guardrail fill:#e03131,color:#fff
     classDef core fill:#2b6cb0,color:#fff
     classDef internal fill:#805ad5,color:#fff
+    classDef extension fill:#d9770e,color:#fff
     classDef done fill:#2f9e44,color:#fff
     class Guard,Resolve guardrail
     class Folder,Compile,Docs core
     class Changelog internal
+    class Custom extension
     class Confirm done
 ```
 
-Legend: red = `implemented/` guardrail (blocks until resolved); blue = `pv-version`'s mechanical steps; purple = delegated to `pv-internal-changelog`; green = end of the process.
+Legend: red = `implemented/` guardrail (blocks until resolved); orange = the project's own extension point (`stuff/custom-version-pipeline.md`, optional steps `pv-version` runs at three fixed points of the flow); blue = `pv-version`'s mechanical steps; purple = delegated to `pv-internal-changelog`; green = end of the process.

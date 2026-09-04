@@ -273,6 +273,30 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
                 actual=f"**Risk**: {raw_tail} in plan.md header")
 
 
+def check_custom_pipeline_seed(root: Path, work_folder: str, problems: list) -> None:
+    """pv-init's scaffold-project.py creates {workFolder}/stuff/custom-version-pipeline.md
+    from the start (the three fixed sections, zero steps) so pv-version's
+    customization mechanism is discoverable. If stuff/ exists but the file
+    doesn't, a project scaffolded before this was added never got it -- flag it
+    so pv-update recreates the seed (re-run scaffold-project.py). Only the
+    file's presence is checked, never its contents (a user who added steps and
+    then deleted a section is out of scope)."""
+    wf_path = resolve_under(root, work_folder)
+    stuff_dir = wf_path / "stuff"
+    if not stuff_dir.is_dir():
+        return  # the workfolder-subfolder-missing:stuff check already fired
+    if not (stuff_dir / "custom-version-pipeline.md").is_file():
+        add(problems, "stuff-custom-pipeline-missing", "optional",
+            "framework.workFolder (stuff/custom-version-pipeline.md)",
+            f"'{stuff_dir.relative_to(root).as_posix()}' exists but has no "
+            f"custom-version-pipeline.md -- pv-version's per-project pipeline "
+            f"customization file. A project scaffolded before this file was "
+            f"added won't have it; without it the user never discovers the "
+            f"mechanism exists. Recreate the seed (three sections, zero steps).",
+            expected=f"{stuff_dir.relative_to(root).as_posix()}/custom-version-pipeline.md",
+            actual="missing")
+
+
 def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
     """Audits every .metadata.json under {workFolder}/changes/ against the
     metadata.schema.json contract (see pv-internal-workflow): valid JSON
@@ -592,6 +616,10 @@ def main() -> None:
                     "changes/{inProgress,implemented}",
                     f"Change code '{code}' exists in both inProgress/ and implemented/ -- codes must never repeat.",
                     actual=code)
+
+    # --- stuff/custom-version-pipeline.md seed present (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_custom_pipeline_seed(root, work_folder, problems)
 
     # --- structural markers in changes/**-derived documents (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():

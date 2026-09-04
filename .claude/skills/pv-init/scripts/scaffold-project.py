@@ -9,7 +9,11 @@ from that file instead of receiving them as arguments.
 What it creates, only if nothing already exists at that path (never
 overwrites or touches existing content):
 - workFolder's fixed subfolders: changes/{inProgress,implemented,todo,closed},
-  versions/, stuff/ -- empty, with a .gitkeep so git tracks them.
+  versions/, stuff/ -- empty, with a .gitkeep so git tracks them. stuff/ also
+  gets custom-version-pipeline.md (the three fixed sections, zero steps) --
+  written only if absent, never overwritten, so a project that has already
+  added steps keeps them; same idea as docs/* starting with its INDEX.md /
+  001-overview.md rather than truly empty.
 - docs.tech.architectureDocDir / styleBibleDocDir / docs.functional.featuresDocPathDir
   (each if configured): all three follow the same pv-internal-doc-files
   convention -- one {NNN}-{slug}.md file per topic plus a generated
@@ -43,6 +47,7 @@ Prints ONLY a JSON summary on stdout, e.g.:
 
   {
     "workFolderSubfolders": {"created": ["previo-sdd/changes/inProgress", ...], "skipped": []},
+    "customPipeline": {"path": "previo-sdd/stuff/custom-version-pipeline.md", "status": "created"},
     "docs": {
       "architecture": {"path": "previo-sdd/docs/architecture", "status": "created"},
       "style": {"path": "previo-sdd/docs/style", "status": "skipped"},
@@ -52,7 +57,8 @@ Prints ONLY a JSON summary on stdout, e.g.:
   }
 
 'status' is one of "created", "skipped" (something already existed at that
-path -- folder or, for docs, even a legacy single file -- left untouched),
+path -- folder or, for docs, even a legacy single file -- left untouched;
+for customPipeline, the file already existed and was left untouched),
 "namespace_seeded" (architecture folder already existed but was missing
 00-namespace.md, now added) or "not_configured" (the field isn't set in
 pv-context.json).
@@ -160,6 +166,24 @@ A `path.decision.<slug>` node records its rationale as a `[motivación]` line \
 """
 
 
+# Seed for {workFolder}/stuff/custom-version-pipeline.md -- pv-version's own
+# file. Created here from the start (just the three normative section headings,
+# no steps) so the mechanism is discoverable; pv-version fills in the steps.
+# Never overwritten once it has content (see ensure_custom_pipeline_file).
+# LITERAL copy of .claude/skills/pv-version/custom-version-pipeline.template.md
+# -- keep the two byte-identical (same as NAMESPACE_SEED <-> 00-namespace.md).
+# The `## Before starting` / `## In the middle` / `## At the end` headings are
+# normative: pv-version (step 0.6) locates them literally.
+CUSTOM_PIPELINE_SEED = """# Custom steps for this project's release pipeline
+
+## Before starting
+
+## In the middle
+
+## At the end
+"""
+
+
 def repo_root() -> Path:
     # This script lives at {repo}/.claude/skills/pv-init/scripts/
     return Path(__file__).resolve().parents[4]
@@ -186,6 +210,21 @@ def ensure_workfolder_subfolders(root: Path, work_folder: str) -> dict:
         (folder / ".gitkeep").touch()
         created.append(rel)
     return {"created": created, "skipped": skipped}
+
+
+def ensure_custom_pipeline_file(root: Path, work_folder: str) -> dict:
+    """Writes {workFolder}/stuff/custom-version-pipeline.md from
+    CUSTOM_PIPELINE_SEED only if it doesn't exist -- never overwrites, so a
+    project that has already added steps keeps them. Assumes stuff/ already
+    exists (ensure_workfolder_subfolders ran first)."""
+    target = resolve_inside_repo(
+        root, f"{work_folder.rstrip('/')}/stuff/custom-version-pipeline.md"
+    )
+    rel = target.relative_to(root).as_posix()
+    if target.exists():
+        return {"path": rel, "status": "skipped"}
+    target.write_text(CUSTOM_PIPELINE_SEED, encoding="utf-8")
+    return {"path": rel, "status": "created"}
 
 
 def rebuild_index(root: Path, folder: Path) -> None:
@@ -259,6 +298,7 @@ def main() -> None:
 
     result = {
         "workFolderSubfolders": ensure_workfolder_subfolders(root, work_folder),
+        "customPipeline": ensure_custom_pipeline_file(root, work_folder),
         "docs": {
             "architecture": ensure_overview_doc(
                 root, work_folder, tech.get("architectureDocDir"), "Architecture",

@@ -13,7 +13,11 @@ flowchart TD
     S02Intent -->|No, wants a release| S05Guard
 
     S05Guard[List changes/implemented/ folders] --> S05Empty{implemented/ empty?}
-    S05Empty -->|Yes| S1Resolve
+    S05Empty -->|Yes| S06Load[Load stuff/custom-version-pipeline.md if it exists, parse steps per section]
+    S06Load --> S07Hook{Pipeline defines steps for Before starting?}
+    S07Hook -->|Yes| S07Run[Run the Before starting steps in order, workFolder only; a failure stops the release]
+    S07Run --> S1Resolve
+    S07Hook -->|No| S1Resolve
     S05Empty -->|No| S05Loop[Take next pending entry]
     S05Loop --> S05AskEntry[ASK: does this entry move to closed?]
     S05AskEntry --> S05EntryDec{User confirms?}
@@ -44,10 +48,17 @@ flowchart TD
     S4Stop --> End4([End: build failed])
     S4Ok -->|Yes| S4Copy[copy-build-artifacts.py to versions/XXXX/files/]
 
-    S4Copy --> S5Docs[Run copy-docs.py: zip the three docs.tech/docs.functional dirs]
-    S5Docs --> S6Changelog[Invoke pv-internal-changelog on versions/XXXX/]
-    S6Changelog --> S7Summary[INFO: summary of deliverable, docs, changelog]
-    S7Summary --> EndOK([End: release prepared])
+    S4Copy --> S41Hook{Pipeline defines steps for In the middle?}
+    S41Hook -->|Yes| S41Run[Run the In the middle steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
+    S41Run --> S5Docs
+    S41Hook -->|No| S5Docs
+
+    S5Docs[Run copy-docs.py: zip the three docs.tech/docs.functional dirs] --> S6Changelog[Invoke pv-internal-changelog on versions/XXXX/]
+    S6Changelog --> S61Hook{Pipeline defines steps for At the end?}
+    S61Hook -->|Yes| S61Run[Run the At the end steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
+    S61Run --> S7Summary
+    S61Hook -->|No| S7Summary
+    S7Summary[INFO: summary of deliverable, docs, changelog, plus any custom-pipeline sections that ran] --> EndOK([End: release prepared])
 ```
 
 Legend:

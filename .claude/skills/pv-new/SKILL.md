@@ -5,7 +5,7 @@ argument-hint: "[xxxx | todo <code>] <description of the change>"
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b13
+  version: 0.9.6b14
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-how]
 ---
 
