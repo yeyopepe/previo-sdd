@@ -230,11 +230,11 @@ Legend:
 
   Assets and scripts: none of its own.
 
-- **pv-internal-mockups-html** — Generates or edits static visual mockups in self-contained HTML/CSS/SVG (`design_*.html`) of a new or modified UI element, from the destination folder and the list of elements the caller needs to mock up. It doesn't decide which elements are needed or validate anything with the user, it only produces the files and returns their paths. It's the default mockup skill for `framework.skills.mockups`. Used by `pv-new` and `pv-fix`. *Uses:* no other skill.
+- **pv-internal-mockups-html** — Generates or edits static visual mockups in self-contained HTML/CSS/SVG (`design_*.html`) of a new or modified UI element, from the destination folder and the list of elements the caller needs to mock up, reading the project's style bible (`docs.tech.styleBibleDocDir`, read-only) first so the mockup replicates the documented visual identity rather than an invented one. It doesn't decide which elements are needed or validate anything with the user, it only produces the files and returns their paths. It's the default mockup skill for `framework.skills.mockups`. Used by `pv-new` and `pv-fix`. *Uses:* no other skill.
 
   Assets and scripts: none of its own.
 
-- **pv-internal-mockups-ascii** — The same function and the same input/output contract as `pv-internal-mockups-html`, but generating the mockups as plain-text ASCII art (`design_*.txt`) instead of HTML. It's only invoked when a project configures `framework.skills.mockups` to use this alternative instead of the default. *Uses:* no other skill.
+- **pv-internal-mockups-ascii** — The same function and the same input/output contract as `pv-internal-mockups-html` (including the same style-bible read as `pv-internal-mockups-html`, applied to layout and microcopy), but generating the mockups as plain-text ASCII art (`design_*.txt`) instead of HTML. It's only invoked when a project configures `framework.skills.mockups` to use this alternative instead of the default. *Uses:* no other skill.
 
   Assets and scripts: none of its own.
 

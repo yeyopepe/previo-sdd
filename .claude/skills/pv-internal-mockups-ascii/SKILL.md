@@ -31,6 +31,20 @@ This skill is specifically for **ASCII text** mockups. If a project configures a
 
 Every `design_*.txt` file is only a visual mockup, not a functional prototype:
 
+- **It must follow the app's documented layout and copy conventions when they exist.**
+  Before inventing structure or sample text, read the project's style bible (read-only —
+  this skill never writes it or decides its content):
+  1. Resolve it with
+     `python .claude/skills/pv-init/scripts/resolve-path.py --what styleBibleDocDir`. On a
+     non-zero exit (exit 2 → `/pv-init`, exit 3 or 4 → `/pv-update`), return that to the
+     caller and generate nothing.
+  2. Read its `INDEX.md` and the files covering layout & composition, interaction patterns
+     (selected / highlighted / inactive states) and content & microcopy. Reuse the real
+     microcopy and conventions found there (button labels, status text, CLI flag naming)
+     instead of inventing them.
+  3. If that folder holds only its `INDEX.md`, or doesn't cover what's needed, use a
+     neutral placeholder layout for the gap and note it:
+     `-- No documented style conventions for <element>; neutral placeholder. --`
 - It's pure plain text: only ASCII characters (lines, corners and fills with `-`, `|`, `+`, `_`, `/`, `\`, `*`, `#`, `.`, spaces, etc.). No HTML, Markdown, emoji, or Unicode box-drawing characters (`─│┌┐└┘`) — the goal is that it looks equally good in any monospace text editor.
 - Assumes a monospace font implicitly: align columns and borders with spaces, taking care that every line in a block has a consistent width so the boxes line up visually.
 - It must show only the look (element layout, hierarchy, grouping, relative sizes) that element would have — no need for real data, static sample content illustrating the result is enough (button text, labels, example values).

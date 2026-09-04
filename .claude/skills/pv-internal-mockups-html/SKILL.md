@@ -31,6 +31,23 @@ This skill is specifically for **HTML** mockups. If a project configures another
 
 Every `design_*.html` file is only a visual mockup, not a functional prototype:
 
+- **It must replicate the app's documented visual identity when one exists.** Before
+  inventing any styling, read the project's style bible (read-only — this skill never
+  writes it or decides its content):
+  1. Resolve it with
+     `python .claude/skills/pv-init/scripts/resolve-path.py --what styleBibleDocDir`. On a
+     non-zero exit (exit 2 → `/pv-init`, exit 3 or 4 → `/pv-update`), return that to the
+     caller and generate nothing.
+  2. Read its `INDEX.md` and the files covering the visual categories relevant to the
+     elements being mocked (design tokens/colors, typography, spacing scale, layout,
+     reusable components, iconography, microcopy). Reuse the concrete values found there
+     (hex codes, `rem`/`px` values, token names) — don't approximate them from memory.
+  3. If that folder holds only its `INDEX.md` (nothing documented yet) or doesn't cover
+     what this mockup needs, use sober neutral styling for the gap and note it at the top
+     of the file: `<!-- No documented visual identity for <element>; neutral placeholder styling. -->`
+
+  The mockup stays self-contained (existing rule): copy the styling inline replicating the
+  documented appearance — never link the real stylesheet or a CDN.
 - It must show only the look (layout, styles, iconography) that element would have — no need for real data or logic, static sample content illustrating the result is enough.
 - It must have no real functionality: no JavaScript reacting to events, no network calls, no state — at most, purely decorative JS if needed for the visual look.
 - It must be self-contained: only HTML, CSS and SVG, all embedded in the file itself (no external files, no CDNs, no imports).
