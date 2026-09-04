@@ -179,19 +179,29 @@ MARKER_RE = re.compile(r"\[\[\[(.+?)\]\]\]")
 KNOWN_FLAGS = ("priority", "workinprogress")
 METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk"}
 
-# plan.md's old '**Risk**: {median}/10 — ...' header field, moved to
-# .metadata.json's 'risk'. Same pattern pv-status's collect_status.py used
-# to parse before the move. Used only for the one-shot migration check.
-RISK_HEADER_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
+# plan.md's old '- **Risk**: ...' header field, moved to .metadata.json's
+# 'risk'. RISK_HEADER_RE matches the field regardless of what follows the
+# label -- a real median ('7/10 — High risk'), an unfilled template
+# placeholder ('[pending recalculation]', '[median 0-10 ...]'), or a
+# translated value -- so the one-shot migration fires for every pre-migration
+# plan.md, not only those with a numeric value. RISK_VALUE_RE is applied to
+# the captured tail afterwards to recover an integer 0-10 if there is one;
+# when there isn't, the migration writes risk: null.
+RISK_HEADER_RE = re.compile(r"^[ \t]*-?[ \t]*\*\*Risk\*\*[ \t]*[:—-][ \t]*(.+?)[ \t]*$",
+                            re.MULTILINE)
+RISK_VALUE_RE = re.compile(r"\b(\d{1,2})\s*/\s*10\b")
 
 
 def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> None:
     """One-shot migration detector: a plan.md still carrying the retired
     '**Risk**' header field (median moved to .metadata.json's 'risk'). Fires
     per plan.md under inProgress/, implemented/ and closed/ that has the
-    field AND whose sibling .metadata.json has no valid 'risk' yet. Fixed
-    idempotently by pv-update: parse the value into .metadata.json, then --
-    for inProgress/ and implemented/ only -- strip the dead header line
+    field AND whose sibling .metadata.json has no valid 'risk' yet -- whether
+    or not the field carries a numeric value (an unfilled '[pending
+    recalculation]' placeholder or a translated value still counts). Fixed
+    idempotently by pv-update: write the parsed integer 0-10 into
+    .metadata.json's 'risk' (or null when the field has no such value), then
+    -- for inProgress/ and implemented/ only -- strip the dead header line
     (closed/ plan.md is frozen history, left as-is)."""
     wf_path = resolve_under(root, work_folder)
     changes_dir = wf_path / "changes"
@@ -209,35 +219,58 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
             match = RISK_HEADER_RE.search(text)
             if not match:
                 continue
+            raw_tail = match.group(1).strip()
+            value_match = RISK_VALUE_RE.search(raw_tail)
+            parsed_value = None
+            if value_match:
+                n = int(value_match.group(1))
+                if 0 <= n <= 10:
+                    parsed_value = n
             entry_dir = plan_path.parent
             meta_path = entry_dir / ".metadata.json"
+            risk_key_present = False
             existing_risk = None
             if meta_path.is_file():
                 try:
                     meta = json.loads(meta_path.read_text(encoding="utf-8"))
                     if isinstance(meta, dict):
+                        risk_key_present = "risk" in meta
                         existing_risk = meta.get("risk")
                 except (OSError, json.JSONDecodeError):
+                    risk_key_present = False
                     existing_risk = None
-            valid_existing = (
-                isinstance(existing_risk, int)
-                and not isinstance(existing_risk, bool)
-                and 0 <= existing_risk <= 10
+            # Already migrated when .metadata.json carries a 'risk' key at all --
+            # an integer 0-10 (a real median was moved) OR an explicit null (the
+            # old field was an unfilled placeholder / non-numeric, nothing to
+            # move). Without the explicit-null branch, a closed/ plan.md whose
+            # dead '**Risk**: [pending recalculation]' line is left in place (by
+            # design) would re-fire this check on every run.
+            valid_existing = risk_key_present and (
+                existing_risk is None
+                or (
+                    isinstance(existing_risk, int)
+                    and not isinstance(existing_risk, bool)
+                    and 0 <= existing_risk <= 10
+                )
             )
             if valid_existing:
                 continue
             rel = plan_path.relative_to(root).as_posix()
             strip = state in ("inProgress", "implemented")
+            migrate_desc = (
+                f"write risk {parsed_value}" if parsed_value is not None
+                else "write risk null (the field has no numeric median to migrate)"
+            )
             add(problems, f"risk-in-plan-header:{rel}", "optional", rel,
-                f"'{rel}' still carries the retired '**Risk**: {match.group(1)}/10' "
+                f"'{rel}' still carries the retired '- **Risk**: {raw_tail}' "
                 f"header field. The risk median lives in .metadata.json's 'risk' "
-                f"now. Migrate: write risk {match.group(1)} into "
+                f"now. Migrate: {migrate_desc} into "
                 f"'{entry_dir.relative_to(root).as_posix()}/.metadata.json' "
                 f"(merge, preserving flags/flagsLastModified)"
                 + (", then delete the '- **Risk**: ...' line from the header."
                    if strip else " -- leave the closed/ plan.md untouched (frozen history)."),
                 expected="risk in .metadata.json, not plan.md's header",
-                actual=f"**Risk**: {match.group(1)}/10 in plan.md header")
+                actual=f"**Risk**: {raw_tail} in plan.md header")
 
 
 def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
