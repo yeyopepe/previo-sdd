@@ -24,7 +24,9 @@ Four options modify something:
   trivially reversible (the same call flips it back); after each toggle
   the flag list is re-shown with the change reflected, and the change
   picker stays open too, so several flags/changes can be toggled without
-  leaving. The flag icons shown in every change listing come from
+  leaving. The change picker lists each change by its id (code), grouped
+  by state, and asks you to type the id -- no parallel row numbers. The
+  flag icons shown in every change listing come from
   pv-status's read-flags.py (batch input: one subprocess per state);
   pv.py passes it --color/--no-color matching pv.py's own terminal,
   since it captures read-flags.py's stdout (a pipe, never a tty).
@@ -323,7 +325,6 @@ def show_selection(
     options: list[str],
     prompt: str,
     extra_option: tuple[str, str] | None = None,
-    options_shown: bool = False,
 ) -> int | str | None:
     """Selection screen: numbered list framed by DARK_GRAY '-' rules.
 
@@ -340,25 +341,18 @@ def show_selection(
     Selection" in the design doc's glossary), so the '-' rule sits right
     below that listing's own closing rule instead of floating apart from
     it.
-
-    `options_shown=True` means the caller has ALREADY printed the numbered
-    options itself (e.g. a grouped listing with headings show_selection()
-    can't render) -- so only the opening '-' rule and the prompt are
-    emitted, not the flat list again. The caller's numbering must match
-    `options`' order 1:1. Implies `title=""`.
     """
-    if not options_shown:
-        if title:
-            print()
-        hr("-")
-        if title:
-            print(title)
-        for i, option in enumerate(options, start=1):
-            print(wrap(f"{i}. {option}", indent="  "))
-        if extra_option:
-            key, label = extra_option
-            print(wrap(f"{key}. {label}", indent="  "))
-        hr("-")
+    if title:
+        print()
+    hr("-")
+    if title:
+        print(title)
+    for i, option in enumerate(options, start=1):
+        print(wrap(f"{i}. {option}", indent="  "))
+    if extra_option:
+        key, label = extra_option
+        print(wrap(f"{key}. {label}", indent="  "))
+    hr("-")
 
     choice = read_input(prompt).strip()
     if not choice:
@@ -875,7 +869,7 @@ def search_by_state() -> None:
     run_script(STATUS_SCRIPTS / "filter_status.py", states[index], "--terminal")
 
 
-# Groups for the "Pick a change:" listing in "Toggle a flag on a change",
+# Groups for the "Pick a change by id:" listing in "Toggle a flag on a change",
 # mirroring "General project status"'s IN PROGRESS breakdown (render_status.py:
 # render_terminal_page_in_progress()) so the two screens read the same way:
 #   🟢 implemented/*                       -> ready to review and close
@@ -955,6 +949,17 @@ def _flag_label_with_icon(value: str) -> str:
     return f"{table[value]} {FLAG_LABELS[value]}"
 
 
+def _ids_match(typed: str, code: str) -> bool:
+    """Same rule as filter_status.py's ids_match(): compare as integers
+    when both sides are all-digits (so 1, 01 and 00001 all hit 00001's
+    entry), else case-insensitive string compare (keeps todo/'s
+    alphanumeric ids working, though those never reach this listing)."""
+    typed = typed.strip()
+    if typed.isdigit() and code.isdigit():
+        return int(typed) == int(code)
+    return typed.lower() == code.lower()
+
+
 def _toggle_flags_on(code: str, state: str, name: str) -> None:
     """Inner loop of "Toggle a flag on a change": show this change's flags
     as [x]/[ ], toggle the picked one immediately (no confirm -- a flag is
@@ -987,16 +992,15 @@ def _toggle_flags_on(code: str, state: str, name: str) -> None:
 def _print_flaggable_listing(
     entries: list[tuple[str, str, str, str]], prefixes: list[str]
 ) -> None:
-    """The "Pick a change:" listing, grouped by FLAG_GROUPS the same way
+    """The "Pick a change by id:" listing, grouped by FLAG_GROUPS the same way
     "General project status"'s IN PROGRESS page groups entries (headings
-    🟢/🟠/🟡/📦). Numbering runs continuously across groups so it lines up
-    with the Inline Selection printed right below it (same order). Empty
-    groups are skipped. Framed by DARK_GRAY '-' rules like a listing, so
-    the Inline Selection's own rule sits flush under it."""
+    🟢/🟠/🟡/📦). Rows aren't numbered -- the user picks a change by
+    typing its id (code) directly, so the code itself is the handle.
+    Empty groups are skipped. Framed by DARK_GRAY '-' rules like a
+    listing, so the id prompt printed right below it sits flush under it."""
     print()
     hr("-")
-    print("Pick a change:")
-    n = 0
+    print("Pick a change by id:")
     for label, key in FLAG_GROUPS:
         group_items = [
             (i, e) for i, e in enumerate(entries) if e[3] == key
@@ -1008,8 +1012,7 @@ def _print_flaggable_listing(
         # the 🟢/🟠/🟡/📦 dividers stand out from the DARK_GRAY entry rows.
         print(wrap(colorize(label, GOLD)))
         for i, (code, _state, name, _group) in group_items:
-            n += 1
-            print(wrap(f"{n}. {prefixes[i]}{code} — {name}", indent="  "))
+            print(wrap(f"{prefixes[i]}{code} — {name}", indent="  "))
     hr("-")
 
 
@@ -1025,21 +1028,23 @@ def toggle_flag_on_change() -> None:
         prefixes = flag_prefixes_by_state([(code, state) for code, state, _, _ in entries])
 
         _print_flaggable_listing(entries, prefixes)
-        # The grouped listing above IS the numbered option list (its
-        # numbering matches `entries` order 1:1, since list_flaggable_
-        # changes() pre-sorts by group then code). options_shown=True so
-        # show_selection() doesn't reprint it flat -- it just reads the
-        # choice. show_selection() can't render the group headings itself,
-        # hence the separate listing.
-        labels = [f"{code} — {name}" for code, _state, name, _group in entries]
-        index = show_selection(
-            "", labels, "Choose a change (number, or empty to go back): ",
-            options_shown=True,
-        )
-        if index is None:
+        # The listing shows the code (id) of each change, grouped by state.
+        # The user types an id rather than a fresh row number -- the code is
+        # already a stable, meaningful handle, so a parallel numbering would
+        # only be one more thing to cross-reference. Read it as free text
+        # (via read_input(), so "exit" still quits); empty goes back.
+        typed = read_input("Enter a change id (empty to go back): ").strip()
+        if not typed:
             return
 
-        code, state, name, _group = entries[index]
+        match = next(
+            (e for e in entries if _ids_match(typed, e[0])), None
+        )
+        if match is None:
+            print(f"No change with id '{typed}' in the list above.")
+            continue
+
+        code, state, name, _group = match
         _toggle_flags_on(code, state, name)
         # Loop: re-show the change picker with updated prefixes.
 
