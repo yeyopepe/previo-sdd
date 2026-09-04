@@ -375,6 +375,35 @@ After editing `default` or `overrides`, you need to sync the framework for the c
 
 It's an automatic process that doesn't spend tokens; it can be repeated at any time after editing `skillModels` by hand, or you can ask `pv-init` to do it for you the next time you invoke it.
 
+### 4. Custom steps in the release pipeline
+
+The `pv-version` flow is not editable from a project — its `SKILL.md`, `workflow.version.md`, and everything else under `.claude/skills/pv-*/` are installed framework, kept in sync via `pv-update`, and editing them by hand leaves them inconsistent. To make the release flow do something specific to your project (publish the release somewhere, run a precondition check, produce extra artifacts), there are exactly two customization points, both files in `{workFolder}/stuff/`:
+
+- **`how-to-compile-version.md`** — how to build the deliverable (steps 3–4 of the flow), covered above.
+- **`custom-version-pipeline.md`** — your project's own steps, run at three fixed points of the flow.
+
+`pv-init` creates `custom-version-pipeline.md` from the start, with three fixed section headings and no steps:
+
+```markdown
+# Custom steps for this project's release pipeline
+
+## Before starting
+
+## In the middle
+
+## At the end
+```
+
+Each section holds `### Step N: {name}` blocks with the same shape as `how-to-compile-version.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). When `pv-version` runs, it reads this file and, at each of the three points, runs whatever steps that section defines, in order:
+
+- **Before starting** — before anything else (before the version code `{XXXX}` is even resolved). Only `{workFolder}` is substituted here; `{XXXX}` and the `versions/{XXXX}/` paths aren't available yet.
+- **In the middle** — once the deliverable's artifacts are in `{workFolder}/versions/{XXXX}/files/`, before the documentation is zipped. `{XXXX}` and the `versions/{XXXX}/` paths are available.
+- **At the end** — after the changelog is drafted, before the final summary. `{XXXX}` and the `versions/{XXXX}/` paths are available; the final summary reports which sections ran and what they produced.
+
+A section with no steps is skipped silently, so a project that never touches this file behaves exactly as before. If a custom step's command fails or its expected output doesn't appear, the release stops and the problem is explained — it isn't worked around. If you ask `pv-version` to *change* how the flow works and it fits one of the three sections, it edits this file rather than the skill.
+
+A project scaffolded before this file existed won't have it; running `/pv-update` once recreates the empty seed (it never overwrites an existing file, so steps you've already added are safe).
+
 ## The `pv.py` script: inspect and close changes without Claude Code
 
 

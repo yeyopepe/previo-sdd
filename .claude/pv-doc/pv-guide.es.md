@@ -375,6 +375,35 @@ Después de editar `default` u `overrides`, hay que sincronizar el framework par
 
 Es un proceso automático que no gasta tokens; puede repetirse en cualquier momento tras editar `skillModels` a mano, o pedirle a `pv-init` que lo haga por ti la próxima vez que lo invoques.
 
+### 4. Pasos personalizados en el pipeline de versión
+
+El flujo de `pv-version` no se puede editar desde un proyecto — su `SKILL.md`, `workflow.version.md` y todo lo demás bajo `.claude/skills/pv-*/` son framework instalado, se mantienen sincronizados mediante `pv-update`, y editarlos a mano los deja inconsistentes. Para que el flujo de versión haga algo específico de tu proyecto (publicar la entrega en algún sitio, ejecutar una comprobación previa, generar artefactos extra), hay exactamente dos puntos de personalización, ambos ficheros en `{workFolder}/stuff/`:
+
+- **`how-to-compile-version.md`** — cómo construir el entregable (pasos 3–4 del flujo), tratado más arriba.
+- **`custom-version-pipeline.md`** — los pasos propios de tu proyecto, ejecutados en tres puntos fijos del flujo.
+
+`pv-init` crea `custom-version-pipeline.md` desde el principio, con tres encabezados de sección fijos y ningún paso:
+
+```markdown
+# Custom steps for this project's release pipeline
+
+## Before starting
+
+## In the middle
+
+## At the end
+```
+
+Cada sección contiene bloques `### Step N: {name}` con la misma forma que `how-to-compile-version.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). Cuando `pv-version` se ejecuta, lee este fichero y, en cada uno de los tres puntos, ejecuta los pasos que esa sección defina, en orden:
+
+- **Before starting** — antes de nada (antes incluso de resolver el código de versión `{XXXX}`). Aquí solo se sustituye `{workFolder}`; `{XXXX}` y las rutas `versions/{XXXX}/` todavía no están disponibles.
+- **In the middle** — una vez que los artefactos del entregable están en `{workFolder}/versions/{XXXX}/files/`, antes de comprimir la documentación. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles.
+- **At the end** — después de redactar el changelog, antes del resumen final. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles; el resumen final indica qué secciones se ejecutaron y qué produjeron.
+
+Una sección sin pasos se omite en silencio, así que un proyecto que nunca toca este fichero se comporta exactamente igual que antes. Si el comando de un paso personalizado falla o no aparece su salida esperada, la versión se detiene y se explica el problema — no se busca un rodeo. Si le pides a `pv-version` que *cambie* cómo funciona el flujo y encaja en una de las tres secciones, edita este fichero en vez de la skill.
+
+Un proyecto generado antes de que este fichero existiera no lo tendrá; ejecutar `/pv-update` una vez recrea la semilla vacía (nunca sobrescribe un fichero existente, así que los pasos que ya hayas añadido están a salvo).
+
 ## El script `pv.py`: consultar y cerrar cambios sin Claude Code
 
 
