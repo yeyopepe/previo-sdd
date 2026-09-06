@@ -18,10 +18,10 @@ For each entry in the state folder, five columns are computed:
     that section is empty or missing. history.md is never used as a
     fallback: it's prompt history for the exclusive use of pv-new/pv-fix,
     no other skill (including pv-status) should read it.
-  - risk: plan.md's '**Risk**' header field (written by pv-how once the
-    technical solution is planned), shown as '{value}/10'; None if there's
-    no plan.md yet or it doesn't have that field written (e.g. 'fast'
-    entries, which skip plan.md entirely, or entries still pending
+  - risk: the folder's .metadata.json 'risk' field (written by pv-how in
+    step 3.1, via set-metadata.py --set-risk, once the technical solution
+    is planned), shown as '{value}/10'; None if there's no .metadata.json
+    or no 'risk' in it (e.g. 'fast' entries, or entries still pending
     pv-how).
   - date: description.md's '**Creation date**' field if present (verbatim
     as written); otherwise description.md's modification time (mtime)
@@ -79,14 +79,13 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from collect_status import parse_todo_description  # noqa: E402
+from collect_status import parse_todo_description, read_flags, read_risk, read_related_ids  # noqa: E402
 import terminal_output as term  # noqa: E402
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "STATUS.filtered.template.md"
 
 DATE_RE = re.compile(r"\*\*Creation date\*\*\s*[:—-]\s*(.+)")
 TYPE_RE = re.compile(r"\*\*Type\*\*\s*[:—-]\s*([A-Za-z]+)", re.IGNORECASE)
-RISK_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
 # pv-todo doesn't use pv-new/pv-fix's "**Field**:" format -- description.md
 # uses a plain markdown heading ('## Creation date') instead of a bold
@@ -190,11 +189,6 @@ def extract_name(text: str) -> str | None:
     return match.group(1).splitlines()[0].strip().strip("` ")
 
 
-def extract_risk(text: str) -> str | None:
-    match = RISK_RE.search(text)
-    return match.group(1) if match else None
-
-
 def mtime_str(path: Path) -> str:
     return datetime.fromtimestamp(path.stat().st_mtime).strftime("%Y-%m-%d")
 
@@ -237,13 +231,18 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         date = mtime_str(entry_dir)
 
     plan_text = plan_path.read_text(encoding="utf-8") if plan_path.is_file() else None
-    risk = extract_risk(plan_text) if plan_text else None
+    # risk lives in .metadata.json now (int 0-10 | None), not plan.md's header.
+    risk = read_risk(entry_dir)
     # plan.md uses the same "**Creation date**: [YYYY-MM-DD]" bold-inline
     # field as description.md (see PLAN.template.md) -- reuse extract_date()
     # rather than a second date pattern. None here (no plan.md, or a plan.md
     # missing the field) means "pending" to the caller, not "unknown yet".
     planned_date = extract_date(plan_text) if plan_text else None
     extra_files = None if state == "todo" else count_extra_files(entry_dir)
+    # Status flags from .metadata.json (dotfile owned by pv-internal-workflow).
+    # todo/ entries never carry flags or relatedIds.
+    flags = [] if state == "todo" else read_flags(entry_dir)
+    related_ids = [] if state == "todo" else read_related_ids(entry_dir)
 
     return {
         "code": entry_dir.name,
@@ -255,6 +254,8 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         "planned_date": planned_date,
         "risk": risk,
         "extra_files": extra_files,
+        "flags": flags,
+        "relatedIds": related_ids,
     }
 
 
@@ -347,6 +348,28 @@ def collect_search_by_content(changes_dir: Path, query: str) -> dict:
     }
 
 
+def collect_by_flag(changes_dir: Path, wanted: list[str]) -> dict:
+    # OR semantics (decision 6.12): an entry matches if its flags[] contains
+    # ANY of `wanted`. Crosses every state, like --search-id/--search-content.
+    # Cheap by construction: read_flags() only touches .metadata.json, never
+    # description.md/plan.md, for the filter; build_entry() runs only for the
+    # matches.
+    wanted_set = set(wanted)
+    entries = [
+        build_entry(state, entry_dir)
+        for state, entry_dir in iter_all_entries(changes_dir)
+        if state != "todo" and wanted_set & set(read_flags(entry_dir))
+    ]
+
+    return {
+        "changesDir": str(changes_dir),
+        "query": ", ".join(wanted),
+        "searchKind": "flag",
+        "total": len(entries),
+        "entries": entries,
+    }
+
+
 ROW_TEMPLATE_RE = re.compile(r"<!--\s*ROW_TEMPLATE:\s*(.+?)\s*-->\n?")
 EMPTY_TEMPLATE_RE = re.compile(r"<!--\s*EMPTY_TEMPLATE:\s*(.+?)\s*-->\n?")
 
@@ -373,8 +396,10 @@ def render_report(result: dict) -> str:
                 code=entry["code"],
                 type=TYPE_LABELS.get(entry["type"], entry["type"]),
                 description=entry["description"] or "—",
-                risk=f"{entry['risk']}/10" if entry["risk"] else "?",
+                risk=f"{entry['risk']}/10" if entry["risk"] is not None else "?",
                 date=entry["date"] or "—",
+                # Chat/markdown: always emoji. Own leading "Flags" column.
+                flags=term.flags_prefix(entry.get("flags"), color=True).strip() or "—",
             )
             for entry in result["entries"]
         )
@@ -391,12 +416,17 @@ def render_report(result: dict) -> str:
 TERMINAL_DESCRIPTION_MAX_CHARS = 500
 
 
-SEARCH_KIND_LABELS = {"id": "id", "content": "content"}
+SEARCH_KIND_LABELS = {"id": "id", "content": "content", "flag": "flag"}
 
 
 def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
     is_search = "query" in result
-    title = f"PROJECT STATUS — search: {result['query']}" if is_search else f"PROJECT STATUS — {result['state']}"
+    if not is_search:
+        title = f"PROJECT STATUS — {result['state']}"
+    elif result.get("searchKind") == "flag":
+        title = f"PROJECT STATUS — flag: {result['query']}"
+    else:
+        title = f"PROJECT STATUS — search: {result['query']}"
     empty_message = (
         f'(No entry matches "{result["query"]}" by {SEARCH_KIND_LABELS[result["searchKind"]]}.)'
         if is_search
@@ -414,35 +444,41 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
         lines.append(term.hr(width=width))
         return "\n".join(lines) + "\n"
 
+    color = term.supports_color()
     for entry in result["entries"]:
-        # Row format is the same regardless of mode (by state, by id, by
-        # content) -- the (state) prefix used to be search-only (redundant
-        # with the "Search by state" screen's own title), now it's always
-        # shown so every row looks identical no matter how you got there.
+        # Line 1 order (decision 6.14): flags · code · [type] · (status) · Risk.
+        # flags_prefix() leads (it's the feature); (status) moved from first
+        # position to after [type] so the code -- the field the user scans to
+        # identify the entry -- sits right after the only variable prefix.
         type_ = TYPE_LABELS.get(entry["type"], entry["type"])
         planned = entry["planned_date"] or "pending"
+        prefix = term.flags_prefix(entry.get("flags"), color=color)
         lines.append("")
 
         if entry["state"] == "todo":
-            # todo/ ideas never have plan.md, so Risk/planned would always
-            # be "?"/"pending" -- shown as noise, not information. 3 lines
-            # instead of 4: no separate description line either (line 3's
-            # ## Idea text already doubles as both name and content).
-            lines.append(f"({entry['state']})  {entry['code']}  [{type_}]")
+            # todo/ ideas never have plan.md (or flags), so Risk/planned
+            # would always be "?"/"pending" -- shown as noise, not
+            # information. 3 lines instead of 4: no separate description
+            # line either (line 3's ## Idea text already doubles as both
+            # name and content).
+            lines.append(f"{prefix}{entry['code']}  [{type_}]  ({entry['state']})")
             lines.append(f"created: {entry['date'] or '—'}")
             lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
             continue
 
-        risk = f"{entry['risk']}/10" if entry["risk"] else "?"
+        risk = f"{entry['risk']}/10" if entry["risk"] is not None else "?"
         description = entry["description"] or "—"
         if len(description) > TERMINAL_DESCRIPTION_MAX_CHARS:
             description = description[:TERMINAL_DESCRIPTION_MAX_CHARS].rstrip() + "..."
         extra_files = entry["extra_files"] or 0
-        lines.append(f"({entry['state']})  {entry['code']}  [{type_}]  Risk: {risk}")
+        lines.append(f"{prefix}{entry['code']}  [{type_}]  ({entry['state']})  Risk: {risk}")
         lines.append(f"created: {entry['date'] or '—'}, planned: {planned}")
         lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
         lines.append(term.wrap(description, indent="  ", width=width))
         lines.append(f"extra files: {extra_files}")
+        related_ids = entry.get("relatedIds") or []
+        if related_ids:
+            lines.append(f"Related: {', '.join(related_ids)}")
 
     lines.append("")
     lines.append(term.hr(width=width))
@@ -473,6 +509,15 @@ def main() -> None:
         "description.md. --terminal-only, for pv.py's 'Search by content' option.",
     )
     parser.add_argument(
+        "--flag",
+        action="append",
+        metavar="NAME",
+        help="Search every state (except todo/) for entries whose .metadata.json "
+        "flags[] contains NAME. Repeatable, OR semantics (union) -- an entry "
+        "matches if it has ANY of the given flags. Ignores <state>. Cheap: only "
+        "reads .metadata.json for the filter. For pv.py's 'Show changes by flag'.",
+    )
+    parser.add_argument(
         "--work-folder",
         help="Path to workFolder relative to the repo root. If not given, "
         "read from .claude/pv-context.json (default '/').",
@@ -495,14 +540,23 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.search_id and args.search_content:
-        parser.error("--search-id and --search-content are mutually exclusive")
+    exclusive = [bool(args.search_id), bool(args.search_content), bool(args.flag)]
+    if sum(exclusive) > 1:
+        parser.error("--search-id, --search-content and --flag are mutually exclusive")
 
-    if not args.search_id and not args.search_content and not args.state:
+    if not any(exclusive) and not args.state:
         parser.error(
-            "the following arguments are required: state (unless --search-id "
-            "or --search-content is given)"
+            "the following arguments are required: state (unless --search-id, "
+            "--search-content or --flag is given)"
         )
+
+    if args.flag:
+        unknown = sorted({f for f in args.flag if f not in term.FLAG_ORDER})
+        if unknown:
+            parser.error(
+                f"unknown flag(s): {', '.join(unknown)}. "
+                f"Valid flags: {', '.join(term.FLAG_ORDER)}."
+            )
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -517,6 +571,11 @@ def main() -> None:
 
     if args.search_content:
         result = collect_search_by_content(changes_dir, args.search_content)
+        print(render_terminal(result, width=args.width))
+        return
+
+    if args.flag:
+        result = collect_by_flag(changes_dir, args.flag)
         print(render_terminal(result, width=args.width))
         return
 

@@ -1,0 +1,32 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "metadata.schema.json",
+  "title": "pv-* change/fix .metadata.json",
+  "description": "Mutable per-change state stored at {workFolder}/changes/{state}/{xxxx}/.metadata.json, alongside description.md / plan.md / history.md. A dotfile: it only exists once a change has at least one flag or a risk value. 'Missing file' / 'missing field' / '[]' all mean 'no flags'; a missing 'risk' means 'not yet assessed'. todo/ folders NEVER carry this file. The 'flags' enum is the canonical catalogue of framework flags: adding a flag = one enum value here + its icon/label in pv-status's FLAG_* maps, nothing else.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "enum": ["priority", "workinprogress"] },
+      "description": "Active status flags for this change. Order is not significant; consumers normalise to a fixed paint order (priority before workinprogress)."
+    },
+    "flagsLastModified": {
+      "type": "string",
+      "description": "ISO date (YYYY-MM-DD) of the last effective change to 'flags' (any add or remove). A single global timestamp, not one per flag. set-metadata.py writes it; no consumer reads it yet (reserved for future 'sort by recent activity' / 'stale flag' features)."
+    },
+    "risk": {
+      "type": ["integer", "null"],
+      "minimum": 0,
+      "maximum": 10,
+      "description": "Median of pv-internal-tech-risks' 9 factors (0-10). Written by pv-how in step 3.1, right after plan.md is drafted, via set-metadata.py --set-risk. Absent = not yet assessed (fast entries, or a change still pending pv-how); no framework path ever writes null, but it's accepted for robustness when a file is hand-edited. Setting risk never touches flagsLastModified."
+    },
+    "relatedIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9]+$" },
+      "description": "Codes (xxxx) of other changes/fixes related to this one, if any. Written by pv-new/pv-fix via set-metadata.py --add-related/--remove-related, when the user points out a relation or the skill detects one during analysis. Each id must exist under changes/{state}/{xxxx} in some non-todo state, and can never be the entry's own code. Absent or [] = no related changes. Setting it never touches flagsLastModified."
+    }
+  }
+}

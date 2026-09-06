@@ -16,6 +16,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / "pv-internal-doc-files" / "scripts"))
 from _slug import github_anchor, slugify
 
 AREA_RE = re.compile(r"^##\s+(.+)$")
@@ -117,7 +118,12 @@ def main():
     print(f"{len(sections)} features migrated to {dest}/")
 
     subprocess.run(
-        [sys.executable, str(Path(__file__).parent / "rebuild-index.py"), "--folder", str(dest)],
+        [
+            sys.executable,
+            str(Path(__file__).parent.parent.parent / "pv-internal-doc-files" / "scripts" / "rebuild-index.py"),
+            "--folder",
+            str(dest),
+        ],
         check=True,
     )
 

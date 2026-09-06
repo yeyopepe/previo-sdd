@@ -23,11 +23,18 @@ For each entry it determines:
   - hasDescription / hasPlan: whether description.md / plan.md exist.
   - subStatus: only relevant for the 'inProgress' state (to distinguish
     'described' from 'ready_to_implement'); null for every other state.
-  - risk: integer 0-10 parsed from plan.md's '**Risk**' header field
-    (written by pv-how once the technical solution is planned). Null if
-    there's no plan.md yet, or plan.md exists but doesn't have that field
-    written (shouldn't normally happen once pv-how finishes, but handled
-    defensively).
+  - risk: integer 0-10 read from the folder's .metadata.json 'risk' field
+    (written by pv-how in step 3.1, via set-metadata.py --set-risk, once
+    the technical solution is planned). Null if there's no .metadata.json,
+    no 'risk' field, or it's outside 0-10 -- e.g. 'fast' entries and
+    changes still pending pv-how.
+  - flags: list[str] of the change's status flags, read from the folder's
+    .metadata.json (a dotfile owned by pv-internal-workflow; see its
+    metadata.schema.json). [] when there's no .metadata.json, no 'flags'
+    field, or it's malformed -- values outside the known enum are filtered
+    out defensively. 'todo' entries never carry flags.
+  - flagsLastModified: str | None -- .metadata.json's 'flagsLastModified'
+    if present (informational; no consumer reads it yet).
 
 Writes nothing: prints a single JSON on stdout with the full detail and the
 aggregated totals, for the skill to use when drafting the report.
@@ -45,7 +52,6 @@ from pathlib import Path
 
 TYPE_RE = re.compile(r"\*\*Type\*\*\s*[:—-]\s*([A-Za-z]+)", re.IGNORECASE)
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
-RISK_RE = re.compile(r"\*\*Risk\*\*\s*[:—-]\s*(\d{1,2})\s*/\s*10")
 # pv-todo doesn't use pv-new/pv-fix's "- **Field**:" format; it uses
 # markdown headings ('## Idea', '## Notes') without bold.
 # Both capture the whole block of each section, up to the next '##' heading
@@ -58,6 +64,11 @@ NOTES_FULL_RE = re.compile(
 )
 
 KNOWN_TYPES = {"change", "fix", "fast"}
+
+# Canonical flag catalogue lives in metadata.schema.json / terminal_output.py;
+# duplicated here as a plain literal so collect_status.py has no import or
+# JSON-Schema dependency for the defensive enum filter.
+KNOWN_FLAGS = ("priority", "workinprogress")
 
 
 def repo_root() -> Path:
@@ -115,20 +126,51 @@ def parse_description(description_path: Path) -> dict:
     return result
 
 
-def parse_risk(plan_path: Path) -> int | None:
-    """Extracts the numeric median from plan.md's '**Risk**: {median}/10 — ...' field.
-
-    Returns None if plan.md doesn't exist or the field isn't written yet
-    (pv-how always writes it before considering plan.md finished, but older
-    or in-progress entries may not have it).
-    """
+def read_metadata(entry_dir: Path) -> dict:
+    """Reads a change folder's .metadata.json (dotfile owned by
+    pv-internal-workflow). Returns {} for a missing or malformed file --
+    never raises, since a broken metadata file must not break the status
+    report."""
+    path = entry_dir / ".metadata.json"
+    if not path.is_file():
+        return {}
     try:
-        text = plan_path.read_text(encoding="utf-8")
-    except OSError:
-        return None
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
 
-    match = RISK_RE.search(text)
-    return int(match.group(1)) if match else None
+
+def read_flags(entry_dir: Path) -> list[str]:
+    """The change's status flags, from .metadata.json. [] if absent or
+    malformed; values outside KNOWN_FLAGS are dropped, and the result is
+    normalised to KNOWN_FLAGS order."""
+    raw = read_metadata(entry_dir).get("flags")
+    if not isinstance(raw, list):
+        return []
+    present = {f for f in raw if isinstance(f, str)}
+    return [f for f in KNOWN_FLAGS if f in present]
+
+
+def read_risk(entry_dir: Path) -> int | None:
+    """The change's risk median (0-10), from .metadata.json's 'risk' field.
+    None if absent, malformed, or outside 0-10. bool is a subclass of int
+    in Python, so exclude it explicitly. Also reused by filter_status.py
+    (imported), same as read_flags/read_metadata."""
+    raw = read_metadata(entry_dir).get("risk")
+    if isinstance(raw, bool) or not isinstance(raw, int):
+        return None
+    return raw if 0 <= raw <= 10 else None
+
+
+def read_related_ids(entry_dir: Path) -> list[str]:
+    """The change's related ids, from .metadata.json's 'relatedIds' field.
+    [] if absent or malformed; non-string entries are dropped. Also reused
+    by filter_status.py (imported), same as read_flags/read_risk."""
+    raw = read_metadata(entry_dir).get("relatedIds")
+    if not isinstance(raw, list):
+        return []
+    return [r for r in raw if isinstance(r, str)]
 
 
 def parse_todo_description(description_path: Path) -> dict:
@@ -182,7 +224,20 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
         else:
             sub_status = "no_description"
 
-    risk = parse_risk(plan_path) if has_plan else None
+    risk = read_risk(entry_dir)
+
+    # todo/ entries never carry flags (pv-internal-workflow rejects it);
+    # skip the .metadata.json read for them entirely.
+    flags = [] if state_name == "todo" else read_flags(entry_dir)
+    flags_last_modified = (
+        None if state_name == "todo" else read_metadata(entry_dir).get("flagsLastModified")
+    )
+    if not isinstance(flags_last_modified, str):
+        flags_last_modified = None
+
+    # todo/ entries never carry relatedIds either (same .metadata.json
+    # restriction as flags).
+    related_ids = [] if state_name == "todo" else read_related_ids(entry_dir)
 
     return {
         "code": entry_dir.name,
@@ -193,6 +248,9 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
         "hasPlan": has_plan,
         "subStatus": sub_status,
         "risk": risk,
+        "flags": flags,
+        "flagsLastModified": flags_last_modified,
+        "relatedIds": related_ids,
     }
 
 

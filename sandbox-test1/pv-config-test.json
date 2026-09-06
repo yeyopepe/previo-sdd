@@ -1,4 +1,9 @@
 {
   "repoRoot": "..",
-  "workFolder": "/sandbox-test1/previo-sdd"
+  "framework": {
+    "workFolder": "/sandbox-test1/previo-sdd",
+    "onescript": {
+      "width": 80
+    }
+  }
 }

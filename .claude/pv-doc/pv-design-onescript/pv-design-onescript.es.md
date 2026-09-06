@@ -31,8 +31,8 @@ Términos y sus sinónimos, usados de forma consistente en este documento y en l
 | **Confirmación** | pantalla y/N | `confirm()` — pregunta `y/N` sin cabecera propia, siempre anidada dentro de otra pantalla. |
 | **Info** | pantalla de info | `show_info()` — texto ya formateado, `framed=True` (con reglas DARK_GRAY) o `framed=False` (suelto). |
 | **Info delegada** | pantalla delegada, render externo | Cualquier pantalla que no usa los helpers de `pv.py`, sino que un script externo (`render_status.py`, `filter_status.py`, `list_todo.py`) imprime vía `run_script()`, coloreada con su propia paleta GOLD independiente (`terminal_output.py`). Ver "Diagrama de Componentes". |
-| **Ficha Detalle** | ficha de detalle, tarjeta de detalle | El bloque de 3 o 5 líneas (según sea idea o cambio/fix) que `filter_status.py`'s `render_terminal()` imprime por cada entrada — parte de la Info delegada, nunca generado por `pv.py`. Ver "La Ficha Detalle". |
-| **Los cuatro helpers** | screen helpers, helpers de pantalla | `print_header()`, `show_selection()`, `show_info()`, `confirm()` — las únicas cuatro formas válidas de construir una pantalla interactiva en `pv.py`. La Selección incrustada no es un quinto helper, es un patrón de uso del segundo. |
+| **Ficha Detalle** | ficha de detalle, tarjeta de detalle | El bloque de 3, 5 o 6 líneas (idea; cambio/fix; cambio/fix con ids relacionados) que `filter_status.py`'s `render_terminal()` imprime por cada entrada — parte de la Info delegada, nunca generado por `pv.py`. Ver "La Ficha Detalle". |
+| **Los cuatro helpers** | screen helpers, helpers de pantalla | `print_header()`, `show_selection()`, `show_info()`, `confirm()` — las únicas cuatro formas válidas de construir una pantalla interactiva en `pv.py`. La Selección incrustada no es un quinto helper, es un patrón de uso del segundo. El listado "Pick a change by id:" de `toggle_flag_on_change()` no es ninguno de los dos: es un listado que `pv.py` imprime él mismo (encabezados de grupo + una fila por cambio, **sin numerar**) seguido de un `read_input()` libre — el usuario teclea el **id (código)** del cambio, no un número de fila. |
 
 ---
 
@@ -52,46 +52,63 @@ Términos y sus sinónimos, usados de forma consistente en este documento y en l
 
 ## Jerarquía de Pantallas
 
+Cada nodo de abajo lleva una etiqueta `[Tipo de pantalla]` con los términos del Glosario (Menu, Selection, Inline Selection, Confirmation, Info, Delegated info, Detail Card). Cuando la misma pantalla exacta (no solo el mismo *tipo*, sino la misma instancia concreta — p. ej. el único formato de Detail Card, o una Inline Selection concreta) se puede alcanzar desde más de un sitio de este árbol, cada aparición posterior a la primera lleva `[misma <Tipo> que "<otro nodo>"]` en vez de volver a describirla — es una sola pantalla con varios puntos de entrada, no varias pantallas que se parecen.
+
 ```
 NIVEL 0 (Splash)
-└── RING_ART (ASCII + colores gradiente)
+└── RING_ART (ASCII + colores gradiente)                                        [Info, framed=False]
 
 NIVEL 1 (Main Navigation)
-└── "Previo v{version}: MAIN MENU" ({version} = metadata.version de pv-init/SKILL.md)
-    ├── [1] Acción: Show Status (→ externo, 3 páginas; el prompt de id final es de pv.py, no del script)
-    │   └── Input: id de búsqueda, en bucle hasta vacío (→ show_id_detail_card(), misma ficha y Selección incrustada que "Search by id")
+└── "Previo v{version}: MAIN MENU" ({version} = metadata.version de pv-init/SKILL.md)  [Menu]
+    ├── [1] Acción: Show Status (→ externo, 3 páginas; el prompt de id final es de pv.py, no del script)  [Delegated info, render_status.py]
+    │   └── Input: id de búsqueda, en bucle hasta vacío (→ show_id_detail_card())
+    │       └── [misma Ficha Detalle que "Search by id" más abajo, con la misma Selección incrustada "Delete this idea" cuando aplica — ambas llaman a show_id_detail_card(), hay una única instancia de esta pantalla en todo el árbol; para un cambio/fix normal solo se ve la ficha, y el mismo prompt de id vuelve a preguntar por otro]
     ├── [2] Submenu: Changes info
-    │   └── "Previo: Changes info"
-    │       ├── [1] Acción: Search by id
+    │   └── "Previo: Changes info"                                              [Menu]
+    │       ├── [1] Acción: Search by id (en bucle, igual que "Show Status" de arriba, hasta input vacío)
     │       │   └── Input: id de búsqueda (→ externo, todos los estados, sin leer description.md salvo del match)
-    │       │       └── Selección incrustada: sin título (solo si el id resuelve a una idea de todo/, "empty" = volver)
-    │       │           └── Acción: Delete this idea
-    │       │               └── Confirmation: "Confirm deleting..."
+    │       │       └── [Ficha Detalle, filter_status.py --search-id --terminal]  [Delegated info] — siempre se muestra, sea el id un cambio/fix o una idea; para un cambio/fix normal el bucle vuelve directamente al prompt de id (no al submenú)
+    │       │           └── SOLO SI el id resuelve a una idea de todo/ — rama que NO existe para un cambio/fix:
+    │       │               └── Selección incrustada: sin título ("empty" = volver al prompt de id, no al submenú)  [Inline Selection]
+    │       │                   └── Acción: Delete this idea
+    │       │                       └── Confirmation: "Confirm deleting..."    [Confirmation]
+    │       │           (input vacío en el propio prompt de id → vuelta a "Previo: Changes info")
     │       ├── [2] Acción: Search by content
-    │       │   └── Input: texto de búsqueda (→ externo, todos los estados, lee description.md de cada entrada)
+    │       │   └── Input: texto de búsqueda (→ externo, todos los estados, lee description.md de cada entrada)  [Delegated info, filter_status.py --search-content --terminal — una Ficha Detalle por match, mismo formato que "Search by id" de arriba]
     │       ├── [3] Acción: Search by state
-    │       │   └── Selection: "Available states:" (→ externo, un estado)
-    │       └── [4] Back
-    ├── [3] Acción: Show Ideas (→ externo)
-    │   └── Selección incrustada: sin título (una sola opción, "empty" = volver)
+    │       │   └── Selection: "Available states:"                             [Selection]
+    │       │       └── (→ externo, un estado)                                 [Delegated info, filter_status.py <estado> --terminal — otra vez el mismo formato de Ficha Detalle, una por entrada]
+    │       ├── [4] Acción: Toggle a flag on a change (muta estado, sin confirmación — toggle reversible)
+    │       │   └── Listado "Pick a change by id:" agrupado por estado (🟢/🟠/🟡, como "General project status"; sin closed/), sin numerar + `read_input()` (se teclea el id/código del cambio); bucle; iconos de flags vía read-flags.py  [listado propio de pv.py — no es uno de los cuatro helpers, ver Glosario]
+    │       │       └── Selección incrustada: sin título ([x]/[ ] por flag, bucle)  [Inline Selection — su propia instancia, distinta de la de "Search by id"]
+    │       │           └── (elegir una) → set-metadata.py --toggle-flag → se re-muestra la lista actualizada
+    │       ├── [5] Acción: Show changes by flag
+    │       │   └── Selección incrustada: sin título (Priority / Work in progress)  [Inline Selection — también su propia instancia]
+    │       │       └── (→ externo, filter_status.py --flag)                   [Delegated info — otra vez el mismo formato de Ficha Detalle, una por entrada que coincide]
+    │       └── [6] Back
+    ├── [3] Acción: Show Ideas (→ externo)                                     [Delegated info, list_todo.py]
+    │   └── Selección incrustada: sin título (una sola opción, "empty" = volver)  [Inline Selection — su propia instancia]
     │       └── Acción: Delete an idea by code
-    │           └── Selection: "Ideas in todo/:"
-    │               └── Info: ficha de la idea elegida
-    │                   └── Confirmation: "Confirm deleting..."
+    │           └── Selection: "Ideas in todo/:"                               [Selection]
+    │               └── Info: ficha de la idea elegida                         [Info, framed=True]
+    │                   └── Confirmation: "Confirm deleting..."                [Confirmation — mismo patrón de texto que "Delete this idea" de arriba, pero un punto de llamada distinto]
     ├── [4] Acción: Close Entry
-    │   └── Selection: "Implemented entries..."
-    │       └── Confirmation: "Confirm moving..."
+    │   └── Selection: "Implemented entries..."                                [Selection]
+    │       └── Confirmation: "Confirm moving..."                              [Confirmation]
     ├── [5] Submenu: Configuration
-    │   └── "Previo: settings"
-    │       ├── [1] Acción: Sync Models (→ externo)
-    │       └── [2] Back
+    │   └── "Previo: settings"                                                 [Menu]
+    │       ├── [1] Acción: Sync Models (→ externo)                          [Delegated info, sync-skill-models.py]
+    │       ├── [2] Acción: Change max character width
+    │       │   └── Info (ancho actual) + Input (nuevo ancho, vacío = mantener)  [Info, framed=False]
+    │       │       └── Confirmation: "Set max character width to N..." → escribe framework.onescript.width  [Confirmation]
+    │       └── [3] Back
     ├── [6] Submenu: Versions
-    │   └── "Previo: versions"
+    │   └── "Previo: versions"                                                 [Menu]
     │       ├── [1] Acción: Changelog
-    │       │   └── Selection: "Available versions:"
-    │       │       └── Info: Mostrar changelog.md
+    │       │   └── Selection: "Available versions:"                          [Selection]
+    │       │       └── Info: Mostrar changelog.md                             [Info, framed=True]
     │       ├── [2] Acción: Check Temp
-    │       │   └── Info: Estado del directorio temp
+    │       │   └── Info: Estado del directorio temp                          [Info, framed=True]
     │       └── [3] Back
     └── [7] Exit
 ```
@@ -114,12 +131,13 @@ graph TD
     H["⚙️ Config Submenu<br/>Previo: settings"]
     I["📦 Versions Submenu<br/>Previo: versions"]
 
-    O["🔍 Search by id<br/>Input + filter_status.py --search-id"]
+    O["🔍 Search by id (bucle)<br/>Input + filter_status.py --search-id<br/>mismo bucle que el prompt de id (U)"]
     Q["🔍 Search by content<br/>Input + filter_status.py --search-content"]
     P["🔍 Search by state<br/>Selección + filter_status.py"]
     S["🗑️ Delete idea<br/>Selección + Confirmación + delete-todo.py"]
     T["🗑️ Delete this idea<br/>Selección incrustada + Confirmación + delete-todo.py<br/>(solo si el id es una idea)"]
     J["🔄 Sync Models<br/>sync-skill-models.py"]
+    W["📏 Change width<br/>Info + Input + Confirmación<br/>escribe framework.onescript.width"]
     K["📜 Read Changelog<br/>Selección + Mostrar"]
     L["🧹 Check Temp<br/>Mostrar estado"]
 
@@ -130,20 +148,26 @@ graph TD
 
     C -->|1| D
     D --> U
-    U -->|"id encontrado"| T
+    U -->|"el id es una idea de todo/"| T
     T -->|Return| U
+    U -->|"el id es un cambio/fix, o cualquier otro input"| U
     U -->|"empty (go back)"| C
 
     C -->|2| N
     N -->|Back| C
     N -->|Search by id| O
-    O -->|"idea encontrada"| T
-    T -->|Return| N
-    O -->|Return| N
+    O -->|"el id es una idea de todo/"| T
+    T -->|Return| O
+    O -->|"el id es un cambio/fix, o cualquier otro input"| O
+    O -->|"empty (go back)"| N
     N -->|Search by content| Q
     Q -->|Return| N
     N -->|Search by state| P
     P -->|Return| N
+    N -->|Toggle a flag on a change| TF["🏷️ Toggle flag<br/>Listado por id (bucle) + Selección incrustada (bucle)<br/>+ set-metadata.py (sin confirmación)"]
+    TF -->|Return| N
+    N -->|Show changes by flag| SF["🏷️ Changes by flag<br/>Selección incrustada + filter_status.py --flag"]
+    SF -->|Return| N
 
     C -->|3| F
     F -->|"empty (go back)"| C
@@ -159,6 +183,8 @@ graph TD
     H -->|Back| C
     H -->|Sync| J
     J -->|Return| H
+    H -->|Change width| W
+    W -->|Return| H
 
     C -->|6| I
     I -->|Back| C
@@ -182,26 +208,29 @@ graph TD
 
 ## Diagrama de Componentes
 
-`pv.py` es un fichero único y autocontenido (no importa nada de ningún otro módulo Python) — pero **tres de sus opciones de menú** delegan su render completo en un script externo, ejecutado como subproceso vía `run_script()`. Esos scripts, a su vez, importan un módulo compartido de la skill `pv-status` que dibuja su propia cabecera con un color/estilo independiente del de `pv.py`. Este diagrama muestra esa frontera con claridad, porque es la fuente de confusión más probable al depurar un problema visual: **"¿el bug está en `pv.py` o en otro componente?"**
+`pv.py` es un fichero único y autocontenido (no importa nada de ningún otro módulo Python) — pero **varias de sus opciones de menú** delegan su render completo en un script externo, ejecutado como subproceso vía `run_script()`. Esos scripts, a su vez, importan un módulo compartido de la skill `pv-status` que dibuja su propia cabecera con un color/estilo independiente del de `pv.py`. Este diagrama muestra esa frontera con claridad, porque es la fuente de confusión más probable al depurar un problema visual: **"¿el bug está en `pv.py` o en otro componente?"**
 
 ```mermaid
 graph TD
     PV["pv.py<br/><i>(componente principal — fichero único autocontenido)</i><br/>Menu engine + 4 screen helpers<br/>(print_header, show_selection, show_info, confirm)"]
 
     subgraph SKILL_STATUS ["Skill pv-status (.claude/skills/pv-status/scripts/)"]
-        TO["terminal_output.py<br/><i>módulo importado, no ejecutable</i><br/>Su propio hr()/title()/heading()/colorize()<br/>GOLD = mismo valor que pv.py, código separado<br/>Sin WIDTH propio: cada función lo recibe por parámetro"]
+        TO["terminal_output.py<br/><i>módulo importado, no ejecutable</i><br/>Su propio hr()/title()/heading()/colorize()<br/>GOLD = mismo valor que pv.py, código separado<br/>Sin WIDTH propio: cada función lo recibe por parámetro<br/>+ catálogo canónico de flags (FLAG_ICONS/LABELS/ORDER,<br/>flags_prefix(), flag_label())"]
         RS["render_status.py"]
         FS["filter_status.py"]
         LT["list_todo.py"]
+        RF["read-flags.py<br/><i>prefijo de iconos de flags por código (batch)</i>"]
 
         RS -->|import terminal_output as term| TO
         FS -->|import terminal_output as term| TO
         LT -->|import terminal_output as term| TO
+        RF -->|import terminal_output as term| TO
     end
 
     subgraph SKILL_WORKFLOW ["Skill pv-internal-workflow (.claude/skills/pv-internal-workflow/scripts/)"]
         MC["move-change.py"]
         DT["delete-todo.py"]
+        SM["set-metadata.py<br/><i>único escritor de .metadata.json (flags + risk + relatedIds)</i>"]
     end
 
     subgraph SKILL_INIT ["Skill pv-init (.claude/skills/pv-init/scripts/)"]
@@ -216,8 +245,10 @@ graph TD
     PV -->|"subprocess --terminal --width 80"| RS
     PV -->|"subprocess --terminal --width 80"| FS
     PV -->|"subprocess --terminal --width 80"| LT
+    PV -->|"subprocess (captura stdout)"| RF
     PV -->|"subprocess"| MC
     PV -->|"subprocess"| DT
+    PV -->|"subprocess --toggle-flag"| SM
     PV -->|"subprocess"| SSM
 
     PV -->|"lee (modo normal)"| CTX
@@ -225,14 +256,17 @@ graph TD
     PV -->|lee/lista| CHANGES
     PV -->|lee/lista| VERSIONS
     MC -->|mueve carpeta dentro de| CHANGES
+    SM -->|escribe .metadata.json en| CHANGES
 
     style PV fill:#FFD700
     style TO fill:#FFD700
     style RS fill:#EEE8AA
     style FS fill:#EEE8AA
     style LT fill:#EEE8AA
+    style RF fill:#EEE8AA
     style MC fill:#DEB887
     style DT fill:#DEB887
+    style SM fill:#DEB887
     style SSM fill:#DEB887
     style TESTCFG fill:#DEB887
 ```
@@ -240,11 +274,14 @@ graph TD
 **Lectura clave del diagrama:**
 - `pv.py` **nunca importa** nada — toda comunicación con los otros componentes es vía `subprocess.run()` (función `run_script()`), es decir, procesos hijo independientes que imprimen a stdout. `pv.py` no puede interceptar ni reformatear esa salida.
 - `terminal_output.py` (resaltado en dorado, igual que `pv.py`) es el **único otro componente que dibuja pantallas con color** — y lo hace con su propio código, no reutilizando ninguna función de `pv.py`. Si una pantalla de "PROJECT STATUS" o "IDEAS IN TODO/" se ve mal, el fix está en `terminal_output.py`, nunca en `pv.py` (ver el comentario en el propio código de `pv.py`, justo antes de `show_general_status()`).
-- `move-change.py`, `delete-todo.py` y `sync-skill-models.py` son mutaciones simples de un solo paso, sin render propio — su salida es texto plano sin ANSI (`delete-todo.py` no imprime nada en éxito).
+- `move-change.py`, `delete-todo.py`, `set-metadata.py` y `sync-skill-models.py` son mutaciones simples de un solo paso, sin render propio — su salida es texto plano sin ANSI (`delete-todo.py` no imprime nada en éxito; `set-metadata.py` imprime una línea de confirmación).
+- **`set-metadata.py` es el único escritor de `.metadata.json`** — el fichero de estado mutable por cambio donde viven las *flags* (`priority` ⭐, `workinprogress` ⚙️) y el campo `risk` (entero 0-10, la mediana de `pv-internal-tech-risks`, que escribe `pv-how` en su paso 3.1 con `--set-risk N`). `pv.py` **nunca** lo escribe directamente y **solo lo usa para flags**: "Toggle a flag on a change" delega el toggle en `set-metadata.py --xxxx <code> --state <state> --toggle-flag <value>` (nunca `--set-risk` — el riesgo lo escribe `pv-how`, no `pv.py`). **Sin `confirm()`** — a diferencia de "Close entry" (irreversible), un toggle de flag se deshace con la misma acción, así que se aplica al instante; el propio `set-metadata.py` imprime una línea de confirmación de lo que hizo, y tras cada toggle se re-muestra la lista de flags con el cambio reflejado. Contrasta con `framework.onescript.width` (escalar único en `pv-context.json` que `pv.py` sí escribe): `.metadata.json` tiene un script dueño en `pv-internal-workflow`.
+- **`read-flags.py` es de solo lectura** y `pv.py` **captura su stdout** (no lo deja imprimir en pantalla, a diferencia de los otros scripts de `pv-status`): devuelve una línea por código con el prefijo de iconos de flags ya renderizado (`⭐ ⚙️  `, o `[P] [W]  ` sin color), o línea vacía si ese cambio no tiene flags. Acepta **varios `--xxxx` en una sola invocación** (batch de entrada — 1 subproceso, no N; el arranque de Python en Windows es lento). Como `pv.py` captura su stdout (una tubería, nunca un tty), el `isatty()` propio de `read-flags.py` siempre diría "sin color" — así que **`pv.py` le pasa `--color` / `--no-color`** según el color del propio terminal de `pv.py`. `list_implemented_entries()` lo llama una vez con `--state implemented`; "Toggle a flag" agrupa la lista por estado (`flag_prefixes_by_state()`) porque un mismo código puede existir en dos estados (un `fast` en `implemented` y su copia en `closed`) y un código ambiguo sin `--state` resuelve a prefijo vacío. El mapa flag→icono/label vive **solo** en `terminal_output.py` (skill `pv-status`); `pv.py` no lo reutiliza por import (no importa nada) — de ahí el script de lectura. `pv.py` sí mantiene una copia **manual** del mapa enum→label humano (`FLAG_LABELS`) para sus propios `show_selection()` de flags.
+- **Iconos de flags en las listas de cambios.** `render_status.py` y `filter_status.py` anteponen `flags_prefix(entry["flags"])` a cada fila/ficha, y su línea 1 de ficha sigue el orden `flags · code · [type] · (status) · Risk` (antes `(status) code [type] Risk`). En la tabla markdown de `/pv-status` (chat) las flags van como columna `Flags` inicial. En `pv.py`, los listados **propios** que muestran iconos son `list_implemented_entries()` ("Close an implemented entry") y el listado "Pick a change by id:" de `toggle_flag_on_change()` — todos vía `read-flags.py`. Ese listado "Pick a change by id:" además **replica la agrupación de "General project status"** (`render_status.py`'s `render_terminal_page_in_progress()`): 🟢 `implemented/*`, 🟠 `inProgress/*` con `plan.md`, 🟡 `inProgress/*` solo con `description.md`. `closed/*` queda **fuera del listado** — un cambio cerrado está congelado (ya incorporado a una entrega), así que no hay nada que re-priorizar ni marcar como en progreso; `list_flaggable_changes()` salta `closed/` (y `todo/`). `list_flaggable_changes()` devuelve las entradas ya ordenadas por grupo y luego por código; `_print_flaggable_listing()` imprime los encabezados de grupo (en GOLD) y una fila por cambio **sin numerar** (`{prefijo de iconos}{código} — {nombre}`), y `toggle_flag_on_change()` lee la elección con `read_input()`: el usuario teclea el **id (código)**, resuelto contra la lista con `_ids_match()` (padding de ceros ignorado). "Ideas in todo/" no muestra iconos: los `todo` nunca llevan flags.
 - Ninguno de estos componentes se importa entre sí salvo `terminal_output.py` por los tres scripts de `pv-status` — son todos procesos independientes conectados solo por convención de argumentos (`--terminal`, `--xxxx`, etc.) y por las rutas del framework (`changes/`, `versions/`). En particular, `render_status.py` **ya no invoca** `filter_status.py` — solo imprime sus tres páginas y termina.
 - **El prompt de id tras la página 3 de "Project status" es de `pv.py`, no de `render_status.py`.** Antes, `render_status.py` pedía el id y lo reenviaba como subproceso a `filter_status.py --search-id`, sin que `pv.py` interviniera. Ahora `render_status.py` solo imprime las tres páginas; el bucle de id vive en `show_general_status()` (`pv.py`), que llama a la misma `show_id_detail_card()` que usa `search_by_id()` — así ambas rutas producen exactamente la misma pantalla, incluida la Selección incrustada "Delete this idea" cuando aplica. El cambio de dueño existió precisamente porque un script `pv-status` corriendo como subproceso hijo no tiene acceso a los helpers de `pv.py` ni puede invocar `delete-todo.py` con el contexto de menú correcto.
 - **`terminal_output.py` no tiene un `WIDTH` propio fijo** — cada función (`hr()`, `title()`, `heading()`, `wrap()`) recibe `width` como parámetro explícito (`DEFAULT_WIDTH = 70` si el caller no opina). Quien decide el ancho es quien invoca, no el módulo: `pv.py` pasa `--width 80` (su propio `WIDTH`) a los tres scripts de `pv-status` vía `run_script()`, así las pantallas delegadas (status general, búsquedas, ficha detalle, listado de ideas) miden exactamente lo mismo que sus propias pantallas de menú/selección. La skill `pv-status` (invocada desde chat, sin `--terminal`) nunca pasa `--width` — no le aplica, solo genera markdown.
-- `pv-config-test.json` (línea discontinua, solo activa con el flag `--testconfig` — ver "Configuración de Línea de Comandos") sustituye por completo a `pv-context.json` como fuente de `workFolder`, y además aporta `repoRoot` para que `pv.py` siga localizando los scripts reales de `.claude/skills/...` aunque se ejecute como `test/pv-test.py`, fuera de la raíz del repo. `pv.py` nunca lee ambos ficheros en la misma ejecución — es uno u otro, nunca una mezcla.
+- `pv-config-test.json` (línea discontinua, solo activa con el flag `--testconfig` — ver "Configuración de Línea de Comandos") sustituye por completo a `pv-context.json`: su árbol de nodos **imita el de `pv-context.json`** para que el mismo código encuentre cada valor en la misma ruta — `workFolder` en `framework.workFolder`, los ajustes propios de `pv.py` en `framework.onescript.*` — más un `repoRoot` a nivel raíz (sin equivalente en `pv-context.json`: solo el harness lo necesita, para que `pv.py` localice los scripts reales de `.claude/skills/...` al ejecutarse como copia — `sandbox-test1/pv-test.py`— fuera de la raíz del repo). `pv.py` nunca lee ambos ficheros en la misma ejecución — es uno u otro, nunca una mezcla.
 
 ---
 
@@ -254,13 +291,13 @@ El fichero está dividido en bloques delimitados por comentarios `# ====...====`
 
 | Bloque | Contiene | Tocar cuando... |
 |---|---|---|
-| `Rendering primitives` | `WIDTH`, colores (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Casi nunca — cambia el sistema de color/ancho global |
+| `Rendering primitives` | `WIDTH` (default), `MIN_WIDTH`, colores (`GOLD`/`DARK_GRAY`), `colorize()`, `hr()`, `wrap()`, `RING_ART` | Casi nunca — cambia el sistema de color/ancho global |
 | `Screen-type helpers` | `print_header()`, `show_selection()`, `show_info()`, `confirm()` | Casi nunca — cambia el comportamiento de un tipo de pantalla en **todas** las opciones a la vez |
-| `Framework paths and shared lookups` | `work_root()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` | Al añadir una nueva ruta o subcarpeta del framework que varias opciones necesiten |
+| `Framework paths and shared lookups` | `work_root()`, `load_onescript_width()`, `save_onescript_width()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` — más los globales de módulo `CONTEXT_PATH` y `ACTIVE_CONFIG_PATH` (el fichero de config del que `pv.py` lee sus ajustes / al que los escribe: `CONTEXT_PATH` normalmente, el fichero de `--testconfig` en su defecto) | Al añadir una nueva ruta o subcarpeta del framework que varias opciones necesiten |
 | `Actions -- root menu` | Funciones de acción del menú raíz | Al añadir una opción nueva a "Previo: MAIN MENU" |
-| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" | Al añadir una opción nueva a Configuration |
+| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" (`sync_skill_models()`, `change_width()`) | Al añadir una opción nueva a Configuration |
 | `Actions -- Versions submenu` | Funciones de acción de "Previo: versions" | Al añadir una opción nueva a Versions |
-| `Actions -- Changes info submenu` | Funciones de acción de "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`) | Al añadir una opción nueva a Changes info |
+| `Actions -- Changes info submenu` | Funciones de acción de "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`, `toggle_flag_on_change()`, `_toggle_flags_on()`, `_print_flaggable_listing()`, `show_changes_by_flag()`, `list_flaggable_changes()` (+ `_flaggable_group_of()`, `FLAG_GROUPS`), `read_change_flags()`, `flag_prefixes_for()`, `flag_prefixes_by_state()`, `_flag_label_with_icon()`, `_ids_match()`) | Al añadir una opción nueva a Changes info |
 | `Actions -- Ideas (root menu)` | Funciones de la opción raíz "Ideas in todo/" (`show_todo_ideas()`, `list_todo_entries()`, `find_todo_code()`, `delete_idea_by_code()`, `delete_idea()`, `show_ideas_menu()`) — también `show_id_detail_card()`, la ficha detalle de un id (con Selección incrustada si es idea), reutilizada por `search_by_id()` (Changes info) y `show_general_status()` (root menu) | Al añadir una opción nueva relacionada con ideas |
 | `Root menu definition` | La lista `MENU` | Al registrar cualquier opción nueva del menú raíz (último paso siempre) |
 | `Menu engine` | `run_menu()`, `main()` | Casi nunca — cambia el bucle de navegación para **todos** los menús a la vez |
@@ -287,6 +324,8 @@ Lista numerada enmarcada por `hr("-")` en DARK_GRAY. Recibe una lista de strings
 `extra_option` es una tupla `(key, label)` para una opción no numérica mezclada en la lista, como `("a", "Close all")` en `close_entry()`.
 
 **`title=""` — Selección incrustada.** Omite la línea de título y también la línea en blanco que normalmente precede a `hr("-")`, dejando solo `hr("-")` + lista + `hr("-")` pegado justo debajo de lo anterior. Úsalo cuando la Selección va **inmediatamente después** de un listado que ya la contextualiza (propio o de Info delegada) — así la regla gris queda pegada a ese listado en vez de flotar separada con su propio título. Ver "Selección incrustada" en el Glosario y `show_ideas_menu()`/`search_by_id()` en "Guía para Extender pv.py" para ejemplos reales.
+
+**Listados propios sin `show_selection()`.** Cuando el listado va agrupado con encabezados que `show_selection()` no sabe renderizar **y** además la elección no es por número de fila, `pv.py` imprime el listado él mismo y lee la elección con `read_input()`, sin pasar por `show_selection()` en absoluto. Único caso: `toggle_flag_on_change()`, cuyo listado "Pick a change by id:" va agrupado por estado como el de "General project status" (🟢/🟠/🟡), **sin numerar**, y el usuario teclea el **id (código)** del cambio — el código ya es un identificador estable y con significado, así que una numeración paralela solo sería una cosa más que cruzar. El match id→entrada usa `_ids_match()` (misma regla que `filter_status.py`'s `ids_match()`: comparar como enteros si ambos lados son solo dígitos, si no comparación de string case-insensitive), así que `193`, `0193` y `00193` encuentran la misma entrada. Ver "Guía para Extender pv.py".
 
 ### `show_info(lines, framed=True) -> None`
 Muestra líneas de texto ya formateadas. `framed=True` las enmarca con `hr("-")` en DARK_GRAY arriba y abajo (úsalo para contenido "de una pieza" como un changelog completo); `framed=False` las imprime sueltas (úsalo para un mensaje corto de una o dos frases, como un aviso de "no hay nada que mostrar").
@@ -423,33 +462,40 @@ Este prompt **no aparece en el modo markdown** (`render()`, usado por `/pv-statu
 
 Es el nombre fijo (junto con "ficha de detalle") con el que nos referimos, en este documento y en la conversación de desarrollo, al bloque que `render_terminal()` (en `filter_status.py`) imprime por cada entrada — es el formato compartido por **las tres** rutas que llegan a `render_terminal()`: "Filter by state" (`<estado>`), "Search by id" (`--search-id`), "Search by content" (`--search-content`), y también el prompt de id al final de "Project status" (`pv.py`'s `show_general_status()`, que también delega en `filter_status.py --search-id` vía `show_id_detail_card()`). Las cuatro rutas producen exactamente el mismo bloque — no hay una quinta variante. Dos de esas cuatro rutas ("Search by id" y el prompt de "Project status", ambas controladas directamente por `pv.py` vía `show_id_detail_card()`) además ofrecen la misma Selección incrustada "Delete this idea" cuando el id resuelve a una idea de `todo/` — "Filter by state" y "Search by content" no la ofrecen, porque su resultado puede mezclar varias entradas y no hay un único id sobre el que actuar.
 
-Sin color propio (hereda el GOLD del bloque que la contiene solo en el título/cierre de la pantalla, el cuerpo va sin colorear, igual que el resto de "Info delegada"). El formato es el mismo sea cual sea el modo — el prefijo `(estado)` de la línea 1 se muestra siempre, incluso en "Filter by state" donde el título de la pantalla ya lo indica (unificado a propósito para que la ficha se vea siempre igual, en vez de tener un formato ligeramente distinto según cómo se llegó a ella).
+Sin color propio (hereda el GOLD del bloque que la contiene solo en el título/cierre de la pantalla, el cuerpo va sin colorear, igual que el resto de "Info delegada"). El formato es el mismo sea cual sea el modo — el `(estado)` de la línea 1 se muestra siempre, incluso en "Filter by state" donde el título de la pantalla ya lo indica (unificado a propósito para que la ficha se vea siempre igual, en vez de tener un formato ligeramente distinto según cómo se llegó a ella).
 
-Hay **dos variantes de contenido, con distinto número de líneas** — 5 líneas para cambio/fix, 3 para idea (`todo/`, sin `Risk`, sin conteo de ficheros adicionales, ni descripción separada, ver más abajo por qué):
+**Orden de la línea 1 (decisión 6.14 del plan de flags):** `flags · code · [type] · (status) · Risk`. Es decir: el prefijo de iconos de flags (`⭐ ⚙️  `, o `[P] [W]  ` bajo `NO_COLOR`; vacío si el cambio no tiene flags) va **primero**, luego el `code`, luego `[type]`, luego `(status)` (que se movió de la primera posición a después del `[type]`), y por último `Risk`. Antes era `(status)  code  [type]  Risk`. El motivo: con las flags delante, poner el `code` inmediatamente después deja la columna de códigos casi alineada entre entradas (los iconos son el único prefijo variable), y agrupa `(status)`/`Risk` como metadatos al final. Este orden aplica a **todas** las fichas de `filter_status.py` (`--state`, `--search-id`, `--search-content`, `--flag`) y también a los bloques de detalle de `render_status.py`. **Es el único punto no-aditivo del plan de flags** — cambia el formato para usuarios que no usan flags. Nadie parsea esa línea programáticamente (`pv.py` delega el render entero), pero cualquier snapshot/golden-file de tests de `pv-status` que capture la línea 1 hay que regenerarlo.
+
+Hay **dos variantes de contenido, con distinto número de líneas** — 5 o 6 líneas para cambio/fix (6 cuando tiene ids relacionados, ver más abajo), 3 para idea (`todo/`, sin `Risk`, sin conteo de ficheros adicionales, ni descripción separada, ver más abajo por qué):
 
 #### Ficha de un cambio/fix (`inProgress`/`implemented`/`closed`)
 
 ```
-(implemented)  1001  [🆕 Change]  Risk: 6/10  ← Línea 1: (estado), id, tipo, riesgo — sin fecha aquí
+⭐⚙️  1001  [🆕 Change]  (implemented)  Risk: 6/10  ← Línea 1: flags, id, tipo, (estado), riesgo — sin fecha aquí
 created: 2026-08-01, planned: 2026-08-03      ← Línea 2: created = description.md, planned = plan.md ("pending" si no existe)
 > Add user authentication                     ← Línea 3: nombre (description.md, campo **Name**), prefijo "> "
   Lets users sign in with email and           ← Línea 4: primeros 500 caracteres de la
   password, backed by a new sessions table…      descripción (## Full description), con "…" si se trunca
 extra files: 2                                ← Línea 5: nº de ficheros no-framework directamente en la carpeta del cambio
+Related: 00212, 00214                         ← Línea 6: relatedIds de .metadata.json, separados por comas — OMITIDA
+                                                    por completo si relatedIds está vacío/ausente (no "Related: (none)")
 ```
+
+(El prefijo de flags va vacío si el cambio no tiene ninguna, así que una ficha sin flags se ve `1001  [🆕 Change]  (implemented)  Risk: 6/10` — mismo orden, sin el hueco de iconos. Igualmente, la línea 6 solo se imprime cuando `relatedIds` no está vacío — la mayoría de fichas se quedan en 5 líneas.)
 
 - **`created`** (línea 2): `description.md`'s campo `**Creation date**` (bold inline); si no existe, cae al mtime de `description.md`.
 - **`planned`** (línea 2): `plan.md`'s campo `**Creation date**` (mismo formato bold-inline, ver `PLAN.template.md`) — es la fecha en que `pv-how` escribió el plan, no la de creación del cambio. Si `plan.md` no existe todavía, o existe pero le falta ese campo, se muestra literalmente **`pending`** (no un guion ni "unknown" — indica explícitamente que la planificación aún no ha ocurrido). `build_entry()` calcula esto reutilizando `extract_date()` sobre el texto de `plan.md`, sin un patrón nuevo — el campo tiene exactamente el mismo formato en ambos ficheros.
-- **`Risk`** (línea 1): `plan.md`'s campo `**Risk**`, formato `{valor}/10` — `?` si no hay `plan.md` o el campo no tiene ese formato exacto.
+- **`Risk`** (línea 1): el campo `risk` de `.metadata.json` (entero 0-10, escrito por `pv-how` vía `set-metadata.py --set-risk`), formato `{valor}/10` — `?` si el campo está ausente. `0` se muestra como `0/10`, no `?`.
 - La línea 4 usa **su propio límite de 500 caracteres** (`TERMINAL_DESCRIPTION_MAX_CHARS`), distinto e independiente de los 250 caracteres que usa la tabla markdown de `/pv-status` (chat) — cambiar uno no afecta al otro; son dos rutas de render separadas dentro de `filter_status.py` (`render_terminal()` vs `render_report()`), y solo el modo terminal muestra la ficha detalle en absoluto (la tabla markdown no tiene columnas Name/Planned/extra files).
 - **`extra files`** (línea 5): nº de ficheros directamente dentro de la carpeta del cambio que no son del framework (`description.md`, `plan.md`, `history.md`) — p.ej. mockups `design_*.html`/`design_*.txt`, o cualquier otro fichero que acumule la carpeta. Se calcula con `count_extra_files()` contra el conjunto `TERMINAL_FRAMEWORK_FILES`; `0` si no hay ninguno.
+- **`Related`** (línea 6, opcional): el campo `relatedIds` de `.metadata.json` (array de códigos de otros cambios/fixes, fijado por `pv-new`/`pv-fix` vía `set-metadata.py --add-related`), separados por comas. La línea está totalmente ausente — no se imprime como línea vacía o de relleno — cuando `relatedIds` no existe o es `[]`, misma convención que una sección opcional omitida en `description.md`.
 
 #### Ficha de una idea (`todo/`)
 
 Formato distinto y más corto que el de cambio/fix — **3 líneas, no 5**: sin `Risk` ni conteo de ficheros adicionales (`todo/` nunca tiene `plan.md`, y sus entradas solo tienen `description.md` — ambos siempre habrían sido `?`/`0`, ruido no información) y sin línea de descripción separada (el texto de `## Idea` ya hace de nombre, no hay nada más que mostrar debajo).
 
 ```
-(todo)  a3f9k  [💡 Todo]                      ← Línea 1: (estado), id, tipo — sin Risk
+a3f9k  [💡 Todo]  (todo)                       ← Línea 1: id, tipo, (estado) — sin flags (todo/ nunca lleva), sin Risk
 created: 2026-08-15                            ← Línea 2: solo created — sin "planned" (todo/ no tiene plan.md)
 > Modo oscuro                                 ← Línea 3: el texto de ## Idea (ver más abajo), prefijo "> "
 ```
@@ -476,29 +522,36 @@ python3 pv.py
 
 Sin argumentos, en el uso normal. Lee configuración de:
 - `pv-context.json` para `workFolder`
+- `framework.onescript.width` de `pv-context.json` para su propio `WIDTH` (default 80 si falta o está mal formado)
 - Verifica existencia de directorio framework
+
+**`pv.py` escribe `pv-context.json`** — el único sitio donde lo hace — a través de la opción "Configuration > Change max character width". Es un read-modify-write mínimo (`json.load` → fija `framework.onescript.width` → `json.dump(indent=2)`) que preserva todos los demás campos y el orden de claves, creando los objetos `framework`/`onescript` si faltan, siempre tras un `confirm()`. El valor escrito es un entero `>= 40` (input vacío mantiene el actual; por debajo de 40 se rechaza sin escribir — bajo ese umbral el splash de arte ASCII y las fichas detalle se rompen). `framework.onescript.width` es un campo opcional en `schema.json`; `pv-init` nunca pregunta por él, y su ausencia solo significa que `pv.py` usa el default interno.
 
 ### `--testconfig` — solo para probar `pv.py`, no para uso normal
 
 ```bash
-python3 test/pv-test.py --testconfig
+python3 sandbox-test1/pv-test.py --testconfig
 ```
 
-Flag exclusivo del test harness del propio framework (`test/pv-test.py`, una copia idéntica de `pv.py` sin lógica propia, colocada en `test/` por comodidad). **No recibe ningún argumento** — asume que hay un fichero llamado `pv-config-test.json` en la misma carpeta que el script que se está ejecutando (`Path(__file__).resolve().parent`), y sale con error si no existe ahí. Cuando se pasa, `pv.py` **no lee** `.claude/pv-context.json` para resolver `workFolder` — en su lugar lee ese `pv-config-test.json`, con dos campos obligatorios:
+Flag exclusivo del test harness del propio framework (`pv-test.py`, una copia idéntica de `pv.py` sin lógica propia, colocada junto a su `pv-config-test.json` por comodidad — `sandbox-test1/` en este repo). **No recibe ningún argumento** — asume que hay un fichero llamado `pv-config-test.json` en la misma carpeta que el script que se está ejecutando (`Path(__file__).resolve().parent`), y sale con error si no existe ahí. Cuando se pasa, `pv.py` **no lee** `.claude/pv-context.json` en absoluto — en su lugar lee ese `pv-config-test.json`, cuyo **árbol de nodos imita el de `pv-context.json`** para que el mismo código encuentre cada valor en la misma ruta:
 
 ```json
 {
   "repoRoot": "..",
-  "workFolder": "/sandbox-test1/previo-sdd"
+  "framework": {
+    "workFolder": "/sandbox-test1/previo-sdd",
+    "onescript": { "width": 80 }
+  }
 }
 ```
 
-- `repoRoot`: ruta a la raíz real del repo (donde vive `.claude/skills/...`), **resuelta relativa a la ubicación del propio fichero de config** (que a su vez está siempre junto al script), no al directorio desde el que se invoca. Necesaria porque `pv.py` sigue invocando los scripts reales del framework (`filter_status.py`, `render_status.py`, etc.) — nunca copias — así que necesita saber dónde están.
-- `workFolder`: el `workFolder` de prueba a usar en vez del configurado en `pv-context.json` (p.ej. `/sandbox-test1/previo-sdd`), para no tocar los datos reales del proyecto.
+- `repoRoot` (**obligatorio, nivel raíz**): ruta a la raíz real del repo (donde vive `.claude/skills/...`), **resuelta relativa a la ubicación del propio fichero de config** (que a su vez está siempre junto al script), no al directorio desde el que se invoca. Necesaria porque `pv.py` sigue invocando los scripts reales del framework (`filter_status.py`, `render_status.py`, etc.) — nunca copias — así que necesita saber dónde están. Se queda a nivel raíz porque **no tiene equivalente en `pv-context.json`** — es metadato exclusivo del harness (el script real, en la raíz del repo, deriva su raíz de `__file__`).
+- `framework.workFolder` (**obligatorio**): el `workFolder` de prueba, en la **misma ruta que usa `pv-context.json`** (`framework.workFolder`), para que la resolución tipo `work_root()` no necesite un caso especial de modo test. Apunta a datos de fixture desechables (p.ej. `/sandbox-test1/previo-sdd`) para no tocar los datos reales del proyecto.
+- `framework.onescript.width` (**opcional**): el ajuste persistido propio de `pv.py`, leído de — y escrito por "Change max character width" en — este fichero, en la **misma ruta anidada** que usaría en `pv-context.json`. `ACTIVE_CONFIG_PATH` (fijado en `main()`) solo apunta `load_onescript_width()`/`save_onescript_width()` al fichero que esté activo; tampoco hay rama de modo test ahí. Ausente → `pv.py` usa su default interno (80).
 
-`run_script()` reenvía este `workFolder` como `--work-folder <valor>` a los 4 scripts que ya soportan ese override (`filter_status.py`, `render_status.py`, `list_todo.py`, `move-change.py`) — `sync-skill-models.py` queda excluido porque no toca `changes/`/`workFolder` en absoluto y no tiene ese flag.
+`run_script()` reenvía `framework.workFolder` como `--work-folder <valor>` a los scripts que soportan ese override (`SCRIPTS_ACCEPTING_WORK_FOLDER`: `filter_status.py`, `render_status.py`, `list_todo.py`, `read-flags.py`, `move-change.py`, `set-metadata.py`, `delete-todo.py`) — `sync-skill-models.py` queda excluido porque no toca `changes/`/`workFolder` en absoluto y no tiene ese flag. `read-flags.py` va además en `SCRIPTS_ACCEPTING_WIDTH` (acepta `--width` por simetría con los otros scripts de `pv-status`, aunque lo ignora: un prefijo de iconos no tiene columna que ajustar). `set-metadata.py` **no** recibe `--width` (no imprime pantallas, solo una línea de confirmación). Aparte del reenvío genérico de `run_script()`, `flag_prefixes_for()` añade a mano `--color` o `--no-color` a la llamada a `read-flags.py` (según `supports_color()` de `pv.py`) — `run_script()` no infiere color, y `read-flags.py` capturado no puede detectarlo por sí mismo.
 
-Si `pv-config-test.json` no existe junto al script, tiene JSON inválido, o le falta `repoRoot`/`workFolder`, `pv.py` termina con un mensaje de error claro (`sys.exit`, sin traceback) — nunca sigue adelante con un valor por defecto silencioso.
+Si `pv-config-test.json` no existe junto al script, tiene JSON inválido, o le falta `repoRoot` / `framework.workFolder`, `pv.py` termina con un mensaje de error claro (`sys.exit`, sin traceback) — nunca sigue adelante con un valor por defecto silencioso. Un `framework.onescript.width` ausente **no** es un error (es opcional).
 
 ---
 
@@ -522,19 +575,23 @@ Esta sección es la referencia rápida para añadir opciones nuevas sin romper l
 3. Escribe las acciones del submenú como funciones normales (paso anterior) en su propia sección `# Actions -- Mi Submenú`.
 4. Añade `("Mi Submenú", show_mi_submenu)` a `MENU` (o al `items` de otro submenú, si es anidado más profundo).
 
-#### Añadir una opción que muta estado (como "Close entry")
+#### Añadir una opción que muta estado (como "Close entry" o "Toggle a flag on a change")
 
-1. Sigue el patrón de `close_entry()`: `show_selection()` para elegir el objetivo, **siempre** seguido de `confirm()` antes de ejecutar nada irreversible.
-2. Delega la mutación real en un script de la skill correspondiente vía `run_script()` — `pv.py` no debe escribir contenido de ficheros ni lógica de negocio, solo orquestar. Ver "Punto de extensión único" más abajo.
-3. Nunca ejecutes la mutación sin pasar por `confirm()` primero, ni siquiera para una opción "simple".
+1. Sigue el patrón de `close_entry()` / `toggle_flag_on_change()`: elegir el objetivo (`show_selection()` si es una lista corta y numerable; un listado propio + `read_input()` de id si es agrupado y el código es el identificador natural, como en `toggle_flag_on_change()`), seguido de `confirm()` **si la acción no es trivialmente reversible**. "Close entry" mueve una carpeta (destructivo desde la vista del usuario) → `confirm()`. "Toggle a flag" solo flipa un booleano en `.metadata.json` y la misma acción lo deshace → **sin `confirm()`**, se aplica al instante y se re-muestra la lista actualizada. La regla es: `confirm()` para lo que cuesta deshacer, no para todo lo que escribe.
+2. Delega la mutación real en un script de la skill correspondiente vía `run_script()` — `pv.py` no debe escribir contenido de ficheros ni lógica de negocio, solo orquestar. Ver "Punto de extensión único" más abajo. Ejemplo: `toggle_flag_on_change()` delega **toda** escritura de `.metadata.json` en `set-metadata.py` (`pv-internal-workflow`); `pv.py` solo *lee* ese fichero (`read_change_flags()`) para pintar los `[x]`/`[ ]`, nunca lo escribe.
+3. Si la acción es de aplicación repetida (togglear varias flags, cerrar varias entradas), envuélvela en un bucle que re-muestre el listado tras cada operación en vez de volver al menú — `toggle_flag_on_change()` tiene dos bucles anidados (elegir cambio → togglear flags), cada uno termina con input vacío.
+4. Si el objetivo puede existir en más de un estado (`inProgress`/`implemented`/`closed`), resuelve **primero** el estado (parte del `show_selection()`) y pásalo explícito al script (`--state <state>`) — no dejes que el script adivine, porque un mismo código puede aparecer en dos estados (`fast` implementado y su copia en `closed`).
+5. Si el listado de objetivos es largo o heterogéneo, agrúpalo con encabezados como hace `toggle_flag_on_change()` — que reusa la misma partición que "General project status" (🟢 `implemented/*`, 🟠 `inProgress/*` con `plan.md`, 🟡 `inProgress/*` sin `plan.md`; `closed/*` se deja fuera por congelado). `show_selection()` no sabe pintar encabezados de grupo: imprime el listado tú mismo y, como el código de cada entrada ya es un identificador estable, muestra las filas **sin numerar** (`{código} — {nombre}`) y lee la elección con `read_input()`, resolviendo el id tecleado contra las entradas con un matcher tipo `_ids_match()` (padding de ceros ignorado) — no una numeración de fila paralela. Los encabezados de grupo van en **GOLD** (excepción puntual a "un color por pantalla", igual que los colores por estado de `search_by_state()`) para separarlos de las filas de entrada en DARK_GRAY.
 
 #### Punto de extensión único (límite de complejidad)
 
 Cualquier opción nueva debe ser:
 - **Puramente de lectura** (delega en un script `--terminal` existente o uno nuevo de solo lectura), o
-- **Una mutación simple ya validada por su propio script** (como mover una carpeta), siempre con `confirm()` explícito antes.
+- **Una mutación simple ya validada por su propio script** (como mover una carpeta, o togglear una flag), con `confirm()` explícito antes **si no es trivialmente reversible**.
 
 Mutaciones más complejas (borrar, crear versiones, redactar contenido de ficheros) quedan **fuera del alcance de `pv.py`** — necesitan contexto que solo la skill correspondiente puede aportar vía Claude Code. No añadas esa lógica aquí aunque parezca conveniente.
+
+**La única excepción de escritura de config.** "Change max character width" escribe `framework.onescript.width` en `pv-context.json` directamente desde `pv.py` (`save_onescript_width()`), sin script externo. Se permite a propósito porque es un único entero ya validado (rango comprobado en la acción, `confirm()` antes) escrito con un read-modify-write mínimo que no toca nada más — el mismo nivel de "mutación simple" que mover una carpeta. **No** es un precedente para que `pv.py` escriba nada más rico en `pv-context.json`: cualquier ajuste que no sea un único escalar con regla de validación obvia sigue siendo de `pv-init`/`pv-update`. Si algún día aparece un segundo ajuste propio de `pv.py`, va bajo el mismo objeto `framework.onescript.*`, leído/escrito por los mismos dos helpers.
 
 ### Errores Comunes al Extender
 
@@ -558,21 +615,24 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 
 | Script | Ubicación | Propósito |
 |--------|-----------|-----------|
-| `render_status.py` | `.claude/skills/pv-status/scripts/` | Mostrar estado general (3 páginas en `--terminal`). Ya no pide ningún id ni invoca `filter_status.py` — ese bucle vive en `pv.py`'s `show_general_status()`. Acepta `--width` |
+| `render_status.py` | `.claude/skills/pv-status/scripts/` | Mostrar estado general (3 páginas en `--terminal`). Ya no pide ningún id ni invoca `filter_status.py` — ese bucle vive en `pv.py`'s `show_general_status()`. Antepone el prefijo de iconos de flags a cada fila. Acepta `--width` |
 | `list_todo.py` | `.claude/skills/pv-status/scripts/` | Listar ideas en todo/. Acepta `--width` |
-| `filter_status.py` | `.claude/skills/pv-status/scripts/` | Filtrar cambios por estado (`<estado>`), buscar por id exacto en todos los estados (`--search-id <texto>`), o buscar por contenido de `description.md` en todos los estados (`--search-content <texto>`). Acepta `--width` |
+| `filter_status.py` | `.claude/skills/pv-status/scripts/` | Filtrar cambios por estado (`<estado>`), buscar por id exacto en todos los estados (`--search-id <texto>`), buscar por contenido de `description.md` (`--search-content <texto>`), o listar cambios por flag en todos los estados (`--flag <name>`, repetible, semántica OR). Línea 1 de ficha en orden `flags · code · [type] · (status) · Risk`. Acepta `--width` |
+| `read-flags.py` | `.claude/skills/pv-status/scripts/` | Devuelve el prefijo de iconos de flags ya renderizado, una línea por `--xxxx` (batch de entrada). `pv.py` **captura su stdout** y le pasa `--color` / `--no-color` (según el color del terminal de `pv.py`, ya que la tubería capturada nunca es un tty). Acepta `--work-folder`, `--state` y `--width` (este último ignorado) |
 | `sync-skill-models.py` | `.claude/skills/pv-init/scripts/` | Sincronizar modelos de skills |
 | `move-change.py` | `.claude/skills/pv-internal-workflow/scripts/` | Mover entrada a closed |
+| `set-metadata.py` | `.claude/skills/pv-internal-workflow/scripts/` | Único escritor de `.metadata.json` (`flags` + `risk` + `relatedIds`). `pv.py` lo invoca con `--xxxx <code> --state <state> --toggle-flag <value>` para "Toggle a flag on a change" (sin `confirm()` previo — toggle reversible); nunca usa `--set-risk` (eso es cosa de `pv-how`) ni `--add-related`/`--remove-related` (eso es cosa de `pv-new`/`pv-fix` — `pv.py` no tiene ninguna opción de menú para ids relacionados). Imprime una línea de confirmación. Acepta `--work-folder`; **no** `--width` |
 | `delete-todo.py` | `.claude/skills/pv-internal-workflow/scripts/` | Borrar una carpeta de idea en `changes/todo/{xxxx}` |
-| `terminal_output.py` | `.claude/skills/pv-status/scripts/` | Módulo de rendering compartido por los tres scripts de `pv-status` (no un script ejecutable, se importa). Sin `WIDTH` propio: cada función lo recibe por parámetro, `DEFAULT_WIDTH = 70` si el caller no opina |
+| `terminal_output.py` | `.claude/skills/pv-status/scripts/` | Módulo de rendering compartido por los scripts de `pv-status` (no un script ejecutable, se importa). Sin `WIDTH` propio: cada función lo recibe por parámetro, `DEFAULT_WIDTH = 70` si el caller no opina. Contiene además el **catálogo canónico de flags** (`FLAG_ICONS`/`FLAG_ICONS_ASCII`/`FLAG_LABELS`/`FLAG_ORDER`, `flags_prefix()`, `flag_label()`) — el único sitio donde vive el mapa flag→icono/label |
 
 ### Archivos y Directorios
 
 | Ruta | Propósito |
 |------|-----------|
-| `pv-context.json` | Configuración del framework |
+| `pv-context.json` | Configuración del framework. Leído para `workFolder` y `framework.onescript.width`. **También escrito** (el único fichero que `pv.py` escribe) por "Configuration > Change max character width" — ver "Configuración de Línea de Comandos" y la excepción de escritura de config en "Cómo extender". Bajo `--testconfig`, `pv-config-test.json` ocupa su lugar tanto para las lecturas como para esa escritura. |
 | `pv-init/SKILL.md` | Leído (no ejecutado) por `framework_version()` para obtener la versión del propio framework `pv-*` (`metadata.version` de su frontmatter YAML), mostrada en el título del menú principal — distinta de la versión del proyecto bajo `versions/{XXXX}/` |
 | `changes/` | Directorio de cambios (estados) |
+| `changes/{state}/{xxxx}/.metadata.json` | Estado mutable por cambio (dotfile, opcional): `flags`, `risk` (entero 0-10) y `relatedIds` (códigos de otros cambios/fixes, **recíproco** — relacionar `A` con `B` actualiza ambos ficheros en la misma llamada a `set-metadata.py`). Leído por `read-flags.py` / `pv-status`; escrito solo por `set-metadata.py`. `pv.py` lo lee directamente en `read_change_flags()` (solo para los `[x]`/`[ ]` de "Toggle a flag" — no le interesa `risk`/`relatedIds`), pero nunca lo escribe. `relatedIds` lo fija `pv-new`/`pv-fix`, nunca desde el menú de `pv.py`; solo aparece como la línea opcional `Related` de la ficha detalle (ver "La Ficha Detalle") |
 | `changes/implemented/` | Cambios completados |
 | `changes/closed/` | Cambios cerrados |
 | `changes/closed/temp/` | Almacenamiento temporal durante versioning |
@@ -586,7 +646,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 - **Soporte Windows ANSI:** Activa ENABLE_VIRTUAL_TERMINAL_PROCESSING en Windows 11
 - **Sin color:** Detecta variable de entorno `NO_COLOR` y desactiva colores
 - **Responsivo a terminal:** Detecta `sys.stdout.isatty()` para colores
-- **Ancho máximo:** 80 caracteres para legibilidad en terminales pequeñas
+- **Ancho máximo:** 80 caracteres por defecto para legibilidad en terminales pequeñas; ajustable por el usuario (mínimo 40) y persistido vía "Configuration > Change max character width" (`framework.onescript.width` en `pv-context.json`), leído en cada arranque
 - **Encodificación UTF-8:** Fuerza UTF-8 en salida de Python
 
 ---
@@ -594,7 +654,9 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 ## Archivo de Configuración de Referencia
 
 ```python
-WIDTH = 80                      # Ancho máximo de líneas
+WIDTH = 80                      # Ancho máximo de líneas por defecto; main() lo
+                               # sobrescribe al arrancar con framework.onescript.width si existe
+MIN_WIDTH = 40                 # suelo de un ancho persistido (bajo eso el arte / fichas se rompen)
 COLOR_RESET = "\033[0m"         # ANSI reset
 GOLD = "\033[38;5;220m"         # Color dorado (menús, status delegado)
 DARK_GRAY = "\033[38;5;238m"    # Color gris oscuro (selección, info framed)
@@ -605,4 +667,14 @@ STATE_BLUE = "\033[38;5;75m"    # todo
 STATE_YELLOW = "\033[38;5;220m" # inProgress
 STATE_GREEN = "\033[38;5;114m"  # implemented
 STATE_WHITE = "\033[38;5;255m"  # closed
+
+# Catálogo de flags -- copia MANUAL, sincronizada a mano con
+# pv-status/scripts/terminal_output.py (FLAG_*) y
+# pv-internal-workflow/metadata.schema.json (enum). pv.py no importa nada,
+# así que solo lleva el mapa enum->label humano para sus propios
+# show_selection(); los ICONOS de las listas los renderiza read-flags.py.
+FLAG_VALUES = ["priority", "workinprogress"]   # orden canónico
+FLAG_LABELS = {"priority": "Priority", "workinprogress": "Work in progress"}
+FLAG_ICONS = {"priority": "⭐", "workinprogress": "⚙️"}
+FLAG_ICONS_ASCII = {"priority": "[P]", "workinprogress": "[W]"}
 ```

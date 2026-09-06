@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.5
+  version: 0.9.6
   uses: []
 ---
 
@@ -13,7 +13,7 @@ metadata:
 
 Generic process and single point where the `pv-*` framework knows how to create and move `{changesDir}` folders. Only invoked by other framework skills — not meant for direct invocation by the user.
 
-**Language.** Use `framework.interaction.language` (default English) for the guardrail message to the user in the section below. `description.md`/`history.md` (action `create`) follow `framework.changes.language` (default `interaction.language`, English if neither is configured) — except the labels wrapped in `[[[...]]]` in `description.template.md`, which stay fixed in English always (see the "Marker convention in templates" section of `pv-design.en.md`): write them without the brackets, exactly as they appear once unwrapped. If `language` is not configured anywhere, everything is English.
+**Language.** Use `framework.interaction.language` (default English) for the guardrail message to the user in the section below. `description.md`/`history.md` (action `create`) follow `framework.changes.language` (default `interaction.language`, English if neither is configured) — except everything wrapped in `[[[...]]]` in `description.template.md`, which stays fixed in English always (see the "Marker convention in templates" section of `pv-design.en.md`): that's the four field labels (**Name**, **Code**, **Type**, **Creation date**) *and* the `## Full description` section heading. Write them without the brackets, exactly as they appear once unwrapped — heading form included, never a translation. The `## Technical notes` heading is **not** marked (it's optional — omitted entirely when there's nothing technical to note, which a marker check can't tell apart from a translation); still write it in English for consistency, but it carries no marker. `pv-status`'s `filter_status.py` parses `## Full description` literally (`extract_description`) for the status report; translating that heading makes the entry's summary show up empty there, silently. If `language` is not configured anywhere, everything is English.
 
 It has two independent actions, each invoked with an `action` parameter:
 
@@ -21,6 +21,8 @@ It has two independent actions, each invoked with an `action` parameter:
 - **`action=move`** — invoked by `pv-do`, with `xxxx`, `from` and `to` (subfolder names under `{changesDir}`: `inProgress` or `implemented`). Moves the `{xxxx}` folder between those substates.
 
 Neither action implements or technically analyzes anything, nor decides **whether** the transition should happen or needs user confirmation — the calling skill has already resolved that before invoking `pv-internal-workflow`. This skill only executes the file mechanics (numbering+creating, or moving) consistently in a single place.
+
+Beyond those two actions, this skill also **owns the `.metadata.json` contract** for a change/fix folder and the [`scripts/set-metadata.py`](scripts/set-metadata.py) script that is the single writer of it — see "The `.metadata.json` contract" below. `pv-status` reads it, `pv-update` audits it, `pv.py` toggles flags through `set-metadata.py`, `pv-new`/`pv-fix` set `relatedIds` through it too; none of them write the file directly.
 
 ## Invocation guardrail — read before anything else
 
@@ -99,3 +101,45 @@ python .claude/skills/pv-internal-workflow/scripts/move-change.py --xxxx <xxxx> 
 - If it succeeds, the script prints the destination path on stdout, relative to the repo root (e.g. `changes/implemented/0002`).
 
 Confirm that destination path to the caller, so the calling skill can continue its own process (message to the user, next steps like generating a version or updating the graph, etc. — that's handled by it, not `pv-internal-workflow`).
+
+## The `.metadata.json` contract
+
+Every change/fix folder under `{changesDir}/` *may* carry a dotfile `.metadata.json` next to `description.md` / `plan.md` / `history.md`, holding **mutable per-change state** — state that changes without re-documenting the change. Today that's the change's **flags** and its **related ids**. Its shape is defined by [`metadata.schema.json`](metadata.schema.json) in this skill's folder (referenced by `pv-status` when reading it and by `pv-update` when auditing it):
+
+```json
+{
+  "flags": ["priority", "workinprogress"],
+  "flagsLastModified": "2026-09-03",
+  "relatedIds": ["00212", "00214"]
+}
+```
+
+- **`flags`** — array of strings, no duplicates. Valid values are the `metadata.schema.json` enum, today `"priority"` (⭐, marked as a priority) and `"workinprogress"` (⚙️, actively being worked on right now). A change can have 0, 1 or several. Order in the array isn't significant — consumers paint them in a fixed order (⭐ before ⚙️). **Adding a future flag** = one value in the schema enum + its icon/label entry in `pv-status`'s `FLAG_*` maps; nothing else changes.
+- **`flagsLastModified`** — ISO date (`YYYY-MM-DD`), optional. A single global timestamp for the last add/remove of any flag. Written on every effective mutation; no consumer reads it yet (reserved for future use).
+- **`risk`** is declared in `metadata.schema.json` but **not written by this flow** — it's the hook for a later plan that moves `risk` out of `plan.md`'s header. `set-metadata.py` preserves it untouched if another writer added it.
+- **`relatedIds`** — array of strings, no duplicates, each a change/fix's numeric code (`xxxx`). Codes of other changes/fixes related to this one, when there are any. Set by `pv-new`/`pv-fix` when the user points out a relation or the skill detects one during analysis (see those skills' step 1) — never edited from `pv.py`. Each id must resolve to a real folder under some non-`todo` state of `changes/`, and an entry can never list its own code. **Reciprocal**: relating `A` to `B` always updates both `A`'s and `B`'s `relatedIds` — `set-metadata.py` does this in the same invocation (see below), so a relation is never known to only one side. Doesn't touch `flagsLastModified`.
+
+**Rules:**
+
+- **No file = `flags: []`, no related ids.** A missing `.metadata.json`, a missing `flags`/`relatedIds` field, or an empty array all mean "none". The file only appears once a change gets its first flag, risk, or related id. Existing folders need **no migration**.
+- **`todo/` entries NEVER carry `.metadata.json`.** A todo is a loose idea outside the flow — nothing to mark as prioritised, in progress, or related to another change. `set-metadata.py` rejects any operation that resolves under `todo/` (including a `--add-related` id that only exists under `todo/`); `pv-update` reports a `.metadata.json` that appears there.
+- **The code, the workflow state, `type` and `name` do NOT go in this file** — the code is the folder name, the state is the parent folder, `type`/`name` come from `description.md`.
+- **`move-change.py` carries it automatically** — it does `shutil.move()` on the whole directory, so `.metadata.json` travels with the folder on every `inProgress → implemented → closed` move. No code change was needed there. Any *future* recursive copy of a change folder must include dotfiles.
+- **`.metadata.json` is versioned by `git`** like any other file in the folder. Make sure a `workFolder` `.gitignore` doesn't exclude it (a dotfile can be caught by `*` + `!*.md`).
+
+### `set-metadata.py` — the single writer
+
+[`scripts/set-metadata.py`](scripts/set-metadata.py) (standard Python, no dependencies) is the only thing that writes `.metadata.json`. Run from the repo root:
+
+```
+python .claude/skills/pv-internal-workflow/scripts/set-metadata.py --xxxx <code> --toggle-flag <name>
+python .claude/skills/pv-internal-workflow/scripts/set-metadata.py --xxxx <code> --add-related <otherXxxx>
+```
+
+- **`--xxxx <code>`** + state resolution: the script searches every state folder under `changes/` (skipping `todo/`) for `<code>`. Pass **`--state <state>`** to target one directly. Ambiguous (`<code>` in more than one state) → error, pass `--state`.
+- **Flag ops (repeatable):** `--add-flag <name>`, `--remove-flag <name>`, `--toggle-flag <name>`. `<name>` is validated against the schema enum — a clear error otherwise. An op that changes nothing (adding a set flag, removing an unset one) is reported as a no-op and writes nothing new.
+- **Related-id ops (repeatable):** `--add-related <xxxx>`, `--remove-related <xxxx>`. Each `--add-related` id must be numeric, must exist under some non-`todo` state of `changes/`, and can't equal `--xxxx` itself — a clear error otherwise, and nothing gets written. Same no-op reporting as flags. **Reciprocal**: each affected id's own `.metadata.json` is also updated in the same run (locked and written one entry at a time, in a fixed code order across the whole invocation, so two concurrent runs touching an overlapping pair never deadlock) — the confirmation line reports it as `reciprocated on <ids>`.
+- **`--work-folder <path>`** override (same pattern as `move-change.py`) so `pv.py --testconfig` can point it at fixtures.
+- **`--print`** also emits the resulting `.metadata.json` as JSON on stdout after the confirmation line, so callers don't re-read it.
+- Rejects any operation resolving under `todo/`. Takes an **exclusive file lock** on an adjacent `.metadata.json.lock` for the read-modify-write cycle, so a toggle from `pv.py` and one from a Claude Code session in parallel don't clobber each other. Creates `.metadata.json` if absent; **never deletes it** (even when `flags`/`relatedIds` become `[]`). Preserves unknown fields (e.g. a future field). Refreshes `flagsLastModified` to today on every effective flag mutation only (`risk`/`relatedIds` don't touch it).
+- Output: one plain-text confirmation line (no ANSI), like `delete-todo.py`.

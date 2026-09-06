@@ -1,13 +1,12 @@
 - **[[[Creation date]]]**: [YYYY-MM-DD]
-- **[[[Risk]]]**: [median 0-10 returned by pv-internal-tech-risks] — [description of the "Meaning" matching that median per the table in section (f)]
 
-## (a) Functional notes
+## [[[(a) Functional notes]]]
 
 **Out of scope:** [what's explicitly left out of this solution — if it's a fix, what additional improvements were spotted but not included. If there's nothing to exclude, say so explicitly ("no other behavior is touched") instead of omitting the field.]
 
 **Doubts resolved with the user:** [question and answer, briefly. If there were none, say so explicitly ("no open questions...") instead of omitting the field.]
 
-## (b) Technical solution
+## [[[(b) Technical solution]]]
 
 - [ ] **`[file]` — [brief summary of the task].** [Exactly what needs to be touched (function, variable, CSS rule...), where, and why — with enough detail to implement without having to make any more design decisions. If a snippet or exact value is needed (a CSS rule, a class name, a condition), include it literally instead of describing it in prose.]
 - [ ] **`[file]` — [brief summary of the next task].** [...]
@@ -17,13 +16,13 @@ Order the tasks in the order they should be implemented. Don't include manual ve
 
 ## (c) Architecture changes
 
-*Only if `docs.tech.architectureDocDir` is configured and this solution modifies the project's core architecture.* [Which specific file(s) in that folder need updating and what to change in each. Omit the entire section if it doesn't apply.]
+*Only if this solution modifies the project's core architecture.* [Which specific file(s) in `docs.tech.architectureDocDir` need updating and what to change in each. Omit the entire section if it doesn't apply.]
 
 ## (d) Style changes
 
-*Only if `docs.tech.styleBibleDocDir` is configured and this solution modifies or extends the project's visual style.* [Which specific file(s) in that folder need updating and what to change in each. Omit the entire section if it doesn't apply.]
+*Only if this solution modifies or extends the project's visual style.* [Which specific file(s) in `docs.tech.styleBibleDocDir` need updating and what to change in each. Omit the entire section if it doesn't apply.]
 
-## (e) Verification
+## [[[(e) Verification]]]
 
 - [ ] [An observable result from the already-changed system — not one more implementation step. Write it self-contained (what to do and what you should see), without referring back to a task number from (b): the same check may depend on several tasks at once, or a task may have no check of its own and only contribute to a shared one. The list is gone through in full *after* finishing all of section (b), as a closing checklist.]
 - [ ] [...]
@@ -32,7 +31,7 @@ Always include this section (unless the solution has no observable behavior to c
 
 ## (f) Risk analysis
 
-*Only if the user asked for the risk detail — by default this section is omitted and only the header's **Risk** field remains.* List of the 9 factors evaluated by `pv-internal-tech-risks` with their 0-10 value, and the final median.
+*Only if the user asked for the risk detail — by default this section is omitted (the median always lives in `.metadata.json`'s `risk` field; this section just spells out the 9 factors behind it).* List of the 9 factors evaluated by `pv-internal-tech-risks` with their 0-10 value, and the final median.
 
 | Factor | Value |
 |---|---|
@@ -47,6 +46,10 @@ Always include this section (unless the solution has no observable behavior to c
 | Sensitive data | [0-10] |
 
 **Median**: [0-10]
+
+### Risk median meaning
+
+Reference table for the `.metadata.json` `risk` value written by `pv-how` (step 3.1). `pv-how` uses it to describe the median in chat; `pv-status` can use it to derive the textual meaning from the stored integer.
 
 | Value | Meaning |
 |---|---|

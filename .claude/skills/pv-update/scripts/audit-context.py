@@ -1,9 +1,14 @@
 #!/usr/bin/env python3
 """Audits .claude/pv-context.json and everything it configures against the
-real state of the repo: schema shape, referenced skills, on-disk paths,
+real state of the repo: schema shape, obsolete keys left over from a
+framework upgrade (obsolete-field:*), referenced skills, on-disk paths,
+the architectureDocDir namespace seed (namespace-missing /
+namespace-section-missing / namespace-anchor-broken:*),
 skillModels vs each SKILL.md's real frontmatter, the [[[...]]]-marked
-structural labels (see pv-design.en.md's "Marker convention in templates")
-in every template-derived document under workFolder's changes/ subtree, and
+structural labels AND section headings (see pv-design.en.md's "Marker
+convention in templates") in every template-derived document under
+workFolder's changes/ subtree -- catching ones left translated by a
+document written under an older, still-localized framework version, and
 version consistency -- every pv-* skill's metadata.version should share the
 same major.minor (skill-version-mismatch:*), and pv-context.json's
 frameworkStatus.lastVerifiedVersion should match pv-init/SKILL.md's real
@@ -56,6 +61,15 @@ KNOWN_FRAMEWORK_FIELDS = {
     "docs",
     "frameworkStatus",
 }
+
+# Keys removed from the framework by a version upgrade. The unknown-field
+# checks (unknown-top-level-field / unknown-framework-field) only walk two
+# levels deep, so a key nested under framework.docs.tech would slip past
+# silently -- this list catches those explicitly. Each entry is a dotted path
+# rooted at the JSON top level.
+OBSOLETE_KEYS = (
+    "framework.docs.tech.language",
+)
 WORKFOLDER_SUBFOLDERS = (
     "changes/inProgress",
     "changes/implemented",
@@ -158,6 +172,281 @@ def read_skill_version(path: Path) -> str | None:
 
 MARKER_RE = re.compile(r"\[\[\[(.+?)\]\]\]")
 
+# Canonical flag catalogue -- mirrors
+# .claude/skills/pv-internal-workflow/metadata.schema.json's 'flags' enum
+# and pv-status's terminal_output.FLAG_ORDER. Kept as a literal here so
+# this script has no JSON-Schema-library dependency for the check.
+KNOWN_FLAGS = ("priority", "workinprogress")
+METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk", "relatedIds"}
+
+# plan.md's old '- **Risk**: ...' header field, moved to .metadata.json's
+# 'risk'. RISK_HEADER_RE matches the field regardless of what follows the
+# label -- a real median ('7/10 — High risk'), an unfilled template
+# placeholder ('[pending recalculation]', '[median 0-10 ...]'), or a
+# translated value -- so the one-shot migration fires for every pre-migration
+# plan.md, not only those with a numeric value. RISK_VALUE_RE is applied to
+# the captured tail afterwards to recover an integer 0-10 if there is one;
+# when there isn't, the migration writes risk: null.
+RISK_HEADER_RE = re.compile(r"^[ \t]*-?[ \t]*\*\*Risk\*\*[ \t]*[:—-][ \t]*(.+?)[ \t]*$",
+                            re.MULTILINE)
+RISK_VALUE_RE = re.compile(r"\b(\d{1,2})\s*/\s*10\b")
+
+
+def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> None:
+    """One-shot migration detector: a plan.md still carrying the retired
+    '**Risk**' header field (median moved to .metadata.json's 'risk'). Fires
+    per plan.md under inProgress/, implemented/ and closed/ that has the
+    field AND whose sibling .metadata.json has no valid 'risk' yet -- whether
+    or not the field carries a numeric value (an unfilled '[pending
+    recalculation]' placeholder or a translated value still counts). Fixed
+    idempotently by pv-update: write the parsed integer 0-10 into
+    .metadata.json's 'risk' (or null when the field has no such value), then
+    -- for inProgress/ and implemented/ only -- strip the dead header line
+    (closed/ plan.md is frozen history, left as-is)."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    if not changes_dir.is_dir():
+        return
+    for state in ("inProgress", "implemented", "closed"):
+        state_dir = changes_dir / state
+        if not state_dir.is_dir():
+            continue
+        for plan_path in sorted(state_dir.glob("*/plan.md")):
+            try:
+                text = plan_path.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            match = RISK_HEADER_RE.search(text)
+            if not match:
+                continue
+            raw_tail = match.group(1).strip()
+            value_match = RISK_VALUE_RE.search(raw_tail)
+            parsed_value = None
+            if value_match:
+                n = int(value_match.group(1))
+                if 0 <= n <= 10:
+                    parsed_value = n
+            entry_dir = plan_path.parent
+            meta_path = entry_dir / ".metadata.json"
+            risk_key_present = False
+            existing_risk = None
+            if meta_path.is_file():
+                try:
+                    meta = json.loads(meta_path.read_text(encoding="utf-8"))
+                    if isinstance(meta, dict):
+                        risk_key_present = "risk" in meta
+                        existing_risk = meta.get("risk")
+                except (OSError, json.JSONDecodeError):
+                    risk_key_present = False
+                    existing_risk = None
+            # Already migrated when .metadata.json carries a 'risk' key at all --
+            # an integer 0-10 (a real median was moved) OR an explicit null (the
+            # old field was an unfilled placeholder / non-numeric, nothing to
+            # move). Without the explicit-null branch, a closed/ plan.md whose
+            # dead '**Risk**: [pending recalculation]' line is left in place (by
+            # design) would re-fire this check on every run.
+            valid_existing = risk_key_present and (
+                existing_risk is None
+                or (
+                    isinstance(existing_risk, int)
+                    and not isinstance(existing_risk, bool)
+                    and 0 <= existing_risk <= 10
+                )
+            )
+            if valid_existing:
+                continue
+            rel = plan_path.relative_to(root).as_posix()
+            strip = state in ("inProgress", "implemented")
+            migrate_desc = (
+                f"write risk {parsed_value}" if parsed_value is not None
+                else "write risk null (the field has no numeric median to migrate)"
+            )
+            add(problems, f"risk-in-plan-header:{rel}", "optional", rel,
+                f"'{rel}' still carries the retired '- **Risk**: {raw_tail}' "
+                f"header field. The risk median lives in .metadata.json's 'risk' "
+                f"now. Migrate: {migrate_desc} into "
+                f"'{entry_dir.relative_to(root).as_posix()}/.metadata.json' "
+                f"(merge, preserving flags/flagsLastModified)"
+                + (", then delete the '- **Risk**: ...' line from the header."
+                   if strip else " -- leave the closed/ plan.md untouched (frozen history)."),
+                expected="risk in .metadata.json, not plan.md's header",
+                actual=f"**Risk**: {raw_tail} in plan.md header")
+
+
+def check_custom_pipeline_seed(root: Path, work_folder: str, problems: list) -> None:
+    """pv-init's scaffold-project.py creates {workFolder}/stuff/custom-version-pipeline.md
+    from the start (the three fixed sections, zero steps) so pv-version's
+    customization mechanism is discoverable. If stuff/ exists but the file
+    doesn't, a project scaffolded before this was added never got it -- flag it
+    so pv-update recreates the seed (re-run scaffold-project.py). Only the
+    file's presence is checked, never its contents (a user who added steps and
+    then deleted a section is out of scope)."""
+    wf_path = resolve_under(root, work_folder)
+    stuff_dir = wf_path / "stuff"
+    if not stuff_dir.is_dir():
+        return  # the workfolder-subfolder-missing:stuff check already fired
+    if not (stuff_dir / "custom-version-pipeline.md").is_file():
+        add(problems, "stuff-custom-pipeline-missing", "optional",
+            "framework.workFolder (stuff/custom-version-pipeline.md)",
+            f"'{stuff_dir.relative_to(root).as_posix()}' exists but has no "
+            f"custom-version-pipeline.md -- pv-version's per-project pipeline "
+            f"customization file. A project scaffolded before this file was "
+            f"added won't have it; without it the user never discovers the "
+            f"mechanism exists. Recreate the seed (three sections, zero steps).",
+            expected=f"{stuff_dir.relative_to(root).as_posix()}/custom-version-pipeline.md",
+            actual="missing")
+
+
+def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
+    """Audits every .metadata.json under {workFolder}/changes/ against the
+    metadata.schema.json contract (see pv-internal-workflow): valid JSON
+    object, no unknown keys, 'flags' an array of known enum values, 'risk'
+    an int 0-10 or null, 'relatedIds' an array of numeric-code strings that
+    each resolve to a real change/fix folder in some non-todo state (and
+    never the entry's own code). Also flags any .metadata.json that appears
+    under todo/ -- todo entries must never carry one. relatedIds is meant
+    to be RECIPROCAL (set-metadata.py --add-related/--remove-related always
+    write both sides) -- a final pass below flags any pair left one-sided,
+    e.g. by a hand-edited .metadata.json."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    if not changes_dir.is_dir():
+        return
+
+    # .metadata.json under todo/ -- always an error.
+    todo_dir = changes_dir / "todo"
+    if todo_dir.is_dir():
+        for meta in sorted(todo_dir.glob("*/.metadata.json")):
+            rel = meta.relative_to(root).as_posix()
+            add(problems, f"metadata-in-todo:{rel}", "optional", rel,
+                f"'{rel}' -- a todo/ entry must never carry .metadata.json "
+                f"(flags don't apply to loose ideas outside the change/fix flow). "
+                f"Delete it.",
+                expected="no .metadata.json under todo/", actual="present")
+
+    # Every existing change/fix code, across non-todo states, to validate
+    # 'relatedIds' references against.
+    existing_codes = {
+        p.name
+        for state_dir in changes_dir.iterdir()
+        if state_dir.is_dir() and state_dir.name != "todo"
+        for p in state_dir.iterdir() if p.is_dir()
+    }
+
+    # code -> its valid relatedIds (numeric, not self), collected below and
+    # cross-checked for reciprocity once every .metadata.json has been read.
+    related_by_code: dict[str, set[str]] = {}
+
+    for state_dir in sorted(p for p in changes_dir.iterdir() if p.is_dir()):
+        if state_dir.name == "todo":
+            continue
+        for meta in sorted(state_dir.glob("*/.metadata.json")):
+            rel = meta.relative_to(root).as_posix()
+            try:
+                data = json.loads(meta.read_text(encoding="utf-8"))
+            except json.JSONDecodeError as exc:
+                add(problems, f"metadata-invalid-json:{rel}", "optional", rel,
+                    f"'{rel}' isn't valid JSON: {exc}. Fix or delete it -- pv-status "
+                    f"reads it defensively (treats it as no flags), but it should be valid.",
+                    expected="valid JSON object", actual="invalid JSON")
+                continue
+            if not isinstance(data, dict):
+                add(problems, f"metadata-not-object:{rel}", "optional", rel,
+                    f"'{rel}' must contain a JSON object, got {type(data).__name__}.",
+                    expected="JSON object", actual=type(data).__name__)
+                continue
+
+            unknown = sorted(set(data.keys()) - METADATA_ALLOWED_KEYS)
+            if unknown:
+                add(problems, f"metadata-unknown-key:{rel}", "optional", rel,
+                    f"'{rel}' has key(s) {', '.join(unknown)} not in metadata.schema.json "
+                    f"(additionalProperties: false). Allowed: {', '.join(sorted(METADATA_ALLOWED_KEYS))}.",
+                    expected=", ".join(sorted(METADATA_ALLOWED_KEYS)), actual=", ".join(sorted(data.keys())))
+
+            flags = data.get("flags")
+            if flags is not None:
+                if not isinstance(flags, list):
+                    add(problems, f"metadata-flags-not-array:{rel}", "optional", rel,
+                        f"'{rel}': 'flags' must be an array, got {type(flags).__name__}.",
+                        expected="array of strings", actual=type(flags).__name__)
+                else:
+                    bad = sorted({f for f in flags if f not in KNOWN_FLAGS})
+                    if bad:
+                        add(problems, f"metadata-flags-unknown-value:{rel}", "optional", rel,
+                            f"'{rel}': 'flags' contains value(s) {', '.join(map(str, bad))} not in "
+                            f"the metadata.schema.json enum ({', '.join(KNOWN_FLAGS)}).",
+                            expected=", ".join(KNOWN_FLAGS), actual=", ".join(map(str, flags)))
+                    if len(flags) != len(set(flags)):
+                        add(problems, f"metadata-flags-duplicate:{rel}", "optional", rel,
+                            f"'{rel}': 'flags' has duplicate entries (schema requires uniqueItems).",
+                            expected="unique values", actual=", ".join(map(str, flags)))
+
+            risk = data.get("risk")
+            if risk is not None and not (
+                isinstance(risk, int) and not isinstance(risk, bool) and 0 <= risk <= 10
+            ):
+                add(problems, f"metadata-risk-invalid:{rel}", "optional", rel,
+                    f"'{rel}': 'risk' must be an integer 0-10 or null, got {risk!r}.",
+                    expected="integer 0-10 or null", actual=repr(risk))
+
+            related = data.get("relatedIds")
+            if related is not None:
+                own_code = meta.parent.name
+                if not isinstance(related, list):
+                    add(problems, f"metadata-related-not-array:{rel}", "optional", rel,
+                        f"'{rel}': 'relatedIds' must be an array, got {type(related).__name__}.",
+                        expected="array of numeric-code strings", actual=type(related).__name__)
+                else:
+                    bad_format = sorted(
+                        {r for r in related if not (isinstance(r, str) and r.isdigit())},
+                        key=str)
+                    if bad_format:
+                        add(problems, f"metadata-related-bad-format:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' contains value(s) {', '.join(map(str, bad_format))} "
+                            f"that aren't a change/fix's numeric code.",
+                            expected="numeric-code strings", actual=", ".join(map(str, related)))
+                    if len(related) != len(set(related)):
+                        add(problems, f"metadata-related-duplicate:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' has duplicate entries (schema requires uniqueItems).",
+                            expected="unique values", actual=", ".join(map(str, related)))
+                    if own_code in related:
+                        add(problems, f"metadata-related-self:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' lists '{own_code}' -- a change/fix can't be "
+                            f"related to itself.",
+                            expected=f"'{own_code}' absent from relatedIds", actual=own_code)
+                    unknown_related = sorted(
+                        {r for r in related if isinstance(r, str) and r.isdigit()
+                         and r != own_code and r not in existing_codes})
+                    if unknown_related:
+                        add(problems, f"metadata-related-missing:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' references id(s) {', '.join(unknown_related)} "
+                            f"that don't exist under changes/ in any non-todo state.",
+                            expected="ids that exist under changes/", actual=", ".join(unknown_related))
+
+                    related_by_code[own_code] = {
+                        r for r in related if isinstance(r, str) and r.isdigit()
+                        and r != own_code and r in existing_codes
+                    }
+
+    # Reciprocity pass: relatedIds is meant to be symmetric (set-metadata.py
+    # always writes both sides in the same invocation) -- a code missing
+    # from the other side's relatedIds means the pair drifted apart (e.g. a
+    # hand-edited .metadata.json), and pv-status's detail card would then
+    # show the relation on only one of the two entries.
+    for code, related_codes in sorted(related_by_code.items()):
+        one_sided = sorted(
+            other for other in related_codes
+            if code not in related_by_code.get(other, set())
+        )
+        if one_sided:
+            rel_id = f"metadata-related-not-reciprocal:{code}:{','.join(one_sided)}"
+            add(problems, rel_id, "optional", code,
+                f"'{code}' lists related id(s) {', '.join(one_sided)} that don't list "
+                f"'{code}' back in their own relatedIds -- the relation should be "
+                f"reciprocal on both sides.",
+                expected=f"'{code}' present in {', '.join(one_sided)}'s relatedIds",
+                actual=f"missing from {', '.join(one_sided)}'s relatedIds")
+
 # Maps each template that uses the [[[...]]] marker convention (see
 # pv-design.en.md's "Marker convention in templates") to the glob(s), relative
 # to workFolder, of the real files derived from it. The template itself is the
@@ -167,7 +456,7 @@ MARKED_TEMPLATES = (
     (".claude/skills/pv-internal-workflow/description.template.md",
      ("changes/inProgress/*/description.md", "changes/implemented/*/description.md")),
     (".claude/skills/pv-how/PLAN.template.md",
-     ("changes/inProgress/*/plan.md",)),
+     ("changes/inProgress/*/plan.md", "changes/implemented/*/plan.md")),
     (".claude/skills/pv-todo/description.template.md",
      ("changes/todo/*/description.md",)),
 )
@@ -210,9 +499,86 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
                     rel = doc_path.relative_to(root).as_posix()
                     add(problems, f"marker-missing:{rel}", "optional", rel,
                         f"'{rel}' is missing the structural marker(s) {', '.join(missing)} "
-                        f"expected from '{template_rel}' -- likely translated or otherwise altered by hand, "
-                        f"which breaks pv-status's literal parsing of them.",
+                        f"expected from '{template_rel}' -- these are field labels AND section headings "
+                        f"(e.g. '## Full description', '## (a) Functional notes') that pv-* scripts/skills "
+                        f"match literally in English; a document written by an older framework version whose "
+                        f"templates were still localized, or hand-edited since, has them translated. Every "
+                        f"marker checked here is one the template guarantees is always present, so a miss is "
+                        f"never a legitimately-omitted optional section. Restore the English label in place "
+                        f"without touching the section body.",
                         expected=", ".join(labels), actual=", ".join(l for l in labels if l not in missing) or "(none found)")
+
+
+# The three docs.* dirs are resolved relative to workFolder (NOT the repo
+# root) -- only sourcecodeDir is repo-root-relative. This resolution rule is
+# also implemented in .claude/skills/pv-init/scripts/resolve-path.py; keep the
+# two in sync if either changes.
+DOCS_DIR_FIELDS = (
+    ("framework.docs.functional.featuresDocPathDir", ("functional", "featuresDocPathDir"), "docs/features"),
+    ("framework.docs.tech.architectureDocDir", ("tech", "architectureDocDir"), "docs/architecture"),
+    ("framework.docs.tech.styleBibleDocDir", ("tech", "styleBibleDocDir"), "docs/style"),
+)
+
+
+NAMESPACE_SECTIONS = ("## Notation", "## Tree")
+ANCHOR_RE = re.compile(r"anchor:\s*([^\s#]+)#", re.IGNORECASE)
+
+
+def dotted_get(obj: dict, dotted: str):
+    """Walks a dotted path (rooted at the JSON top level, so it starts with
+    'framework.'). Returns (True, value) if every segment exists, else
+    (False, None)."""
+    cur = obj
+    for seg in dotted.split("."):
+        if not isinstance(cur, dict) or seg not in cur:
+            return False, None
+        cur = cur[seg]
+    return True, cur
+
+
+def check_obsolete_keys(context: dict, problems: list) -> None:
+    for dotted in OBSOLETE_KEYS:
+        present, _ = dotted_get(context, dotted)
+        if present:
+            add(problems, f"obsolete-field:{dotted}", "required", dotted,
+                f"'{dotted}' is a key removed from the framework by an upgrade. No skill "
+                f"reads it any more. Delete it from pv-context.json (and its matching "
+                f"entry from framework._comments if one exists).",
+                expected="key absent", actual="present")
+
+
+def check_namespace(root: Path, work_folder: str, relative_dir: str, problems: list) -> None:
+    """Only for framework.docs.tech.architectureDocDir (§ single tree). Checks the
+    00-namespace.md seed is present, has its normative headings, and its anchors
+    resolve to real files."""
+    folder = resolve_under(root, f"{work_folder.rstrip('/')}/{relative_dir}")
+    if not folder.is_dir():
+        return  # the *-missing-dir check already fired
+    ns_file = folder / "00-namespace.md"
+    if not ns_file.is_file():
+        add(problems, "namespace-missing", "optional", "framework.docs.tech.architectureDocDir",
+            f"'{folder.relative_to(root).as_posix()}' exists but has no 00-namespace.md "
+            f"(the single per-project namespace tree).",
+            expected=f"{folder.relative_to(root).as_posix()}/00-namespace.md", actual="missing")
+        return
+    text = ns_file.read_text(encoding="utf-8")
+    heading_lines = {line.strip() for line in text.splitlines()}
+    missing = [h for h in NAMESPACE_SECTIONS if h not in heading_lines]
+    if missing:
+        add(problems, "namespace-section-missing", "optional", "framework.docs.tech.architectureDocDir",
+            f"'00-namespace.md' is missing the normative heading(s) {', '.join(missing)} "
+            f"-- other skills locate these literally.",
+            expected=", ".join(NAMESPACE_SECTIONS),
+            actual=", ".join(h for h in NAMESPACE_SECTIONS if h not in missing) or "(none found)")
+    for anchor_file in ANCHOR_RE.findall(text):
+        # anchors resolve from the repo root, same as sourcecodeDir
+        if not (root / strip_leading_slash(anchor_file)).exists():
+            add(problems, f"namespace-anchor-broken:{anchor_file}", "optional",
+                "framework.docs.tech.architectureDocDir",
+                f"'00-namespace.md' has an anchor to '{anchor_file}', but that file "
+                f"doesn't exist (renamed, moved, or deleted). Only the file is checked, "
+                f"not the symbol.",
+                expected=f"file at {anchor_file}", actual="missing")
 
 
 def check_docs_dir(root: Path, work_folder: str, relative_dir: str, field: str,
@@ -229,6 +595,8 @@ def check_docs_dir(root: Path, work_folder: str, relative_dir: str, field: str,
             f"'{field}' folder exists but has no INDEX.md.",
             expected=f"{folder.relative_to(root).as_posix()}/INDEX.md",
             actual="missing")
+    if field == "framework.docs.tech.architectureDocDir":
+        check_namespace(root, work_folder, relative_dir, problems)
 
 
 def main() -> None:
@@ -286,6 +654,9 @@ def main() -> None:
         add(problems, "unknown-framework-field", "required", f"framework.{key}",
             f"'framework.{key}' isn't a field declared in schema.json (additionalProperties: false).")
 
+    # --- obsolete keys left over from a framework upgrade (required) ---
+    check_obsolete_keys(context, problems)
+
     # --- workFolder + fixed subfolders (required) ---
     work_folder = framework.get("workFolder", "/previo-sdd")
     if not isinstance(work_folder, str) or not work_folder.strip():
@@ -322,9 +693,21 @@ def main() -> None:
                     f"Change code '{code}' exists in both inProgress/ and implemented/ -- codes must never repeat.",
                     actual=code)
 
+    # --- stuff/custom-version-pipeline.md seed present (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_custom_pipeline_seed(root, work_folder, problems)
+
     # --- structural markers in changes/**-derived documents (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
         check_marked_documents(root, work_folder, problems)
+
+    # --- .metadata.json contract under changes/** (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_metadata_files(root, work_folder, problems)
+
+    # --- retired plan.md '**Risk**' header field -> .metadata.json (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_risk_in_plan_headers(root, work_folder, problems)
 
     # --- sourcecodeDir (required to exist if set, has a default) ---
     source_dir = framework.get("sourcecodeDir", "/src")
@@ -348,20 +731,25 @@ def main() -> None:
                 f"'{key}' points to skill '{name}', but '.claude/skills/{name}/SKILL.md' doesn't exist.",
                 expected=f".claude/skills/{name}/SKILL.md", actual="missing")
 
-    # --- docs.* (optional: only checked if configured) ---
+    # --- docs.* (required: all three doc dirs are always configured by
+    # pv-init; a missing one is a broken state, not a legitimately-skipped
+    # optional -- see schema.json's 'required' on framework.docs). ---
     docs = framework.get("docs") or {}
     functional = docs.get("functional") or {}
     tech = docs.get("tech") or {}
+    sub_objects = {"functional": functional, "tech": tech}
     if isinstance(work_folder, str) and work_folder.strip():
-        if functional.get("featuresDocPathDir"):
-            check_docs_dir(root, work_folder, functional["featuresDocPathDir"],
-                            "framework.docs.functional.featuresDocPathDir", problems)
-        if tech.get("architectureDocDir"):
-            check_docs_dir(root, work_folder, tech["architectureDocDir"],
-                            "framework.docs.tech.architectureDocDir", problems)
-        if tech.get("styleBibleDocDir"):
-            check_docs_dir(root, work_folder, tech["styleBibleDocDir"],
-                            "framework.docs.tech.styleBibleDocDir", problems)
+        for field, (sub_key, dir_key), default_rel in DOCS_DIR_FIELDS:
+            configured = sub_objects[sub_key].get(dir_key)
+            if configured:
+                check_docs_dir(root, work_folder, configured, field, problems)
+            else:
+                add(problems, f"docs-dir-unconfigured:{field}", "required", field,
+                    f"'{field}' isn't set in pv-context.json. pv-init always configures all "
+                    f"three doc dirs (functional.featuresDocPathDir, tech.architectureDocDir, "
+                    f"tech.styleBibleDocDir); every pv-* skill now requires them. Write it with "
+                    f"the schema default and scaffold the empty dir.",
+                    expected=f"{default_rel} (relative to workFolder)", actual="unconfigured")
 
     # --- pv.py must match assets/pv.py exactly (required) ---
     pv_py = root / "pv.py"
@@ -460,7 +848,7 @@ def main() -> None:
                     "understand what happened before deciding how to fix it.",
                     expected=f">= {last_verified}", actual=real_raw)
 
-    result["schemaOk"] = not any(p["id"].startswith(("unknown-", "framework-missing")) for p in problems)
+    result["schemaOk"] = not any(p["id"].startswith(("unknown-", "framework-missing", "obsolete-")) for p in problems)
     json.dump(result, sys.stdout, ensure_ascii=False, indent=2)
     print()
 

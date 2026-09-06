@@ -74,18 +74,16 @@ Ejemplo de `.claude/pv-context.json` ya configurado:
       },
       "tech": {
         "architectureDocDir": "docs/architecture",
-        "styleBibleDocDir": "docs/style",
-        "language": "en"
+        "styleBibleDocDir": "docs/style"
       }
     },
     "_comments": {
       "workFolder": "Es la carpeta de trabajo principal del framework, relativa siempre a la raíz del repo.",
       "sourcecodeDir": "Es la carpeta del código fuente del proyecto, relativa siempre a la raíz del repo.",
-      "interaction.language": "El equipo habla con Claude en inglés.",
-      "changes.language": "Cada change/fix en curso se documenta en español, idioma del equipo.",
-      "versions.language": "El changelog publicado se redacta en español.",
-      "docs.functional.language": "Documentación de funcionalidades en español.",
-      "docs.tech.language": "Arquitectura y biblia de estilo en inglés, para compartir con colaboradores externos."
+      "interaction.language": "El equipo habla con Claude (en inglés en este ejemplo).",
+      "changes.language": "Cada change/fix en curso se documenta (en español en este ejemplo), idioma del equipo.",
+      "versions.language": "El changelog publicado se redacta (en español en este ejemplo).",
+      "docs.functional.language": "Documentación de funcionalidades (en español en este ejemplo)."
     }
   }
 }
@@ -334,9 +332,10 @@ Previo separa el idioma en el que hablas con el framework del idioma en el que s
 - **`changes.language`**: idioma de los documentos de cada change/fix en curso (`description.md`, `plan.md`, `history.md` y los textos de los mockups `design_*.html`/`.txt`) dentro de `changes/`.
 - **`versions.language`**: idioma de `changelog.md`, generado por `pv-internal-changelog` a partir de `changes/closed`.
 - **`docs.functional.language`**: idioma de la documentación de funcionalidades (`featuresDocPathDir`) que `pv-do` mantiene actualizada tras cada change/fix implementado.
-- **`docs.tech.language`**: idioma compartido por la documentación de arquitectura (`architectureDocDir`) y la biblia de estilo (`styleBibleDocDir`), que `pv-do` mantiene actualizadas tras cada change/fix implementado.
 
-Todos los puntos salvo `interaction.language` son opcionales: si no los configuras, heredan el idioma de `interaction.language` (y si tampoco está configurado, se usa inglés). Esto te permite, por ejemplo, hablar con Previo en español mientras la documentación técnica queda en inglés para compartirla con colaboradores externos:
+La documentación técnica (`docs.tech.architectureDocDir` + `docs.tech.styleBibleDocDir`) **no** tiene punto de idioma: es siempre inglés técnico, no se configura.
+
+Todos los puntos salvo `interaction.language` son opcionales: si no los configuras, heredan el idioma de `interaction.language` (y si tampoco está configurado, se usa inglés). Esto te permite, por ejemplo, hablar con Previo en español mientras el changelog y las funcionalidades salen en español — la documentación técnica va siempre en inglés, no se configura:
 
 ```json
 "framework": {
@@ -344,15 +343,14 @@ Todos los puntos salvo `interaction.language` son opcionales: si no los configur
   "changes": { "language": "es" },
   "versions": { "language": "es" },
   "docs": {
-    "functional": { "language": "es" },
-    "tech": { "language": "en" }
+    "functional": { "language": "es" }
   }
 }
 ```
 
-`pv-init` siempre pregunta por el idioma en una inicialización desde cero, proponiendo inglés por defecto para `interaction` y ofreciendo reutilizar el mismo valor para el resto salvo que quieras algo distinto. Si inicializaste este proyecto antes de que existiera el soporte de idioma, la próxima vez que ejecutes `pv-init` te preguntará solo esto, sin repetir el resto del cuestionario. Puedes editar los valores a mano en `.claude/pv-context.json` en cualquier momento después.
+`pv-init` siempre pregunta por el idioma en una inicialización desde cero, proponiendo inglés por defecto para `interaction` y ofreciendo reutilizar el mismo valor para el resto salvo que quieras algo distinto — "el resto" ya no incluye la documentación técnica. Si inicializaste este proyecto antes de que existiera el soporte de idioma, la próxima vez que ejecutes `pv-init` te preguntará solo esto, sin repetir el resto del cuestionario. Puedes editar los valores a mano en `.claude/pv-context.json` en cualquier momento después.
 
-Dos cosas se quedan siempre en inglés, se configure lo que se configure: la tabla del informe de `pv-status` (la generan scripts deterministas, no el modelo, para que sea gratis en tokens y consistente — solo la frase que la introduce sigue `interaction.language`), y las etiquetas de campo markdown que los scripts parsean literalmente en `description.md` y `plan.md` (`**Type**`, `**Name**`, `**Creation date**`, `**Risk**`, `## Idea`, `## Notes`...). Estas están marcadas con `[[[...]]]` en el `*.template.md` de cada skill — ver la sección "Convención de marcadores en plantillas" de `pv-design.es.md` para la regla completa — así que solo el texto que sigue a cada etiqueta sigue el idioma configurado.
+**Tres** cosas se quedan siempre en inglés, se configure lo que se configure: la tabla del informe de `pv-status` (la generan scripts deterministas, no el modelo, para que sea gratis en tokens y consistente — solo la frase que la introduce sigue `interaction.language`); las etiquetas de campo markdown que los scripts parsean literalmente en `description.md` y `plan.md` (`**Type**`, `**Name**`, `**Creation date**`, `## Idea`, `## Notes`...) — marcadas con `[[[...]]]` en el `*.template.md` de cada skill, ver la sección "Convención de marcadores en plantillas" de `pv-design.es.md`, así que solo el texto que sigue a cada etiqueta sigue el idioma configurado; y **toda la documentación técnica** (`architectureDocDir` + `styleBibleDocDir`), que está optimizada para que la lean las propias skills, no una persona, y por eso no se puede configurar. Si configuraste español y tu documentación técnica sale en inglés, es esto: no es un bug.
 
 ### 3. Modelo/esfuerzo de cada skill: `skillModels`
 
@@ -376,6 +374,35 @@ Después de editar `default` u `overrides`, hay que sincronizar el framework par
 - Ejecuta el script `.claude/skills/pv-init/scripts/sync-skill-models.py`.
 
 Es un proceso automático que no gasta tokens; puede repetirse en cualquier momento tras editar `skillModels` a mano, o pedirle a `pv-init` que lo haga por ti la próxima vez que lo invoques.
+
+### 4. Pasos personalizados en el pipeline de versión
+
+El flujo de `pv-version` no se puede editar desde un proyecto — su `SKILL.md`, `workflow.version.md` y todo lo demás bajo `.claude/skills/pv-*/` son framework instalado, se mantienen sincronizados mediante `pv-update`, y editarlos a mano los deja inconsistentes. Para que el flujo de versión haga algo específico de tu proyecto (publicar la entrega en algún sitio, ejecutar una comprobación previa, generar artefactos extra), hay exactamente dos puntos de personalización, ambos ficheros en `{workFolder}/stuff/`:
+
+- **`how-to-compile-version.md`** — cómo construir el entregable (pasos 3–4 del flujo), tratado más arriba.
+- **`custom-version-pipeline.md`** — los pasos propios de tu proyecto, ejecutados en tres puntos fijos del flujo.
+
+`pv-init` crea `custom-version-pipeline.md` desde el principio, con tres encabezados de sección fijos y ningún paso:
+
+```markdown
+# Custom steps for this project's release pipeline
+
+## Before starting
+
+## In the middle
+
+## At the end
+```
+
+Cada sección contiene bloques `### Step N: {name}` con la misma forma que `how-to-compile-version.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). Cuando `pv-version` se ejecuta, lee este fichero y, en cada uno de los tres puntos, ejecuta los pasos que esa sección defina, en orden:
+
+- **Before starting** — antes de nada (antes incluso de resolver el código de versión `{XXXX}`). Aquí solo se sustituye `{workFolder}`; `{XXXX}` y las rutas `versions/{XXXX}/` todavía no están disponibles.
+- **In the middle** — una vez que los artefactos del entregable están en `{workFolder}/versions/{XXXX}/files/`, antes de comprimir la documentación. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles.
+- **At the end** — después de redactar el changelog, antes del resumen final. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles; el resumen final indica qué secciones se ejecutaron y qué produjeron.
+
+Una sección sin pasos se omite en silencio, así que un proyecto que nunca toca este fichero se comporta exactamente igual que antes. Si el comando de un paso personalizado falla o no aparece su salida esperada, la versión se detiene y se explica el problema — no se busca un rodeo. Si le pides a `pv-version` que *cambie* cómo funciona el flujo y encaja en una de las tres secciones, edita este fichero en vez de la skill.
+
+Un proyecto generado antes de que este fichero existiera no lo tendrá; ejecutar `/pv-update` una vez recrea la semilla vacía (nunca sobrescribe un fichero existente, así que los pasos que ya hayas añadido están a salvo).
 
 ## El script `pv.py`: consultar y cerrar cambios sin Claude Code
 
@@ -407,17 +434,34 @@ Se genera y actualiza automáticamente — tanto al instalar/actualizar Previo c
 El menú contiene opciones para gestionar los cambios en curso:
 
 1. **Estado general del proyecto** — el mismo resumen que `/pv-status`.
-2. **Listado filtrado por estado** (`todo`, `inProgress`, `implemented`...) — te pide elegir uno de la lista antes de mostrarlo.
+2. **Changes info** — abre un submenú con cinco opciones: buscar por id, buscar por contenido, listar por estado (`todo`, `inProgress`, `implemented`...), **marcar/desmarcar una flag en un cambio**, y **listar cambios por flag**. Ver "Flags: foco de trabajo" más abajo.
 3. **Ideas en `todo/`** — igual que `/pv-status todo`.
 4. **Cerrar una entrada implementada** (mover a `changes/closed/`) — te deja elegir una entrada concreta o cerrarlas todas de golpe, pidiéndote confirmación (`y`/`N`) antes de mover nada.
 5. **Configuración** — abre un submenú:
    - **Sincronizar modelos de las skills según `pv-context.json`** — aplica los cambios que hayas hecho a mano en `skillModels` (ver [Modelo/esfuerzo de cada skill](#3-modeloesfuerzo-de-cada-skill-skillmodels) más arriba), sin que tengas que ejecutar el script a mano ni volver a invocar `pv-init`.
-6. **Comprobar versiones** — abre un submenú:
+6. **Comprobar versiones de Previo** — abre un submenú:
    - **Listar versiones y leer su changelog** — lista las carpetas de `{workFolder}/versions/{XXXX}/` y, tras elegir una, muestra su `changelog.md`.
    - **Comprobar que `changes/closed/temp/` está vacío** — esta carpeta debería estar siempre vacía o no existir; si tiene algo dentro, significa que una ejecución de `pv-version` falló a medias o sigue en marcha, y esta opción te avisa y lista lo que ha quedado atascado ahí.
 7. **Salir**.
 
 Cada submenú tiene su propia opción "Volver" para regresar al menú principal. Ninguna opción gasta tokens: todo son scripts deterministas, el mismo tipo de operación que ejecutarías tú mismo desde la terminal. Útil para un vistazo rápido del proyecto o para cerrar cambios sin abrir Claude Code.
+
+### Flags: foco de trabajo
+
+Cada cambio puede llevar una o varias **flags** — etiquetas de estado ortogonales al ciclo de vida (`inProgress`/`implemented`/`closed`), pensadas como una capa de *foco personal*:
+
+| Flag | Icono | Significado |
+|---|---|---|
+| `priority` | ⭐ | Marcado como prioritario, para que suba en la cola |
+| `workinprogress` | ⚙️ | Se está trabajando activamente en él ahora mismo |
+
+Un cambio puede tener las dos, una, o ninguna. Las **ideas de `todo/` nunca llevan flags** (una idea suelta fuera del flujo no tiene nada "en progreso" ni "priorizado dentro del flujo" que marcar).
+
+- **Marcar/desmarcar**: `pv.py` → *Changes info* → *Toggle a flag on a change* → la lista de cambios sale **agrupada igual que "Estado general del proyecto"** (listos para cerrar / planificados / pendientes de análisis); los cambios en `closed/` no aparecen (ya están congelados en una entrega, no hay nada que priorizar). Eliges el cambio, eliges la flag (`[x]`/`[ ]` según esté activa) y se aplica al instante (sin pedir confirmación — un toggle se deshace con la misma acción). La lista se vuelve a mostrar actualizada, y puedes seguir tocando flags o elegir otro cambio sin salir. También desde Claude Code, aunque no hay un comando dedicado: el sistema lo gestiona el script `set-metadata.py` de `pv-internal-workflow`.
+- **Listar por flag**: `pv.py` → *Changes info* → *Show changes by flag*, o `/pv-status` muestra los iconos ⭐/⚙️ en todos sus listados de cambios (columna `Flags` en el chat; prefijo de iconos en la terminal).
+- **Dónde se guardan**: en un fichero oculto `.metadata.json` dentro de la carpeta del cambio, junto a `description.md`/`plan.md`. Solo aparece cuando el cambio tiene al menos una flag; un cambio sin flags no tiene ese fichero. Viaja con la carpeta al mover el cambio entre estados.
+
+`/pv-update` audita ese fichero: JSON válido, flags dentro del catálogo conocido, y que no haya aparecido ninguno bajo `todo/`.
 
 ## Otros trucos
 

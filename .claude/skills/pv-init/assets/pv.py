@@ -11,12 +11,25 @@ changes without going through Claude Code or having to remember script
 names, paths, or parameters: run this file and choose a menu option.
 
 Most options are read-only and delegate to the pv-status skill's scripts.
-Three options modify something:
+Four options modify something:
 - "Close an implemented entry": moves the folder from
   changes/implemented/{xxxx} to changes/closed/{xxxx} (delegating to
   pv-internal-workflow's move-change.py, which doesn't touch any file's
   content, only the folder), and always asks for explicit confirmation
   before moving anything.
+- "Toggle a flag on a change" (inside "Changes info"): adds/removes a
+  status flag (priority / workinprogress) on a change's .metadata.json,
+  delegating every write to pv-internal-workflow's set-metadata.py (pv.py
+  never writes .metadata.json itself). No confirm() -- a flag is
+  trivially reversible (the same call flips it back); after each toggle
+  the flag list is re-shown with the change reflected, and the change
+  picker stays open too, so several flags/changes can be toggled without
+  leaving. The change picker lists each change by its id (code), grouped
+  by state, and asks you to type the id -- no parallel row numbers. The
+  flag icons shown in every change listing come from
+  pv-status's read-flags.py (batch input: one subprocess per state);
+  pv.py passes it --color/--no-color matching pv.py's own terminal,
+  since it captures read-flags.py's stdout (a pipe, never a tty).
 - "Ideas in todo/" (now a submenu): lists ideas and, once one is chosen,
   offers deleting its whole folder (delegating to pv-internal-workflow's
   delete-todo.py), always asking for explicit confirmation first. Every
@@ -28,16 +41,27 @@ Three options modify something:
   submenu): delegates to pv-init's sync-skill-models.py, which propagates
   pv-context.json's skillModels to each 'pv-*' SKILL.md's frontmatter
   (model/effort).
+- "Change max character width" (inside the "Configuration" submenu): the
+  only place pv.py *writes* pv-context.json -- it stores a single integer
+  at framework.onescript.width (>= 40; empty input keeps the current
+  value), read back on every launch to set this file's WIDTH. A minimal
+  read-modify-write that preserves every other field and key order; still
+  gated behind a confirm(). Under --testconfig the same value is read from
+  / written to pv-config-test.json at the identical framework.onescript.width
+  path, so the exact same code handles both.
 
-"Changes info" opens a submenu with three ways to look up entries under
-{workFolder}/changes/: "Search by id" (exact id match, cheap -- doesn't
-read description.md except the match's), "Search by content" (text match
-in description.md, reads every entry), and "Search by state" (the former
-top-level "Listing filtered by state" option, now nested here). The first
-two scan every state; kept as separate options rather than one combined
-search so each stays as fast as the kind of lookup it's actually doing.
+"Changes info" opens a submenu with five options: "Search by id" (exact
+id match, cheap -- doesn't read description.md except the match's),
+"Search by content" (text match in description.md, reads every entry),
+"Search by state" (the former top-level "Listing filtered by state"
+option, now nested here), "Toggle a flag on a change" (the only
+state-mutating option here -- see above), and "Show changes by flag"
+(read-only: filter_status.py --flag, lists every change carrying the
+chosen flag, across states). The searches scan every state; kept as
+separate options rather than one combined search so each stays as fast as
+the kind of lookup it's actually doing.
 
-"Check versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
+"Check Previo versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
 folders and prints the chosen one's changelog.md.
 
 Design notes (screen types, colors, how to extend this menu) live in
@@ -46,12 +70,18 @@ submenu, or screen type.
 
 --testconfig is a test-harness-only flag, not for normal end-user use: it
 takes no argument -- it reads pv-config-test.json from this same script's
-own folder ({"repoRoot": "...", "workFolder": "..."}), used instead of the
-repo's real .claude/pv-context.json, letting pv.py be run against
+own folder, whose node tree mirrors pv-context.json's own
+({"repoRoot": "..", "framework": {"workFolder": "...", "onescript": {...}}})
+so the same code finds each value at the same path. repoRoot stays
+top-level -- it has no pv-context.json equivalent (test-only: where the
+real repo root is when pv.py runs as a copy outside it). Used instead of
+the repo's real .claude/pv-context.json, letting pv.py be run against
 throwaway fixture data (e.g. test/previo-sdd/) without touching the real
 workFolder. The framework's real scripts are still invoked as-is (never
 copied) -- only the --work-folder value forwarded to the ones that
-support it changes. See test/pv-test.py and test/pv-config-test.json for
+support it changes. pv.py's own persisted settings (framework.onescript.*)
+are also read from / written to this file instead of pv-context.json, at
+the identical nested path. See test/pv-test.py and test/pv-config-test.json for
 the intended setup (a plain copy of this same file, run with --testconfig
 from inside test/, where its sibling pv-config-test.json lives).
 
@@ -76,6 +106,13 @@ INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
 INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
 CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
 
+# The config file pv.py reads its own settings from and writes them back to:
+# CONTEXT_PATH normally, or the --testconfig file when that flag is passed
+# (set in main()). Both carry pv.py's settings at the same nested path
+# (framework.onescript.*), so load_onescript_width()/save_onescript_width()
+# don't branch on which one it is.
+ACTIVE_CONFIG_PATH = CONTEXT_PATH
+
 # Set by main() when --testconfig is passed: the workFolder value to use
 # instead of reading it from CONTEXT_PATH, and to forward as --work-folder
 # to the external scripts that accept that override.
@@ -83,14 +120,16 @@ TEST_WORK_FOLDER: str | None = None
 
 # The subset of scripts invoked via run_script() that accept --work-folder
 # as an explicit override (filter_status.py, render_status.py,
-# list_todo.py, move-change.py, delete-todo.py). sync-skill-models.py
-# doesn't touch changes/ or workFolder at all, so it has no such flag and
-# is never forwarded one.
+# list_todo.py, read-flags.py, move-change.py, set-metadata.py,
+# delete-todo.py). sync-skill-models.py doesn't touch changes/ or
+# workFolder at all, so it has no such flag and is never forwarded one.
 SCRIPTS_ACCEPTING_WORK_FOLDER = {
     "filter_status.py",
     "render_status.py",
     "list_todo.py",
+    "read-flags.py",
     "move-change.py",
+    "set-metadata.py",
     "delete-todo.py",
 }
 
@@ -99,7 +138,25 @@ SCRIPTS_ACCEPTING_WORK_FOLDER = {
 # see its module docstring). run_script() always forwards pv.py's own WIDTH
 # here, so delegated screens (general status, searches, the detail card,
 # the ideas listing) match this file's own menu/selection screens exactly.
-SCRIPTS_ACCEPTING_WIDTH = {"filter_status.py", "render_status.py", "list_todo.py"}
+# read-flags.py accepts --width for symmetry (it ignores it -- a flag
+# prefix has no column to fit), so forwarding it is harmless.
+SCRIPTS_ACCEPTING_WIDTH = {
+    "filter_status.py",
+    "render_status.py",
+    "list_todo.py",
+    "read-flags.py",
+}
+
+# Canonical flag catalogue -- kept in sync BY HAND with
+# pv-status/scripts/terminal_output.py's FLAG_* maps and
+# pv-internal-workflow/metadata.schema.json's enum. pv.py imports nothing,
+# so it can't reuse those; it only needs the enum value <-> human label
+# mapping for its own show_selection()s. The ICONS shown in listings come
+# from read-flags.py (which DOES use terminal_output), never rendered here.
+FLAG_VALUES = ["priority", "workinprogress"]  # canonical order
+FLAG_LABELS = {"priority": "Priority", "workinprogress": "Work in progress"}
+FLAG_ICONS = {"priority": "⭐", "workinprogress": "⚙️"}
+FLAG_ICONS_ASCII = {"priority": "[P]", "workinprogress": "[W]"}
 
 
 # =============================================================================
@@ -114,7 +171,8 @@ SCRIPTS_ACCEPTING_WIDTH = {"filter_status.py", "render_status.py", "list_todo.py
 # See .claude/pv-doc/pv-design-onescript/pv-design-onescript.es.md > "Estilo por Tipo de Pantalla" for
 # the full rationale and exact mockups.
 
-WIDTH = 80
+WIDTH = 80  # default; overridden at startup by framework.onescript.width if set
+MIN_WIDTH = 40  # below this, RING_ART and the delegated detail cards break
 COLOR_RESET = "\033[0m"
 GOLD = "\033[38;5;220m"
 DARK_GRAY = "\033[38;5;238m"
@@ -263,7 +321,10 @@ def print_header(title: str) -> None:
 
 
 def show_selection(
-    title: str, options: list[str], prompt: str, extra_option: tuple[str, str] | None = None
+    title: str,
+    options: list[str],
+    prompt: str,
+    extra_option: tuple[str, str] | None = None,
 ) -> int | str | None:
     """Selection screen: numbered list framed by DARK_GRAY '-' rules.
 
@@ -337,13 +398,39 @@ def confirm(question: str) -> bool:
 # =============================================================================
 
 
-def run_script(script: Path, *args: str) -> None:
+def _script_args(script: Path, args: tuple[str, ...]) -> list[str]:
     full_args = list(args)
     if TEST_WORK_FOLDER is not None and script.name in SCRIPTS_ACCEPTING_WORK_FOLDER:
         full_args += ["--work-folder", TEST_WORK_FOLDER]
     if script.name in SCRIPTS_ACCEPTING_WIDTH:
         full_args += ["--width", str(WIDTH)]
-    subprocess.run([sys.executable, str(script), *full_args], cwd=ROOT)
+    return full_args
+
+
+def run_script(script: Path, *args: str) -> None:
+    subprocess.run(
+        [sys.executable, str(script), *_script_args(script, args)], cwd=ROOT
+    )
+
+
+def run_script_capture(script: Path, *args: str) -> str:
+    """Like run_script() but returns the script's stdout instead of letting
+    it print through. Used when pv.py needs the output as data (e.g.
+    read-flags.py's per-code flag prefixes) rather than as a screen. Same
+    --work-folder / --width forwarding. Returns "" on a non-zero exit or
+    any failure to launch -- a missing flag prefix must never break a
+    listing."""
+    try:
+        result = subprocess.run(
+            [sys.executable, str(script), *_script_args(script, args)],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+        )
+    except OSError:
+        return ""
+    return result.stdout if result.returncode == 0 else ""
 
 
 def work_root() -> Path:
@@ -357,6 +444,37 @@ def work_root() -> Path:
         context = json.loads(CONTEXT_PATH.read_text(encoding="utf-8"))
         work_folder_rel = context.get("framework", {}).get("workFolder", "/")
     return ROOT / (work_folder_rel or "").lstrip("/")
+
+
+def load_onescript_width() -> int:
+    """Reads framework.onescript.width from the active config file
+    (ACTIVE_CONFIG_PATH -- pv-context.json, or the --testconfig file, both
+    using the same nested path). Returns the module default WIDTH if the
+    file, the section, or the field is absent, or if the value isn't an int
+    >= MIN_WIDTH -- a malformed setting falls back silently rather than
+    failing a launch, matching how the rest of this file treats config."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return WIDTH
+    value = config.get("framework", {}).get("onescript", {}).get("width")
+    if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_WIDTH:
+        return value
+    return WIDTH
+
+
+def save_onescript_width(width: int) -> None:
+    """Writes framework.onescript.width into the active config file,
+    preserving every other field and the existing key order (read-modify-
+    write with json.load + json.dump, indent=2). Creates the
+    framework/onescript objects if missing. This is the only place pv.py
+    writes its config file -- a single validated integer, always confirmed
+    by the caller first."""
+    config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    config.setdefault("framework", {}).setdefault("onescript", {})["width"] = width
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def changes_dir() -> Path:
@@ -377,15 +495,25 @@ def framework_version() -> str:
 
 
 def load_test_config(path: Path) -> dict[str, str]:
-    """Reads pv-config-test.json ({"repoRoot": "...", "workFolder": "..."}),
-    expected next to this script (--testconfig takes no argument).
+    """Reads pv-config-test.json, expected next to this script (--testconfig
+    takes no argument). Shape mirrors pv-context.json's own node tree so the
+    same code finds each value at the same path:
 
-    "repoRoot" is resolved by the caller relative to this file's own
-    location, not the process cwd.
+      {"repoRoot": "..", "framework": {"workFolder": "...", "onescript": {...}}}
+
+    - "repoRoot" stays top-level: it has no equivalent in pv-context.json
+      (it's test-harness-only -- it tells pv.py where the real repo root is
+      when it runs as a copy outside it). Resolved by the caller relative to
+      this file's own location, not the process cwd.
+    - "workFolder" lives at framework.workFolder, the same path pv-context.json
+      uses. framework.onescript.* (pv.py's persisted settings) is read/written
+      in place by load_onescript_width()/save_onescript_width(), which point
+      at this file via ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch
+      it.
 
     Exits with a clear message (no raw traceback) if the file doesn't
-    exist, isn't valid JSON, or is missing either required field -- this
-    flag is test-harness-only, so a broken/misconfigured pointer should
+    exist, isn't valid JSON, or is missing repoRoot / framework.workFolder --
+    this flag is test-harness-only, so a broken/misconfigured pointer should
     fail loudly rather than silently fall back to the real repo state.
     """
     if not path.is_file():
@@ -396,11 +524,17 @@ def load_test_config(path: Path) -> dict[str, str]:
     except json.JSONDecodeError as exc:
         sys.exit(f"--testconfig: {path} isn't valid JSON: {exc}")
 
-    missing = [key for key in ("repoRoot", "workFolder") if key not in config]
+    repo_root = config.get("repoRoot")
+    work_folder = (config.get("framework") or {}).get("workFolder")
+    missing = []
+    if not repo_root:
+        missing.append("repoRoot")
+    if not work_folder:
+        missing.append("framework.workFolder")
     if missing:
         sys.exit(f"--testconfig: {path} is missing required field(s): {', '.join(missing)}")
 
-    return {"repoRoot": config["repoRoot"], "workFolder": config["workFolder"]}
+    return {"repoRoot": repo_root, "workFolder": work_folder}
 
 
 # =============================================================================
@@ -431,6 +565,61 @@ def show_general_status() -> None:
         show_id_detail_card(query)
 
 
+def flag_prefixes_for(codes: list[str], state: str | None = None) -> list[str]:
+    """One flag-icon prefix per code, in order, via a single read-flags.py
+    subprocess (batch input -- decision 6.13: 1 subprocess, not N). Each
+    line is either the rendered prefix ("⭐ ⚙️  ", or "[P] [W]  " under
+    NO_COLOR) or empty for a change with no flags / an unresolved code.
+    Returns a list the same length as `codes` (padded with "" if the
+    script misbehaved), so callers can zip it straight onto their list.
+
+    Pass `state` when every code is known to live in the same state --
+    read-flags.py resolves an ambiguous bare code (one that exists in two
+    states) to an empty prefix otherwise. For a mixed-state list, call
+    once per state (see toggle_flag_on_change()).
+
+    Color is forced to match pv.py's OWN terminal via --color/--no-color:
+    read-flags.py's stdout is a pipe here, so its own isatty() check would
+    always fall back to ASCII."""
+    if not codes:
+        return []
+    args: list[str] = []
+    for code in codes:
+        args += ["--xxxx", code]
+    if state:
+        args += ["--state", state]
+    args += ["--terminal", "--color" if supports_color() else "--no-color"]
+    out = run_script_capture(STATUS_SCRIPTS / "read-flags.py", *args)
+    # splitlines() handles \n and \r\n alike (Windows Python prints \r\n),
+    # so each prefix comes back clean with no trailing carriage return.
+    lines = out.splitlines() if out else []
+    # read-flags.py prints exactly len(codes) lines; tolerate a stray
+    # trailing "" from a newline-terminated capture.
+    if len(lines) > len(codes) and lines[-1] == "":
+        lines = lines[:-1]
+    lines += [""] * (len(codes) - len(lines))
+    return lines[: len(codes)]
+
+
+def flag_prefixes_by_state(pairs: list[tuple[str, str]]) -> list[str]:
+    """flag_prefixes_for() for a list of (code, state) pairs that may span
+    several states. Groups by state so each read-flags.py call can pass
+    --state and resolve codes that exist in more than one state (e.g. a
+    fast change in both implemented/ and closed/). Returns prefixes in the
+    original order of `pairs`."""
+    if not pairs:
+        return []
+    by_state: dict[str, list[int]] = {}
+    for i, (_code, state) in enumerate(pairs):
+        by_state.setdefault(state, []).append(i)
+    result = [""] * len(pairs)
+    for state, indices in by_state.items():
+        prefixes = flag_prefixes_for([pairs[i][0] for i in indices], state=state)
+        for i, prefix in zip(indices, prefixes):
+            result[i] = prefix
+    return result
+
+
 def list_implemented_entries() -> list[tuple[str, str]]:
     implemented_dir = changes_dir() / "implemented"
     if not implemented_dir.is_dir():
@@ -449,36 +638,48 @@ def list_implemented_entries() -> list[tuple[str, str]]:
 
 
 def close_entry() -> None:
-    entries = list_implemented_entries()
-    if not entries:
-        show_info(
-            [wrap("There's no entry in changes/implemented/ pending closure.")], framed=False
+    first_pass = True
+    while True:
+        entries = list_implemented_entries()
+        if not entries:
+            if first_pass:
+                show_info(
+                    [wrap("There's no entry in changes/implemented/ pending closure.")],
+                    framed=False,
+                )
+            return
+        first_pass = False
+
+        prefixes = flag_prefixes_for([code for code, _ in entries], state="implemented")
+        labels = [
+            f"{prefix}{code} — {name}"
+            for (code, name), prefix in zip(entries, prefixes)
+        ]
+        choice = show_selection(
+            "Implemented entries, pending closure:",
+            labels,
+            "Choose an entry to close (number, 'a' to close all, or empty to cancel): ",
+            extra_option=("a", "Close all"),
         )
-        return
+        if choice is None:
+            return
 
-    labels = [f"{code} — {name}" for code, name in entries]
-    choice = show_selection(
-        "Implemented entries, pending closure:",
-        labels,
-        "Choose an entry to close (number, 'a' to close all, or empty to cancel): ",
-        extra_option=("a", "Close all"),
-    )
-    if choice is None:
-        return
+        if choice == "a":
+            if confirm(
+                f"Confirm moving the {len(entries)} listed entries to changes/closed/?"
+            ):
+                for code, _ in entries:
+                    close_change(code)
+            else:
+                print("Cancelled.")
+            return
 
-    if choice == "a":
-        if confirm(f"Confirm moving the {len(entries)} listed entries to changes/closed/?"):
-            for code, _ in entries:
-                close_change(code)
+        code, _ = entries[choice]
+        if confirm(f"Confirm moving '{labels[choice]}' to changes/closed/?"):
+            close_change(code)
         else:
             print("Cancelled.")
-        return
-
-    code, _ = entries[choice]
-    if confirm(f"Confirm moving '{labels[choice]}' to changes/closed/?"):
-        close_change(code)
-    else:
-        print("Cancelled.")
+        # Loop back: re-list remaining entries; if none, return to previous menu.
 
 
 def close_change(code: str) -> None:
@@ -499,10 +700,54 @@ def sync_skill_models() -> None:
     run_script(INIT_SCRIPTS / "sync-skill-models.py")
 
 
+def change_width() -> None:
+    """Persists framework.onescript.width. Empty input keeps the current
+    value; anything under MIN_WIDTH is rejected without writing. Follows
+    the state-mutating pattern (show + confirm before writing) even though
+    the "mutation" is a single integer."""
+    global WIDTH
+
+    show_info(
+        [wrap(f"Current max character width: {WIDTH} (minimum {MIN_WIDTH}).")],
+        framed=False,
+    )
+    answer = read_input(
+        f"New width (Enter to keep {WIDTH}): "
+    ).strip()
+    if not answer:
+        print("Unchanged.")
+        return
+
+    if not answer.isdigit() or int(answer) < MIN_WIDTH:
+        print(f"Width must be a whole number >= {MIN_WIDTH}. Unchanged.")
+        return
+
+    new_width = int(answer)
+    if new_width == WIDTH:
+        print("Unchanged.")
+        return
+
+    if not confirm(
+        f"Set max character width to {new_width} in {ACTIVE_CONFIG_PATH.name}?"
+    ):
+        print("Cancelled.")
+        return
+
+    save_onescript_width(new_width)
+    WIDTH = new_width
+    show_info(
+        [wrap(f"Saved. Width is now {new_width}.")],
+        framed=False,
+    )
+
+
 def show_settings_menu() -> None:
     run_menu(
         "Previo: settings",
-        [("Sync skill models per pv-context.json", sync_skill_models)],
+        [
+            ("Sync skill models per pv-context.json", sync_skill_models),
+            ("Change max character width", change_width),
+        ],
         "Back",
     )
 
@@ -593,11 +838,15 @@ def list_states() -> list[str]:
 
 
 def search_by_id() -> None:
-    query = read_input("Search by id (empty to cancel): ").strip()
-    if not query:
-        return
-
-    show_id_detail_card(query)
+    # Looped exactly like show_general_status()'s id prompt: after showing
+    # one card, immediately ask for another instead of returning to the
+    # submenu, so several ids can be looked up in a row. Empty input is the
+    # only way out.
+    while True:
+        query = read_input("Search by id (empty to cancel): ").strip()
+        if not query:
+            return
+        show_id_detail_card(query)
 
 
 def search_by_content() -> None:
@@ -624,6 +873,201 @@ def search_by_state() -> None:
     run_script(STATUS_SCRIPTS / "filter_status.py", states[index], "--terminal")
 
 
+# Groups for the "Pick a change by id:" listing in "Toggle a flag on a change",
+# mirroring "General project status"'s IN PROGRESS breakdown (render_status.py:
+# render_terminal_page_in_progress()) so the two screens read the same way:
+#   🟢 implemented/*                       -> ready to review and close
+#   🟠 inProgress/* with plan.md           -> planned, pending implementation
+#   🟡 inProgress/* with only description  -> pending technical analysis
+# closed/* is intentionally excluded: a closed change is frozen (it's been
+# folded into a release), so there's nothing left to re-prioritise or mark
+# as in progress -- listing it would only offer a no-op toggle.
+# Each tuple is (heading, ordering key among groups).
+FLAG_GROUPS = [
+    ("🟢 Ready to review and close", "ready"),
+    ("🟠 Planned, pending implementation", "planned"),
+    ("🟡 Pending technical analysis", "pending"),
+]
+
+
+def _flaggable_group_of(state: str, entry_dir: Path) -> str:
+    if state == "implemented":
+        return "ready"
+    if state == "inProgress":
+        return "planned" if (entry_dir / "plan.md").is_file() else "pending"
+    # Any other state folder (unusual) -- lump it with "pending" so it's
+    # still reachable rather than silently dropped.
+    return "pending"
+
+
+def list_flaggable_changes() -> list[tuple[str, str, str, str]]:
+    """Every change/fix under changes/ that can still carry a meaningful
+    flag -- i.e. NOT todo/ (ideas can't) and NOT closed/ (frozen), as
+    (code, state, name, group) tuples. `group` is one of FLAG_GROUPS'
+    keys. Ordered by FLAG_GROUPS, then by code within each group -- the
+    same reading order as "General project status". Used by "Toggle a flag
+    on a change"."""
+    changes = changes_dir()
+    if not changes.is_dir():
+        return []
+
+    collected: list[tuple[str, str, str, str]] = []
+    for state_dir in sorted(p for p in changes.iterdir() if p.is_dir()):
+        if state_dir.name in ("todo", "closed"):
+            continue
+        for entry_dir in sorted(p for p in state_dir.iterdir() if p.is_dir()):
+            name = "(no name)"
+            description_path = entry_dir / "description.md"
+            if description_path.is_file():
+                match = NAME_RE.search(description_path.read_text(encoding="utf-8"))
+                if match:
+                    name = match.group(1).splitlines()[0].strip().strip("` ")
+            group = _flaggable_group_of(state_dir.name, entry_dir)
+            collected.append((entry_dir.name, state_dir.name, name, group))
+
+    group_order = {key: i for i, (_label, key) in enumerate(FLAG_GROUPS)}
+    collected.sort(key=lambda t: (group_order.get(t[3], len(FLAG_GROUPS)), t[0]))
+    return collected
+
+
+def read_change_flags(code: str, state: str) -> list[str]:
+    """The change's current flags, read straight from its .metadata.json
+    (cheap, no subprocess) so "Toggle a flag" can show [x]/[ ] per flag.
+    [] if there's no file / no flags / it's malformed."""
+    meta_path = changes_dir() / state / code / ".metadata.json"
+    if not meta_path.is_file():
+        return []
+    try:
+        data = json.loads(meta_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return []
+    raw = data.get("flags") if isinstance(data, dict) else None
+    if not isinstance(raw, list):
+        return []
+    present = {f for f in raw if isinstance(f, str)}
+    return [f for f in FLAG_VALUES if f in present]
+
+
+def _flag_label_with_icon(value: str) -> str:
+    table = FLAG_ICONS if supports_color() else FLAG_ICONS_ASCII
+    return f"{table[value]} {FLAG_LABELS[value]}"
+
+
+def _ids_match(typed: str, code: str) -> bool:
+    """Same rule as filter_status.py's ids_match(): compare as integers
+    when both sides are all-digits (so 1, 01 and 00001 all hit 00001's
+    entry), else case-insensitive string compare (keeps todo/'s
+    alphanumeric ids working, though those never reach this listing)."""
+    typed = typed.strip()
+    if typed.isdigit() and code.isdigit():
+        return int(typed) == int(code)
+    return typed.lower() == code.lower()
+
+
+def _toggle_flags_on(code: str, state: str, name: str) -> None:
+    """Inner loop of "Toggle a flag on a change": show this change's flags
+    as [x]/[ ], toggle the picked one immediately (no confirm -- a flag is
+    trivially reversible, same call flips it back), then re-show the
+    refreshed list. Empty input returns to the change picker."""
+    while True:
+        current = read_change_flags(code, state)
+        flag_labels = [
+            f"[{'x' if value in current else ' '}] {_flag_label_with_icon(value)}"
+            for value in FLAG_VALUES
+        ]
+        show_info([wrap(f"Flags on {code} — {name}:")], framed=False)
+        flag_index = show_selection(
+            "", flag_labels, "Choose a flag to toggle (number, or empty to go back): "
+        )
+        if flag_index is None:
+            return
+
+        value = FLAG_VALUES[flag_index]
+        # set-metadata.py prints its own one-line confirmation of what it did.
+        run_script(
+            WORKFLOW_SCRIPTS / "set-metadata.py",
+            "--xxxx", code,
+            "--state", state,
+            "--toggle-flag", value,
+        )
+        # Loop: re-read and re-show the list with the change reflected.
+
+
+def _print_flaggable_listing(
+    entries: list[tuple[str, str, str, str]], prefixes: list[str]
+) -> None:
+    """The "Pick a change by id:" listing, grouped by FLAG_GROUPS the same way
+    "General project status"'s IN PROGRESS page groups entries (headings
+    🟢/🟠/🟡/📦). Rows aren't numbered -- the user picks a change by
+    typing its id (code) directly, so the code itself is the handle.
+    Empty groups are skipped. Framed by DARK_GRAY '-' rules like a
+    listing, so the id prompt printed right below it sits flush under it."""
+    print()
+    hr("-")
+    print("Pick a change by id:")
+    for label, key in FLAG_GROUPS:
+        group_items = [
+            (i, e) for i, e in enumerate(entries) if e[3] == key
+        ]
+        if not group_items:
+            continue
+        # Group headings tinted GOLD -- a scoped exception to "one color per
+        # screen" (same as search_by_state()'s per-state option colors), so
+        # the 🟢/🟠/🟡/📦 dividers stand out from the DARK_GRAY entry rows.
+        print(wrap(colorize(label, GOLD)))
+        for i, (code, _state, name, _group) in group_items:
+            print(wrap(f"{prefixes[i]}{code} — {name}", indent="  "))
+    hr("-")
+
+
+def toggle_flag_on_change() -> None:
+    while True:
+        entries = list_flaggable_changes()
+        if not entries:
+            show_info([wrap("There's no change/fix to flag (todo/ ideas can't carry flags).")], framed=False)
+            return
+
+        # Batch by state so a code that exists in two states (e.g. a fast
+        # change in both implemented/ and closed/) still resolves.
+        prefixes = flag_prefixes_by_state([(code, state) for code, state, _, _ in entries])
+
+        _print_flaggable_listing(entries, prefixes)
+        # The listing shows the code (id) of each change, grouped by state.
+        # The user types an id rather than a fresh row number -- the code is
+        # already a stable, meaningful handle, so a parallel numbering would
+        # only be one more thing to cross-reference. Read it as free text
+        # (via read_input(), so "exit" still quits); empty goes back.
+        typed = read_input("Enter a change id (empty to go back): ").strip()
+        if not typed:
+            return
+
+        match = next(
+            (e for e in entries if _ids_match(typed, e[0])), None
+        )
+        if match is None:
+            print(f"No change with id '{typed}' in the list above.")
+            continue
+
+        code, state, name, _group = match
+        _toggle_flags_on(code, state, name)
+        # Loop: re-show the change picker with updated prefixes.
+
+
+def show_changes_by_flag() -> None:
+    labels = [_flag_label_with_icon(value) for value in FLAG_VALUES]
+    index = show_selection(
+        "", labels, "Choose a flag (number, or empty to cancel): "
+    )
+    if index is None:
+        return
+
+    run_script(
+        STATUS_SCRIPTS / "filter_status.py",
+        "--flag", FLAG_VALUES[index],
+        "--terminal",
+    )
+
+
 def show_changes_info_menu() -> None:
     run_menu(
         "Previo: Changes info",
@@ -631,6 +1075,8 @@ def show_changes_info_menu() -> None:
             ("Search by id", search_by_id),
             ("Search by content", search_by_content),
             ("Search by state", search_by_state),
+            ("Toggle a flag on a change", toggle_flag_on_change),
+            ("Show changes by flag", show_changes_by_flag),
         ],
         "Back",
     )
@@ -754,7 +1200,7 @@ MENU: list[tuple[str, "callable"]] = [
     ("Ideas in todo/", show_ideas_menu),
     ("Close an implemented entry (move to changes/closed/)", close_entry),
     ("Configuration", show_settings_menu),
-    ("Check versions", show_versions_menu),
+    ("Check Previo versions", show_versions_menu),
 ]
 
 
@@ -803,6 +1249,7 @@ def run_menu(
 
 def main() -> None:
     global ROOT, STATUS_SCRIPTS, WORKFLOW_SCRIPTS, INIT_SCRIPTS, INIT_SKILL_PATH, CONTEXT_PATH, TEST_WORK_FOLDER
+    global ACTIVE_CONFIG_PATH, WIDTH
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -828,6 +1275,11 @@ def main() -> None:
         INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
         CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
         TEST_WORK_FOLDER = config["workFolder"]
+        # pv.py's own settings still come from (and are written back to) the
+        # --testconfig file, at the same framework.onescript.* path they'd
+        # use in pv-context.json -- so load/save_onescript_width() need no
+        # special case for test mode.
+        ACTIVE_CONFIG_PATH = testconfig_path
 
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
@@ -838,6 +1290,8 @@ def main() -> None:
         print(wrap("This project doesn't have the pv-* framework initialized."))
         print(wrap("Run /pv-init first from Claude Code."))
         return
+
+    WIDTH = load_onescript_width()
 
     print(colorize_ring_art(RING_ART))
 

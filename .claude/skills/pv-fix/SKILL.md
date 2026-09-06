@@ -5,7 +5,7 @@ argument-hint: <description of the bug or change to apply>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.5
+  version: 0.9.6
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-new, pv-how]
 ---
 
@@ -32,7 +32,9 @@ For a non-trivial fix, this skill implements nothing itself: it documents the in
 
 **Mockups and diagrams are the central axis of a non-trivial fix's definition, not an optional add-on.** Whenever the fix allows it, the expected behavior must be pinned down with a visual representation — not just prose — and that representation must be **validated by the user**, not just generated. Valid cases (not mutually exclusive): **visual or style changes** → HTML mockup(s) (`design_*.html`, step 4); **broken flows or interactions** (a sequence of steps, a state transition) → a Mermaid diagram inside `description.md` (step 3); **data with its own structure** (the fix defines or uses something that needs a list of properties or associated data) → data table(s) (`design_data_*.md`, step 4.1). Only skip all three if the fix truly has no representable visual, flow, or structured-data dimension. A fast-tracked (trivial) change never generates mockups, diagrams, or data tables — by definition it has no design decision to pin down.
 
-**Source of truth.** To distinguish what the project actually does today from what the user believes it does, the only source of truth is the technical documentation and the real code — not assumptions or conversation memory. To gather that context, invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of what's being analyzed, instead of reading `framework.docs.tech` yourself or exploring the code blindly: it reads the configured technical documentation first and explores code only if needed, returning the gathered context and any inconsistency between documentation and code (in that case the code rules). If it detects any inconsistency, note it in **Technical notes** when documenting (non-trivial fix, step 3) or take it as a reason not to qualify as trivial (step 2). The content of other changes/fixes under `{changesDir}/**` (their `description.md` or `plan.md`, whether in `inProgress`, `implemented` or `closed`) also doesn't count as a source of truth: they're another entry's intent or analysis, not the project's real state.
+**Source of truth.** To distinguish what the project actually does today from what the user believes it does, the only source of truth is the technical documentation and the real code — not assumptions or conversation memory. To gather that context, invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of what's being analyzed, instead of reading `framework.docs.tech` yourself or exploring the code blindly: it resolves `docs.tech` via `resolve-path.py` and reads that documentation first, exploring code only if needed, returning the gathered context and any inconsistency between documentation and code (in that case the code rules). If it detects any inconsistency, note it in **Technical notes** when documenting (non-trivial fix, step 3) or take it as a reason not to qualify as trivial (step 2). The content of other changes/fixes under `{changesDir}/**` (their `description.md` or `plan.md`, whether in `inProgress`, `implemented` or `closed`) also doesn't count as a source of truth: they're another entry's intent or analysis, not the project's real state.
+
+**Before any other step**, read [`workflow.fix.md`](workflow.fix.md) — it's the source of truth for this flow's sequence and branches (both the fast-track and non-trivial sub-flows; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
 ## 0. Check that the framework is initialized
 
@@ -48,9 +50,11 @@ Additionally, before continuing, check that the framework's installed version is
 
 If there's ambiguity about which behavior is correct (for a bug) or exactly what needs to change (for a small change), ask. There's no need to locate the root cause in code yet — if the change turns out not to be trivial, `pv-how` does that when analyzing the fix in detail.
 
+If this fix looks related to another existing change/fix (`xxxx`) — either because the user mentioned it explicitly, or because it's evident from the request itself — note that id: for a non-trivial fix (step 3) it gets recorded once documented. A fast-tracked fix never records it (see the fast-track branch below): it's trivial and almost-zero-analysis by definition, not worth the extra confirmation round-trip.
+
 ## 2. Assess whether the change is "fast"
 
-Invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of the request, to gather the necessary technical context (it reads the configured `framework.docs.tech` documentation first, and only explores code if needed). With that context gathered, assess the request against these criteria — to qualify as `fast` it must meet **all** of them, whether or not it's a bug:
+Invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of the request, to gather the necessary technical context (it resolves `framework.docs.tech` via `resolve-path.py` and reads that documentation first, exploring code only if needed; if resolution fails it stops and sends the user to `/pv-update`). With that context gathered, assess the request against these criteria — to qualify as `fast` it must meet **all** of them, whether or not it's a bug:
 
 - What needs to change is unambiguously clear from a single read of the request — no relevant information is missing and no design or scope decision needs to be made. If applying it would require asking the user quite a bit, it's not `fast`.
 - It touches few files, in a very localized way (a constant, a piece of text, a value, a style rule, a one-off condition, a typo). If it affects more than 3 files, it's not `fast`, however small the change in each one.
@@ -58,8 +62,8 @@ Invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary o
 - It doesn't introduce new behavior nor change an existing flow or interaction — at most it adjusts a value, text, or aspect of something that already exists.
 - It has no relevant edge cases to analyze, nor does it affect how different parts of the project coexist with each other.
 - If it's a bug: it's nowhere close to one whose root cause needs investigating — if digging is needed to find out why something fails, it's not `fast` (but it's still a fix: go to step 3).
-- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** (if configured in `.claude/pv-context.json`) only in constant or parameter values, it's `fast`.
-- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** (if configured in `.claude/pv-context.json`) in a meaningful way (an architecture decision, a visual/interaction/writing style convention), it's not `fast`, even if the code change itself is small. If `pv-internal-tech-analysis` reports any inconsistency between those documents and the code, it also doesn't qualify as `fast`: an inconsistency with the technical documentation is, by definition, something that affects those documents.
+- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** only in constant or parameter values, it's `fast`.
+- If the change affects **`docs.tech.architectureDocDir`** or **`docs.tech.styleBibleDocDir`** in a meaningful way (an architecture decision, a visual/interaction/writing style convention), it's not `fast`, even if the code change itself is small. If `pv-internal-tech-analysis` reports any inconsistency between those documents and the code, it also doesn't qualify as `fast`: an inconsistency with the technical documentation is, by definition, something that affects those documents.
 - If the change affects **`docs.functional.*`** it's not `fast`.
 
 Illustrative examples that would qualify: fixing a text or typo, changing a one-off color/size/margin, adjusting a constant's or config's value, fixing a misspelled link or path, renaming a visible label, or an obvious at-a-glance bug (e.g. an inverted condition in a single spot).
@@ -81,6 +85,12 @@ If you have reasonable doubts about whether it qualifies, don't force it: treat 
 ## 3. Document the intent (non-trivial fix)
 
 Invoke the `pv-internal-workflow` skill (Skill tool) with `action=create`, `type=fix`, the functional summary of what's wrong and what's expected instead, and `promptOriginal` (the request exactly as the user wrote it, without rephrasing), so it can number the fix and create `description.md` and `history.md` at `{changesDir}/inProgress/{xxxx}/`.
+
+If step 1 identified one or more related change/fix ids, record them right after, via `set-metadata.py`:
+```
+python .claude/skills/pv-internal-workflow/scripts/set-metadata.py --xxxx {xxxx} --add-related {otherXxxx} [--add-related {otherXxxx2} ...]
+```
+Skip this call entirely if no relation was identified — don't create an empty `.metadata.json` just for this.
 
 If the functionality being described involves a flow, a sequence of steps/decisions, or an interaction between states or components from the user's point of view (e.g. how a screen transitions, the order of an operation, chained edge cases), invoke (Skill tool) the diagrams skill configured in `.claude/pv-context.json`'s `framework.skills.diagrams` (if not configured, `pv-internal-tech-mermaid`), asking it for a `functional`-type diagram per distinct use case or user story that has that flow — never mix several into the same diagram. Include the diagram(s) it returns, along with the essential notes, when passing this to `pv-internal-workflow`, instead of only describing it in prose — that's how it ends up in `description.md`. Use prose when there's no clear flow/relationship to represent.
 
