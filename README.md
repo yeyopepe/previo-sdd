@@ -34,7 +34,8 @@ It brings the control and traceability of *spec-driven development* without the 
 |<u>**No extra tooling**</u> |Requires nothing beyond Claude Code and Python on the development machine — no installs on your machine, external services, databases, or other headaches.|
 |<u>**100% built by AI, for AI**</u> |The whole cycle (from idea to delivery) is a 100% AI-guided process, for any kind of profile. A few more tokens, much less complexity.|
 |<u>**Multi-language support**</u>| Speak in English, write the technical documentation in Spanish, and draft the changelog in French (for example). Multi-language support is configurable across up to 5 points. |
-|<u>**And plenty more**</u>| Tracking and traceability for every change, release generation (documentation included), a prompt history tied to each change, fast changes, security reviews, an autonomous update-checking system, and more.|
+|<u>**One script**</u>| A `pv.py` script/terminal to manage your changes quickly and easily. |
+|<u>**And plenty more**</u>| Tracking and traceability for every change, release generation (changelogs included), a prompt history tied to each change, fast changes, security reviews, an autonomous update-checking system, and more.|
 
 
 ## 🛠️Configurable and extensible
@@ -148,6 +149,8 @@ flowchart LR
 - **`/pv-new <description>`** — documents new functionality or an intentional behavior change (`description.md`), generating visual mockups if applicable.
 - **`/pv-fix <description>`** — fixes a bug end to end, or applies a change trivial enough (typo, text, a single value) on the spot that it doesn't warrant a `plan.md`.
 - **`pv-how` + `pv-do`** — plan the technical solution (`plan.md`) and implement the code, updating the configured architecture/style/features documentation.
+
+> **💻 REMEMBER: you can also run a terminal (`pv.py`) to view and manage your changes faster.**
 
 ### Extended flow
 

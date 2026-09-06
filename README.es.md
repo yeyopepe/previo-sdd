@@ -34,7 +34,8 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 |<u>**Sin herramientas adicionales**</u> |No requiere más que Claude Code y Python en la máquina de desarrollo — sin instalaciones en tu máquina, servicios externos, bases de datos ni otros quebraderos de cabeza.|
 |<u>**100% construido con IA y para IA**</u> |Todo el ciclo (desde la idea hasta su realización) es un proceso 100% guiado por IA, para cualquier tipo de perfil. Unos pocos tokens más, mucha complejidad menos.|
 |<u>**Soporte multi-idioma**</u>| Habla en español, escribe la documentación técnica en inglés y redacta el changelog en francés (por ejemplo). El soporte multi-idioma es configurable hasta en 5 puntos. |
-|<u>**Y muchas cosas más**</u>| Gestión y trazabilidad de cada cambio, generación de versiones (incluida documentación), histórico de prompts relacionados con cada cambio, cambios rápidos, evaluaciones de seguridad, sistema autónomo de actualizaciones, etc.|
+|<u>**El script único**</u>| Un script/temrinal `pv.py` para gestionar de forma fácil y rápida tus cambios. |
+|<u>**Y muchas cosas más**</u>| Gestión y trazabilidad de cada cambio, generación de versiones (incluidos los changelogs), histórico de prompts relacionados con cada cambio, cambios rápidos, evaluaciones de seguridad, sistema autónomo de actualizaciones, etc.|
 
 
 ## 🛠️Configurable y extensible
@@ -61,24 +62,24 @@ Desde la raíz del proyecto donde quieras usar el framework, ejecuta:
 
 Última versión disponible:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh
 ```
 
 Versión específica:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.sh | sh -s -- 0.9.5b6
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.5b6
 ```
 
 **Windows (PowerShell):**
 
 Última versión disponible:
 ```
-irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 Versión específica:
 ```
-$env:**Previo**_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
+$env:PREVIO_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 > ❗**RECUERDA**:
@@ -103,7 +104,7 @@ Así es cómo quedará tu repo tras la instalación, listo para empezar a trabaj
 ├── .claude/
 │   └── skills/                  # aquí está el framework de **Previo**
 │
-└── **Previo**-sdd/                  # carpeta de trabajo principal del framework
+└── previo-sdd/                  # carpeta de trabajo principal del framework
     ├── changes/                 # todo tu trabajo de documentación e implementación pasa por aquí, según su estado actual
     │   ├── inProgress/          
     │   ├── implemented/         
@@ -148,6 +149,8 @@ flowchart LR
 - **`/pv-new <descripción>`** — documenta funcionalidad nueva o un cambio de comportamiento intencionado (`description.md`), generando maquetas visuales si aplica.
 - **`/pv-fix <descripción>`** — corrige un bug de punta a punta, o aplica al vuelo un cambio tan trivial (typo, texto, un valor puntual) que no merece pasar por `plan.md`.
 - **`pv-how` + `pv-do`** — planifican la solución técnica (`plan.md`) e implementan el código, actualizando la documentación de arquitectura/estilo/funcionalidades configurada.
+
+> **💻 RECUERDA: Tienes además una terminal (`pv.py`) en la que podrás visualizar y gestionar tus cambios de manera más rápida.**
 
 ### Flujo extendido
 
