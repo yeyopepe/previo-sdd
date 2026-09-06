@@ -838,11 +838,15 @@ def list_states() -> list[str]:
 
 
 def search_by_id() -> None:
-    query = read_input("Search by id (empty to cancel): ").strip()
-    if not query:
-        return
-
-    show_id_detail_card(query)
+    # Looped exactly like show_general_status()'s id prompt: after showing
+    # one card, immediately ask for another instead of returning to the
+    # submenu, so several ids can be looked up in a row. Empty input is the
+    # only way out.
+    while True:
+        query = read_input("Search by id (empty to cancel): ").strip()
+        if not query:
+            return
+        show_id_detail_card(query)
 
 
 def search_by_content() -> None:

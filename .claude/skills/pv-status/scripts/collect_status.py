@@ -163,6 +163,16 @@ def read_risk(entry_dir: Path) -> int | None:
     return raw if 0 <= raw <= 10 else None
 
 
+def read_related_ids(entry_dir: Path) -> list[str]:
+    """The change's related ids, from .metadata.json's 'relatedIds' field.
+    [] if absent or malformed; non-string entries are dropped. Also reused
+    by filter_status.py (imported), same as read_flags/read_risk."""
+    raw = read_metadata(entry_dir).get("relatedIds")
+    if not isinstance(raw, list):
+        return []
+    return [r for r in raw if isinstance(r, str)]
+
+
 def parse_todo_description(description_path: Path) -> dict:
     """Extracts the full 'Idea' and 'Notes' text from a pv-todo description.md.
 
@@ -225,6 +235,10 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
     if not isinstance(flags_last_modified, str):
         flags_last_modified = None
 
+    # todo/ entries never carry relatedIds either (same .metadata.json
+    # restriction as flags).
+    related_ids = [] if state_name == "todo" else read_related_ids(entry_dir)
+
     return {
         "code": entry_dir.name,
         "type": entry_type,
@@ -236,6 +250,7 @@ def build_entry(state_name: str, entry_dir: Path) -> dict:
         "risk": risk,
         "flags": flags,
         "flagsLastModified": flags_last_modified,
+        "relatedIds": related_ids,
     }
 
 

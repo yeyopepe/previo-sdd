@@ -79,7 +79,7 @@ from datetime import datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from collect_status import parse_todo_description, read_flags, read_risk  # noqa: E402
+from collect_status import parse_todo_description, read_flags, read_risk, read_related_ids  # noqa: E402
 import terminal_output as term  # noqa: E402
 
 TEMPLATE_PATH = Path(__file__).resolve().parent.parent / "STATUS.filtered.template.md"
@@ -240,8 +240,9 @@ def build_entry(state: str, entry_dir: Path) -> dict:
     planned_date = extract_date(plan_text) if plan_text else None
     extra_files = None if state == "todo" else count_extra_files(entry_dir)
     # Status flags from .metadata.json (dotfile owned by pv-internal-workflow).
-    # todo/ entries never carry flags.
+    # todo/ entries never carry flags or relatedIds.
     flags = [] if state == "todo" else read_flags(entry_dir)
+    related_ids = [] if state == "todo" else read_related_ids(entry_dir)
 
     return {
         "code": entry_dir.name,
@@ -254,6 +255,7 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         "risk": risk,
         "extra_files": extra_files,
         "flags": flags,
+        "relatedIds": related_ids,
     }
 
 
@@ -474,6 +476,9 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
         lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
         lines.append(term.wrap(description, indent="  ", width=width))
         lines.append(f"extra files: {extra_files}")
+        related_ids = entry.get("relatedIds") or []
+        if related_ids:
+            lines.append(f"Related: {', '.join(related_ids)}")
 
     lines.append("")
     lines.append(term.hr(width=width))

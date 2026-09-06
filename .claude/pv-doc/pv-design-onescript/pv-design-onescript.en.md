@@ -31,7 +31,7 @@ Terms and their synonyms, used consistently throughout this document and in `pv.
 | **Confirmation** | y/N screen | `confirm()` — a `y/N` question with no header of its own, always nested inside another screen. |
 | **Info** | info screen | `show_info()` — already-formatted text, `framed=True` (with DARK_GRAY rules) or `framed=False` (loose). |
 | **Delegated info** | delegated screen, external render | Any screen that doesn't use `pv.py`'s helpers, but is instead printed by an external script (`render_status.py`, `filter_status.py`, `list_todo.py`) via `run_script()`, colored with its own independent GOLD palette (`terminal_output.py`). See "Component Diagram". |
-| **Detail Card** | detail card | The 3- or 5-line block (depending on whether it's an idea or a change/fix) that `filter_status.py`'s `render_terminal()` prints per entry — part of Delegated Info, never produced by `pv.py`. See "The Detail Card". |
+| **Detail Card** | detail card | The 3-, 5-, or 6-line block (idea; change/fix; change/fix with related ids) that `filter_status.py`'s `render_terminal()` prints per entry — part of Delegated Info, never produced by `pv.py`. See "The Detail Card". |
 | **The four helpers** | screen helpers | `print_header()`, `show_selection()`, `show_info()`, `confirm()` — the only four valid ways to build an interactive screen in `pv.py`. Inline Selection isn't a fifth helper, it's a usage pattern of the second one. `toggle_flag_on_change()`'s "Pick a change by id:" listing is neither: it's a listing `pv.py` prints itself (group headings + one **unnumbered** row per change) followed by a free-text `read_input()` — the user types the change's **id (code)**, not a row number. |
 
 ---
@@ -52,55 +52,63 @@ Terms and their synonyms, used consistently throughout this document and in `pv.
 
 ## Screen Hierarchy
 
+Each node below is tagged `[Screen Type]` using the Glossary's terms (Menu, Selection, Inline Selection, Confirmation, Info, Delegated info, Detail Card). When the exact same screen (not just the same *type*, but the same concrete instance — e.g. the one and only Detail Card format, or a specific Inline Selection) is reachable from more than one place in this tree, every appearance after the first is tagged `[same <Type> as "<other node>"]` instead of describing it again — it's one screen with several entry points, not several screens that happen to look alike.
+
 ```
 LEVEL 0 (Splash)
-└── RING_ART (ASCII + gradient colors)
+└── RING_ART (ASCII + gradient colors)                                          [Info, framed=False]
 
 LEVEL 1 (Main Navigation)
-└── "Previo v{version}: MAIN MENU" ({version} = pv-init/SKILL.md's metadata.version)
-    ├── [1] Action: Show Status (→ external, 3 pages; the final id prompt is pv.py's own, not the script's)
-    │   └── Input: search id, looped until empty (→ show_id_detail_card(), same card and Inline Selection as "Search by id")
+└── "Previo v{version}: MAIN MENU" ({version} = pv-init/SKILL.md's metadata.version)   [Menu]
+    ├── [1] Action: Show Status (→ external, 3 pages; the final id prompt is pv.py's own, not the script's)  [Delegated info, render_status.py]
+    │   └── Input: search id, looped until empty (→ show_id_detail_card())
+    │       └── [same Detail Card as "Search by id" below, with the same "Delete this idea" Inline Selection when it applies — both call show_id_detail_card(), there's only one instance of this screen in the whole tree; for a regular change/fix only the card itself shows, then the same id prompt asks for another]
     ├── [2] Submenu: Changes info
-    │   └── "Previo: Changes info"
-    │       ├── [1] Action: Search by id
+    │   └── "Previo: Changes info"                                              [Menu]
+    │       ├── [1] Action: Search by id (looped exactly like "Show Status" above until empty input)
     │       │   └── Input: search id (→ external, every state, no description.md reads except the match's)
-    │       │       └── Inline Selection: no title (only if the id resolves to a todo/ idea, empty = go back)
-    │       │           └── Action: Delete this idea
-    │       │               └── Confirmation: "Confirm deleting..."
+    │       │       └── [Detail Card, filter_status.py --search-id --terminal]  [Delegated info] — always shown, whether the id is a change/fix or an idea; for a regular change/fix the loop goes right back to the id prompt (not to the submenu)
+    │       │           └── ONLY IF the id resolves to a todo/ idea — a branch that does NOT exist for a change/fix:
+    │       │               └── Inline Selection: no title (empty = go back to the id prompt, not the submenu)   [Inline Selection]
+    │       │                   └── Action: Delete this idea
+    │       │                       └── Confirmation: "Confirm deleting..."    [Confirmation]
+    │       │           (empty input at the id prompt itself → back to "Previo: Changes info")
     │       ├── [2] Action: Search by content
-    │       │   └── Input: search text (→ external, every state, reads every entry's description.md)
+    │       │   └── Input: search text (→ external, every state, reads every entry's description.md)  [Delegated info, filter_status.py --search-content --terminal — one Detail Card per match, same format as "Search by id" above]
     │       ├── [3] Action: Search by state
-    │       │   └── Selection: "Available states:" (→ external, one state)
+    │       │   └── Selection: "Available states:"                             [Selection]
+    │       │       └── (→ external, one state)                                [Delegated info, filter_status.py <state> --terminal — same Detail Card format again, one per entry]
     │       ├── [4] Action: Toggle a flag on a change (mutates state, no confirmation — reversible toggle)
-    │       │   └── "Pick a change by id:" listing grouped by state (🟢/🟠/🟡, like "General project status"; no closed/), unnumbered + `read_input()` (type the change's id/code); loop; flag icons via read-flags.py
-    │       │       └── Inline Selection: no title ([x]/[ ] per flag, loop)
+    │       │   └── "Pick a change by id:" listing grouped by state (🟢/🟠/🟡, like "General project status"; no closed/), unnumbered + `read_input()` (type the change's id/code); loop; flag icons via read-flags.py  [pv.py's own listing — not one of the four helpers, see Glossary]
+    │       │       └── Inline Selection: no title ([x]/[ ] per flag, loop)     [Inline Selection — its own instance, distinct from "Search by id"'s]
     │       │           └── (pick one) → set-metadata.py --toggle-flag → the list is re-shown, updated
     │       ├── [5] Action: Show changes by flag
-    │       │   └── Inline Selection: no title (Priority / Work in progress) (→ external, filter_status.py --flag)
+    │       │   └── Inline Selection: no title (Priority / Work in progress)   [Inline Selection — its own instance too]
+    │       │       └── (→ external, filter_status.py --flag)                  [Delegated info — same Detail Card format again, one per matching entry]
     │       └── [6] Back
-    ├── [3] Action: Show Ideas (→ external)
-    │   └── Inline Selection: no title (a single option, empty = go back)
+    ├── [3] Action: Show Ideas (→ external)                                    [Delegated info, list_todo.py]
+    │   └── Inline Selection: no title (a single option, empty = go back)      [Inline Selection — its own instance]
     │       └── Action: Delete an idea by code
-    │           └── Selection: "Ideas in todo/:"
-    │               └── Info: chosen idea's card
-    │                   └── Confirmation: "Confirm deleting..."
+    │           └── Selection: "Ideas in todo/:"                               [Selection]
+    │               └── Info: chosen idea's card                               [Info, framed=True]
+    │                   └── Confirmation: "Confirm deleting..."                [Confirmation — same wording pattern as "Delete this idea" above, but a separate call site]
     ├── [4] Action: Close Entry
-    │   └── Selection: "Implemented entries..."
-    │       └── Confirmation: "Confirm moving..."
+    │   └── Selection: "Implemented entries..."                                [Selection]
+    │       └── Confirmation: "Confirm moving..."                              [Confirmation]
     ├── [5] Submenu: Configuration
-    │   └── "Previo: settings"
-    │       ├── [1] Action: Sync Models (→ external)
+    │   └── "Previo: settings"                                                 [Menu]
+    │       ├── [1] Action: Sync Models (→ external)                          [Delegated info, sync-skill-models.py]
     │       ├── [2] Action: Change max character width
-    │       │   └── Info (current width) + Input (new width, empty = keep)
-    │       │       └── Confirmation: "Set max character width to N..." → writes framework.onescript.width
+    │       │   └── Info (current width) + Input (new width, empty = keep)    [Info, framed=False]
+    │       │       └── Confirmation: "Set max character width to N..." → writes framework.onescript.width  [Confirmation]
     │       └── [3] Back
     ├── [6] Submenu: Versions
-    │   └── "Previo: versions"
+    │   └── "Previo: versions"                                                 [Menu]
     │       ├── [1] Action: Changelog
-    │       │   └── Selection: "Available versions:"
-    │       │       └── Info: Show changelog.md
+    │       │   └── Selection: "Available versions:"                          [Selection]
+    │       │       └── Info: Show changelog.md                                [Info, framed=True]
     │       ├── [2] Action: Check Temp
-    │       │   └── Info: State of the temp directory
+    │       │   └── Info: State of the temp directory                         [Info, framed=True]
     │       └── [3] Back
     └── [7] Exit
 ```
@@ -123,7 +131,7 @@ graph TD
     H["⚙️ Config Submenu<br/>Previo: settings"]
     I["📦 Versions Submenu<br/>Previo: versions"]
 
-    O["🔍 Search by id<br/>Input + filter_status.py --search-id"]
+    O["🔍 Search by id (loop)<br/>Input + filter_status.py --search-id<br/>same loop shape as the id prompt (U)"]
     Q["🔍 Search by content<br/>Input + filter_status.py --search-content"]
     P["🔍 Search by state<br/>Selection + filter_status.py"]
     S["🗑️ Delete idea<br/>Selection + Confirmation + delete-todo.py"]
@@ -140,16 +148,18 @@ graph TD
 
     C -->|1| D
     D --> U
-    U -->|"id found"| T
+    U -->|"id is a todo/ idea"| T
     T -->|Return| U
+    U -->|"id is a change/fix, or any other input"| U
     U -->|"empty (go back)"| C
 
     C -->|2| N
     N -->|Back| C
     N -->|Search by id| O
-    O -->|"idea found"| T
-    T -->|Return| N
-    O -->|Return| N
+    O -->|"id is a todo/ idea"| T
+    T -->|Return| O
+    O -->|"id is a change/fix, or any other input"| O
+    O -->|"empty (go back)"| N
     N -->|Search by content| Q
     Q -->|Return| N
     N -->|Search by state| P
@@ -220,7 +230,7 @@ graph TD
     subgraph SKILL_WORKFLOW ["pv-internal-workflow skill (.claude/skills/pv-internal-workflow/scripts/)"]
         MC["move-change.py"]
         DT["delete-todo.py"]
-        SM["set-metadata.py<br/><i>sole writer of .metadata.json (flags + risk)</i>"]
+        SM["set-metadata.py<br/><i>sole writer of .metadata.json (flags + risk + relatedIds)</i>"]
     end
 
     subgraph SKILL_INIT ["pv-init skill (.claude/skills/pv-init/scripts/)"]
@@ -456,7 +466,7 @@ No color of its own (inherits the GOLD of the surrounding block only for the scr
 
 **Line 1 order (decision 6.14 of the flags plan):** `flags · code · [type] · (status) · Risk`. That is: the flag-icon prefix (`⭐ ⚙️  `, or `[P] [W]  ` under `NO_COLOR`; empty if the change has no flags) comes **first**, then the `code`, then `[type]`, then `(status)` (which moved from first position to after `[type]`), and last `Risk`. It used to be `(status)  code  [type]  Risk`. The reason: with flags in front, putting `code` right after them keeps the code column almost aligned across entries (the icons are the only variable prefix), and groups `(status)`/`Risk` as trailing metadata. This order applies to **every** `filter_status.py` card (`--state`, `--search-id`, `--search-content`, `--flag`) and to `render_status.py`'s detail blocks too. **It's the only non-additive point of the flags plan** — it changes the format for users who don't use flags. Nobody parses that line programmatically (`pv.py` delegates the whole render), but any `pv-status` test snapshot/golden-file that captures line 1 has to be regenerated.
 
-There are **two content variants, with a different number of lines** — 5 lines for change/fix, 3 for idea (`todo/`, no `Risk`, no extra-files count, no separate description line, see why below):
+There are **two content variants, with a different number of lines** — 5 or 6 lines for change/fix (6 when it has related ids, see below), 3 for idea (`todo/`, no `Risk`, no extra-files count, no separate description line, see why below):
 
 #### Change/fix card (`inProgress`/`implemented`/`closed`)
 
@@ -467,15 +477,18 @@ created: 2026-08-01, planned: 2026-08-03      ← Line 2: created = description.
   Lets users sign in with email and           ← Line 4: first 500 characters of the
   password, backed by a new sessions table…      description (## Full description), with "…" if truncated
 extra files: 2                                ← Line 5: count of non-framework files directly in the entry folder
+Related: 00212, 00214                         ← Line 6: .metadata.json's relatedIds, comma-separated — OMITTED
+                                                    entirely when relatedIds is empty/absent (not "Related: (none)")
 ```
 
-(The flag prefix is empty when the change has no flags, so a flagless card reads `1001  [🆕 Change]  (implemented)  Risk: 6/10` — same order, without the icon gap.)
+(The flag prefix is empty when the change has no flags, so a flagless card reads `1001  [🆕 Change]  (implemented)  Risk: 6/10` — same order, without the icon gap. Likewise, line 6 itself is only printed when `relatedIds` isn't empty — most cards stay at 5 lines.)
 
 - **`created`** (line 2): `description.md`'s `**Creation date**` field (bold inline); falls back to `description.md`'s mtime if absent.
 - **`planned`** (line 2): `plan.md`'s `**Creation date**` field (same bold-inline format, see `PLAN.template.md`) — the date `pv-how` wrote the plan on, not the change's creation date. If `plan.md` doesn't exist yet, or exists but lacks that field, shows literally **`pending`** (not a dash or "unknown" — explicitly signals planning hasn't happened yet). `build_entry()` computes this by reusing `extract_date()` on `plan.md`'s text, no new pattern needed — the field has the exact same format in both files.
 - **`Risk`** (line 1): `.metadata.json`'s `risk` field (integer 0-10, written by `pv-how` via `set-metadata.py --set-risk`), `{value}/10` format — `?` if the field is absent. `0` shows as `0/10`, not `?`.
 - Line 4 uses **its own 500-character limit** (`TERMINAL_DESCRIPTION_MAX_CHARS`), separate from and independent of the 250-character limit used by `/pv-status`'s markdown table (chat) — changing one doesn't affect the other; they're two separate rendering paths inside `filter_status.py` (`render_terminal()` vs `render_report()`), and only terminal mode shows the detail card at all (the markdown table has no Name/Planned/extra-files columns).
 - **`extra files`** (line 5): count of files directly inside the entry folder that aren't the framework's own (`description.md`, `plan.md`, `history.md`) — e.g. `design_*.html`/`design_*.txt` mockups, or anything else the folder accumulates. Computed by `count_extra_files()` against the `TERMINAL_FRAMEWORK_FILES` set; `0` if there are none.
+- **`Related`** (line 6, optional): `.metadata.json`'s `relatedIds` field (array of other changes/fixes' codes, set by `pv-new`/`pv-fix` via `set-metadata.py --add-related`), comma-separated. The line is entirely absent — not printed as an empty/placeholder line — when `relatedIds` is missing or `[]`, same convention as an optional section being omitted from `description.md`.
 
 #### Idea card (`todo/`)
 
@@ -608,7 +621,7 @@ Real friction points in this design — watch out for them when adding new code.
 | `read-flags.py` | `.claude/skills/pv-status/scripts/` | Returns the already-rendered flag-icon prefix, one line per `--xxxx` (batch input). `pv.py` **captures its stdout** and passes `--color` / `--no-color` (from `pv.py`'s terminal, since the captured pipe is never a tty). Accepts `--work-folder`, `--state`, and `--width` (the last ignored) |
 | `sync-skill-models.py` | `.claude/skills/pv-init/scripts/` | Sync skill models |
 | `move-change.py` | `.claude/skills/pv-internal-workflow/scripts/` | Move entry to closed |
-| `set-metadata.py` | `.claude/skills/pv-internal-workflow/scripts/` | Sole writer of `.metadata.json` (`flags` + `risk`). `pv.py` invokes it with `--xxxx <code> --state <state> --toggle-flag <value>` for "Toggle a flag on a change" (no prior `confirm()` — reversible toggle); it never uses `--set-risk` (that's `pv-how`'s job). Prints one confirmation line. Accepts `--work-folder`; **not** `--width` |
+| `set-metadata.py` | `.claude/skills/pv-internal-workflow/scripts/` | Sole writer of `.metadata.json` (`flags` + `risk` + `relatedIds`). `pv.py` invokes it with `--xxxx <code> --state <state> --toggle-flag <value>` for "Toggle a flag on a change" (no prior `confirm()` — reversible toggle); it never uses `--set-risk` (that's `pv-how`'s job) nor `--add-related`/`--remove-related` (that's `pv-new`/`pv-fix`'s job — `pv.py` has no menu option for related ids). Prints one confirmation line. Accepts `--work-folder`; **not** `--width` |
 | `delete-todo.py` | `.claude/skills/pv-internal-workflow/scripts/` | Delete an idea folder at `changes/todo/{xxxx}` |
 | `terminal_output.py` | `.claude/skills/pv-status/scripts/` | Rendering module shared by `pv-status`'s scripts (not an executable script, it's imported). No `WIDTH` of its own: every function takes it as a parameter, `DEFAULT_WIDTH = 70` when the caller doesn't have an opinion. Also holds the framework's **canonical flag catalogue**: `FLAG_ICONS`/`FLAG_ICONS_ASCII`/`FLAG_LABELS`/`FLAG_ORDER` + `flags_prefix()` / `flag_label()` — the one place the flag→icon/label map lives |
 
@@ -619,7 +632,7 @@ Real friction points in this design — watch out for them when adding new code.
 | `pv-context.json` | Framework configuration. Read for `workFolder` and `framework.onescript.width`. **Also written** (the only file `pv.py` writes) by "Configuration > Change max character width" — see "Command-Line Configuration" and the config-write exception under "How to Extend". Under `--testconfig`, `pv-config-test.json` takes its place for both reads and that write. |
 | `pv-init/SKILL.md` | Read (not executed) by `framework_version()` to get the `pv-*` framework's own version (YAML frontmatter's `metadata.version`) shown in the main menu's title — distinct from the project's own version under `versions/{XXXX}/` |
 | `changes/` | Changes directory (states) |
-| `changes/{state}/{xxxx}/.metadata.json` | Per-change mutable state (dotfile, optional): `flags` and `risk` (integer 0-10). Read by `read-flags.py` / `pv-status`; written only by `set-metadata.py`. `pv.py` reads it directly in `read_change_flags()` (only for the `[x]`/`[ ]` in "Toggle a flag" — it has no interest in `risk`), but never writes it |
+| `changes/{state}/{xxxx}/.metadata.json` | Per-change mutable state (dotfile, optional): `flags`, `risk` (integer 0-10), and `relatedIds` (other changes/fixes' codes, **reciprocal** — relating `A` to `B` updates both files in the same `set-metadata.py` call). Read by `read-flags.py` / `pv-status`; written only by `set-metadata.py`. `pv.py` reads it directly in `read_change_flags()` (only for the `[x]`/`[ ]` in "Toggle a flag" — it has no interest in `risk`/`relatedIds`), but never writes it. `relatedIds` is set by `pv-new`/`pv-fix`, never from `pv.py`'s menu; it only ever surfaces as the detail card's optional `Related` line (see "The Detail Card") |
 | `changes/implemented/` | Completed changes |
 | `changes/closed/` | Closed changes |
 | `changes/closed/temp/` | Temporary storage during versioning |

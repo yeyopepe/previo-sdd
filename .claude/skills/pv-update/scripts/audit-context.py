@@ -177,7 +177,7 @@ MARKER_RE = re.compile(r"\[\[\[(.+?)\]\]\]")
 # and pv-status's terminal_output.FLAG_ORDER. Kept as a literal here so
 # this script has no JSON-Schema-library dependency for the check.
 KNOWN_FLAGS = ("priority", "workinprogress")
-METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk"}
+METADATA_ALLOWED_KEYS = {"flags", "flagsLastModified", "risk", "relatedIds"}
 
 # plan.md's old '- **Risk**: ...' header field, moved to .metadata.json's
 # 'risk'. RISK_HEADER_RE matches the field regardless of what follows the
@@ -301,8 +301,13 @@ def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
     """Audits every .metadata.json under {workFolder}/changes/ against the
     metadata.schema.json contract (see pv-internal-workflow): valid JSON
     object, no unknown keys, 'flags' an array of known enum values, 'risk'
-    an int 0-10 or null. Also flags any .metadata.json that appears under
-    todo/ -- todo entries must never carry one."""
+    an int 0-10 or null, 'relatedIds' an array of numeric-code strings that
+    each resolve to a real change/fix folder in some non-todo state (and
+    never the entry's own code). Also flags any .metadata.json that appears
+    under todo/ -- todo entries must never carry one. relatedIds is meant
+    to be RECIPROCAL (set-metadata.py --add-related/--remove-related always
+    write both sides) -- a final pass below flags any pair left one-sided,
+    e.g. by a hand-edited .metadata.json."""
     wf_path = resolve_under(root, work_folder)
     changes_dir = wf_path / "changes"
     if not changes_dir.is_dir():
@@ -318,6 +323,19 @@ def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
                 f"(flags don't apply to loose ideas outside the change/fix flow). "
                 f"Delete it.",
                 expected="no .metadata.json under todo/", actual="present")
+
+    # Every existing change/fix code, across non-todo states, to validate
+    # 'relatedIds' references against.
+    existing_codes = {
+        p.name
+        for state_dir in changes_dir.iterdir()
+        if state_dir.is_dir() and state_dir.name != "todo"
+        for p in state_dir.iterdir() if p.is_dir()
+    }
+
+    # code -> its valid relatedIds (numeric, not self), collected below and
+    # cross-checked for reciprocity once every .metadata.json has been read.
+    related_by_code: dict[str, set[str]] = {}
 
     for state_dir in sorted(p for p in changes_dir.iterdir() if p.is_dir()):
         if state_dir.name == "todo":
@@ -370,6 +388,64 @@ def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
                 add(problems, f"metadata-risk-invalid:{rel}", "optional", rel,
                     f"'{rel}': 'risk' must be an integer 0-10 or null, got {risk!r}.",
                     expected="integer 0-10 or null", actual=repr(risk))
+
+            related = data.get("relatedIds")
+            if related is not None:
+                own_code = meta.parent.name
+                if not isinstance(related, list):
+                    add(problems, f"metadata-related-not-array:{rel}", "optional", rel,
+                        f"'{rel}': 'relatedIds' must be an array, got {type(related).__name__}.",
+                        expected="array of numeric-code strings", actual=type(related).__name__)
+                else:
+                    bad_format = sorted(
+                        {r for r in related if not (isinstance(r, str) and r.isdigit())},
+                        key=str)
+                    if bad_format:
+                        add(problems, f"metadata-related-bad-format:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' contains value(s) {', '.join(map(str, bad_format))} "
+                            f"that aren't a change/fix's numeric code.",
+                            expected="numeric-code strings", actual=", ".join(map(str, related)))
+                    if len(related) != len(set(related)):
+                        add(problems, f"metadata-related-duplicate:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' has duplicate entries (schema requires uniqueItems).",
+                            expected="unique values", actual=", ".join(map(str, related)))
+                    if own_code in related:
+                        add(problems, f"metadata-related-self:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' lists '{own_code}' -- a change/fix can't be "
+                            f"related to itself.",
+                            expected=f"'{own_code}' absent from relatedIds", actual=own_code)
+                    unknown_related = sorted(
+                        {r for r in related if isinstance(r, str) and r.isdigit()
+                         and r != own_code and r not in existing_codes})
+                    if unknown_related:
+                        add(problems, f"metadata-related-missing:{rel}", "optional", rel,
+                            f"'{rel}': 'relatedIds' references id(s) {', '.join(unknown_related)} "
+                            f"that don't exist under changes/ in any non-todo state.",
+                            expected="ids that exist under changes/", actual=", ".join(unknown_related))
+
+                    related_by_code[own_code] = {
+                        r for r in related if isinstance(r, str) and r.isdigit()
+                        and r != own_code and r in existing_codes
+                    }
+
+    # Reciprocity pass: relatedIds is meant to be symmetric (set-metadata.py
+    # always writes both sides in the same invocation) -- a code missing
+    # from the other side's relatedIds means the pair drifted apart (e.g. a
+    # hand-edited .metadata.json), and pv-status's detail card would then
+    # show the relation on only one of the two entries.
+    for code, related_codes in sorted(related_by_code.items()):
+        one_sided = sorted(
+            other for other in related_codes
+            if code not in related_by_code.get(other, set())
+        )
+        if one_sided:
+            rel_id = f"metadata-related-not-reciprocal:{code}:{','.join(one_sided)}"
+            add(problems, rel_id, "optional", code,
+                f"'{code}' lists related id(s) {', '.join(one_sided)} that don't list "
+                f"'{code}' back in their own relatedIds -- the relation should be "
+                f"reciprocal on both sides.",
+                expected=f"'{code}' present in {', '.join(one_sided)}'s relatedIds",
+                actual=f"missing from {', '.join(one_sided)}'s relatedIds")
 
 # Maps each template that uses the [[[...]]] marker convention (see
 # pv-design.en.md's "Marker convention in templates") to the glob(s), relative

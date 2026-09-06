@@ -21,6 +21,12 @@
       "minimum": 0,
       "maximum": 10,
       "description": "Median of pv-internal-tech-risks' 9 factors (0-10). Written by pv-how in step 3.1, right after plan.md is drafted, via set-metadata.py --set-risk. Absent = not yet assessed (fast entries, or a change still pending pv-how); no framework path ever writes null, but it's accepted for robustness when a file is hand-edited. Setting risk never touches flagsLastModified."
+    },
+    "relatedIds": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "pattern": "^[0-9]+$" },
+      "description": "Codes (xxxx) of other changes/fixes related to this one, if any. Written by pv-new/pv-fix via set-metadata.py --add-related/--remove-related, when the user points out a relation or the skill detects one during analysis. Each id must exist under changes/{state}/{xxxx} in some non-todo state, and can never be the entry's own code. Absent or [] = no related changes. Setting it never touches flagsLastModified."
     }
   }
 }

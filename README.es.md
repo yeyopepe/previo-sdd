@@ -42,7 +42,7 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 | Qué puedes personalizar | Cómo |
 |---|---|
 |<u>**Idioma**</u>|Habla con **Previo** en tu idioma mientras cada tipo de documento (changes, changelog, documentación funcional y técnica) se escribe en el suyo propio — configurable punto por punto en `.claude/pv-context.json`.|
-|<u>**Piezas a tu medida**</u>|Sustituye la generación de maquetas o diagramas por una skill propia de tu proyecto, sin tocar el resto del framework.|
+|<u>**Piezas a tu medida**</u>|Sustituye la generación de maquetas o diagramas por una skill propia de tu proyecto, sin tocar el resto del framework o personaliza el proceso de generación de versiones añadiendo tus propios pasos en el flujo. |
 |<u>**Estructura de carpetas y documentación**</u>|Define dónde vive cada cosa — carpeta de cambios, código fuente, documentación de arquitectura, estilo y funcionalidades — para encajar **Previo** en la estructura que ya tiene tu proyecto.|
 |<u>**Modelo por skill**</u>|Asigna el modelo y el nivel de esfuerzo que prefieras a cada skill (por ejemplo, uno más ligero para tareas de consulta y uno más potente para el análisis técnico).|
 

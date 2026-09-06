@@ -50,6 +50,8 @@ Additionally, before continuing, check that the framework's installed version is
 
 If there's ambiguity about which behavior is correct (for a bug) or exactly what needs to change (for a small change), ask. There's no need to locate the root cause in code yet — if the change turns out not to be trivial, `pv-how` does that when analyzing the fix in detail.
 
+If this fix looks related to another existing change/fix (`xxxx`) — either because the user mentioned it explicitly, or because it's evident from the request itself — note that id: for a non-trivial fix (step 3) it gets recorded once documented. A fast-tracked fix never records it (see the fast-track branch below): it's trivial and almost-zero-analysis by definition, not worth the extra confirmation round-trip.
+
 ## 2. Assess whether the change is "fast"
 
 Invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of the request, to gather the necessary technical context (it resolves `framework.docs.tech` via `resolve-path.py` and reads that documentation first, exploring code only if needed; if resolution fails it stops and sends the user to `/pv-update`). With that context gathered, assess the request against these criteria — to qualify as `fast` it must meet **all** of them, whether or not it's a bug:
@@ -83,6 +85,12 @@ If you have reasonable doubts about whether it qualifies, don't force it: treat 
 ## 3. Document the intent (non-trivial fix)
 
 Invoke the `pv-internal-workflow` skill (Skill tool) with `action=create`, `type=fix`, the functional summary of what's wrong and what's expected instead, and `promptOriginal` (the request exactly as the user wrote it, without rephrasing), so it can number the fix and create `description.md` and `history.md` at `{changesDir}/inProgress/{xxxx}/`.
+
+If step 1 identified one or more related change/fix ids, record them right after, via `set-metadata.py`:
+```
+python .claude/skills/pv-internal-workflow/scripts/set-metadata.py --xxxx {xxxx} --add-related {otherXxxx} [--add-related {otherXxxx2} ...]
+```
+Skip this call entirely if no relation was identified — don't create an empty `.metadata.json` just for this.
 
 If the functionality being described involves a flow, a sequence of steps/decisions, or an interaction between states or components from the user's point of view (e.g. how a screen transitions, the order of an operation, chained edge cases), invoke (Skill tool) the diagrams skill configured in `.claude/pv-context.json`'s `framework.skills.diagrams` (if not configured, `pv-internal-tech-mermaid`), asking it for a `functional`-type diagram per distinct use case or user story that has that flow — never mix several into the same diagram. Include the diagram(s) it returns, along with the essential notes, when passing this to `pv-internal-workflow`, instead of only describing it in prose — that's how it ends up in `description.md`. Use prose when there's no clear flow/relationship to represent.
 

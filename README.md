@@ -10,13 +10,13 @@ It brings the control and traceability of *spec-driven development* without the 
 
 - 🔑[Key features](#key-features)
 - 🛠️[Configurable and extensible](#configurable-and-extensible)
-- ⚠️[Weaknesses and what's coming next](#weaknesses-and-whats-coming-next)
+- ⚠️[Weaker points and what's coming next](#weaker-points-and-whats-coming-next)
 - 🛜[Installation](#installation)
   - [Full folder structure](#full-folder-structure)
 - 💻[Workflow](#workflow)
   - [Minimal flow](#minimal-flow)
   - [Extended flow](#extended-flow)
-- ⭐[The Full Experience](#the-full-experience)
+- ⭐[The full experience](#the-full-experience)
 - 📐[How it's built, in detail](#how-its-built-in-detail)
 - ⚖️[License](#license)
 
@@ -42,15 +42,15 @@ It brings the control and traceability of *spec-driven development* without the 
 | What you can customize | How |
 |---|---|
 |<u>**Language**</u>|Talk to **Previo** in your language while each type of document (changes, changelog, functional and technical documentation) is written in its own — configurable point by point in `.claude/pv-context.json`.|
-|<u>**Custom pieces**</u>|Swap out mockup or diagram generation for a skill of your own project, without touching the rest of the framework.|
+|<u>**Custom pieces**</u>|Swap out mockup or diagram generation for a skill of your own project, without touching the rest of the framework — or customize the release pipeline by adding your own steps to the flow.|
 |<u>**Folder structure and documentation**</u>|Define where everything lives — the changes folder, source code, architecture documentation, style, and features — to fit **Previo** into the structure your project already has.|
 |<u>**Model per skill**</u>|Assign whichever model and effort level you prefer to each skill (for example, a lighter one for lookup tasks and a more capable one for technical analysis).|
 
 See the [user guide](.claude/pv-doc/pv-guide.en.md#more-ways-to-customize-**Previo**) for the detail on each option.
 
-## ⚠️Weaknesses and what's coming next
+## ⚠️Weaker points and what's coming next
 
-- <u>**Large contexts.**</u> As the project grows, the context **Previo** needs to do its job grows too (and token usage along with it). We've prioritized the quality of results over the assumed token savings (though we haven't forgotten about those either), because our experience tells us that rework always costs more than good upfront analysis.
+- <u>**Large contexts.**</u> As the project grows, the context **Previo** needs to do its job grows too (and token usage along with it). We've prioritized the quality of results over the assumed token savings (though we haven't forgotten about those) because our experience tells us that rework always costs more than a good upfront analysis.
 - <u>**Better with better models.**</u> **Previo** can run on any model, though results will vary accordingly, of course. Think of it like deciding what profile to hire for a job: a junior (e.g. Haiku) will go faster and cost you less, but the risk of mistakes and rework is high. You could even run several in parallel if you want, but then it's no longer that cheap. A senior (e.g. Sonnet) will cost you a bit more, but will think things through better and the risk will be much lower. We've tested **Previo** with both approaches (Sonnet is already senior enough) and using a senior for everything has always paid off for us (rework rate on our last project: 5%) over trying to save with juniors (rework on the same project: 40%). These are just our numbers, we know, so try it yourself.
 - <u>**Risk vs. testing.**</u> Since we've prioritized quality of work and risk reduction, we've set aside implementing more specific testing tooling for now. We're figuring out how to add it without hurting the framework's agility. You can simply state in a change which kinds of tests you want done from then on and the framework will make sure it happens, but we think there may be a better way to do this in the near future.
 
@@ -62,23 +62,23 @@ From the root of the project where you want to use the framework, run:
 
 Latest version available:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh
 ```
 Specific version:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.sh | sh -s -- 0.9.5b6
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.5b6
 ```
 
 **Windows (PowerShell):**
 
 Latest version available:
 ```
-irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
+irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 Specific version:
 ```
-$env:**Previo**_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/**Previo**-sdd/main/install.ps1 | iex
+$env:PREVIO_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 > ❗**REMEMBER**:
@@ -159,7 +159,7 @@ Optional skills that complement the minimal cycle: jotting down ideas before com
 - **`/pv-version <code>`** — packages a release: generates the deliverable, archives the current documentation, and writes the functional changelog from what's been closed.
 
 
-## ⭐The Full Experience
+## ⭐The full experience
 See the [changelog](.claude/pv-changelog.en.md) for the current version.
 See the [user guide](.claude/pv-doc/pv-guide.en.md) for everything you can do with **Previo**.
 
