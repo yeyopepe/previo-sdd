@@ -5,7 +5,7 @@ argument-hint: <xxxx or description of the change/fix to plan>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6b14
+  version: 0.9.6b15
   uses: [pv-internal-tech-analysis, pv-internal-tech-mermaid, pv-internal-mockups-html, pv-internal-tech-risks, pv-do]
 ---
 
