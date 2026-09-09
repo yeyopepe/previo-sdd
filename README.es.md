@@ -42,8 +42,8 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 
 | Qué puedes personalizar | Cómo |
 |---|---|
+|<u>**Piezas a tu medida y hooks**</u>| Muchos de los procesos definidos disponen de puntos de personalización (*hooks*) que te permitirán añadir tareas específicas en tu flujo de trabajo, o sustituir algunas skills del framework por otras propias para cambiar la forma en que se hacen ciertas tareas. |
 |<u>**Idioma**</u>|Habla con **Previo** en tu idioma mientras cada tipo de documento (changes, changelog, documentación funcional y técnica) se escribe en el suyo propio — configurable punto por punto en `.claude/pv-context.json`.|
-|<u>**Piezas a tu medida y hooks**</u>| Añade *hooks* que personalicen tu flujo de trabajo o añade tus propias skills para cambiar la forma en que se hacen ciertas tareas. |
 |<u>**Estructura de carpetas y documentación**</u>|Define dónde vive cada cosa — carpeta de cambios, código fuente, documentación de arquitectura, estilo y funcionalidades — para encajar **Previo** en la estructura que ya tiene tu proyecto.|
 |<u>**Modelo por skill**</u>|Asigna el modelo y el nivel de esfuerzo que prefieras a cada skill (por ejemplo, uno más ligero para tareas de consulta y uno más potente para el análisis técnico).|
 

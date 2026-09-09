@@ -42,8 +42,8 @@ It brings the control and traceability of *spec-driven development* without the 
 
 | What you can customize | How |
 |---|---|
+|<u>**Custom pieces and hooks**</u>|Many of the built-in processes expose customization points (*hooks*) where you can add tasks of your own to the workflow, and you can swap some framework skills for your own to change how certain tasks are done.|
 |<u>**Language**</u>|Talk to **Previo** in your language while each type of document (changes, changelog, functional and technical documentation) is written in its own — configurable point by point in `.claude/pv-context.json`.|
-|<u>**Custom pieces and hooks**</u>|Add *hooks* that tailor your workflow, or add your own skills to change how certain tasks are done.|
 |<u>**Folder structure and documentation**</u>|Define where everything lives — the changes folder, source code, architecture documentation, style, and features — to fit **Previo** into the structure your project already has.|
 |<u>**Model per skill**</u>|Assign whichever model and effort level you prefer to each skill (for example, a lighter one for lookup tasks and a more capable one for technical analysis).|
 
