@@ -5,7 +5,7 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.6
+  version: 0.9.7b1
   uses: [pv-internal-tech-security]
 ---
 
