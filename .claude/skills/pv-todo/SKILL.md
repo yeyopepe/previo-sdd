@@ -5,7 +5,7 @@ argument-hint: "[code | change <xxxx>] <idea to note or develop>"
 model: claude-haiku-4-5
 effort: medium
 metadata:
-  version: 0.9.7b1
+  version: 0.9.7b2
   uses: []
 ---
 
