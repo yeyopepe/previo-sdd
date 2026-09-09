@@ -10,12 +10,14 @@ What it creates, only if nothing already exists at that path (never
 overwrites or touches existing content):
 - workFolder's fixed subfolders: changes/{inProgress,implemented,todo,closed},
   versions/, stuff/, stuff/hooks/ -- empty, with a .gitkeep so git tracks them.
-  stuff/hooks/version/ also gets pv-version's three hook files
-  (10-pre-release.md / 20-post-build.md / 30-post-changelog.md), copied from
-  the .template.md files next to pv-version's SKILL.md -- written only if
-  absent, never overwritten, so a project that has already added steps keeps
-  them; same idea as docs/* starting with its INDEX.md / 001-overview.md
-  rather than truly empty.
+  stuff/hooks/ also gets one subdir per hook-exposing skill with its seed
+  hook files (see HOOK_SETS): stuff/hooks/version/ gets pv-version's three
+  (10-pre-release.md / 20-post-build.md / 30-post-changelog.md),
+  stuff/hooks/do/ gets pv-do's two (10-before-start.md / 20-before-finish.md).
+  Each is copied from the .template.md file under that skill's own hooks/
+  dir -- written only if absent, never overwritten, so a project that has
+  already added steps keeps them; same idea as docs/* starting with its
+  INDEX.md / 001-overview.md rather than truly empty.
 - docs.tech.architectureDocDir / styleBibleDocDir / docs.functional.featuresDocPathDir
   (each if configured): all three follow the same pv-internal-doc-files
   convention -- one {NNN}-{slug}.md file per topic plus a generated
@@ -49,10 +51,17 @@ Prints ONLY a JSON summary on stdout, e.g.:
 
   {
     "workFolderSubfolders": {"created": ["previo-sdd/changes/inProgress", ...], "skipped": []},
-    "versionHooks": {
-      "dir": "previo-sdd/stuff/hooks/version",
-      "created": ["previo-sdd/stuff/hooks/version/10-pre-release.md", ...],
-      "skipped": []
+    "hooks": {
+      "version": {
+        "dir": "previo-sdd/stuff/hooks/version",
+        "created": ["previo-sdd/stuff/hooks/version/10-pre-release.md", ...],
+        "skipped": []
+      },
+      "do": {
+        "dir": "previo-sdd/stuff/hooks/do",
+        "created": ["previo-sdd/stuff/hooks/do/10-before-start.md", ...],
+        "skipped": []
+      }
     },
     "docs": {
       "architecture": {"path": "previo-sdd/docs/architecture", "status": "created"},
@@ -66,8 +75,8 @@ Prints ONLY a JSON summary on stdout, e.g.:
 path -- folder or, for docs, even a legacy single file -- left untouched),
 "namespace_seeded" (architecture folder already existed but was missing
 00-namespace.md, now added) or "not_configured" (the field isn't set in
-pv-context.json). 'versionHooks' instead lists created/skipped paths (each
-hook file is seeded only if absent).
+pv-context.json). 'hooks' instead has one entry per hook set (version, do),
+each listing created/skipped paths (each hook file is seeded only if absent).
 
 Usage:
   python .claude/skills/pv-init/scripts/scaffold-project.py
@@ -173,20 +182,28 @@ A `path.decision.<slug>` node records its rationale as a `[motivación]` line \
 """
 
 
-# pv-version's hooks live at {workFolder}/stuff/hooks/version/<NN>-<slug>.md,
-# one file per insertion point. Each file's NAME is normative -- pv-version
-# (step 0.6) matches by the <NN> id and expects the exact <slug>; the file
-# body holds "### Step N" blocks (or none = hook skipped). The seed content
-# is the LITERAL .template.md next to pv-version's SKILL.md, copied here at
-# runtime (like assets/pv.py and rebuild-index.py, not inlined like
-# NAMESPACE_SEED). Created only if absent, never overwritten, so a project
-# that has already added steps keeps them.
-VERSION_HOOKS_SUBDIR = "stuff/hooks/version"
-VERSION_HOOK_FILES = (
-    "10-pre-release.md",
-    "20-post-build.md",
-    "30-post-changelog.md",
-)
+# The pv-* skills that expose project hooks keep them at
+# {workFolder}/stuff/hooks/<skill>/<NN>-<slug>.md, one file per insertion
+# point. Each file's NAME is normative -- the owning skill matches by the
+# <NN> id and expects the exact <slug>; the file body holds "### Step N"
+# blocks (or none = hook skipped). The seed content is the LITERAL
+# .template.md under that skill's own hooks/ dir, copied here at runtime
+# (like assets/pv.py and rebuild-index.py, not inlined like NAMESPACE_SEED).
+# Created only if absent, never overwritten, so a project that has already
+# added steps keeps them.
+#
+# HOOK_SETS maps stuff/hooks/<subdir> -> (owning skill dir, hook file names).
+HOOK_SETS = {
+    "version": ("pv-version", (
+        "10-pre-release.md",
+        "20-post-build.md",
+        "30-post-changelog.md",
+    )),
+    "do": ("pv-do", (
+        "10-before-start.md",
+        "20-before-finish.md",
+    )),
+}
 
 
 def repo_root() -> Path:
@@ -217,19 +234,20 @@ def ensure_workfolder_subfolders(root: Path, work_folder: str) -> dict:
     return {"created": created, "skipped": skipped}
 
 
-def ensure_version_hooks(root: Path, work_folder: str) -> dict:
-    """Seeds {workFolder}/stuff/hooks/version/<NN>-<slug>.md from the
-    .template.md files next to pv-version's SKILL.md -- one per insertion
-    point, only if absent, never overwritten (steps a project added survive
-    a re-run). Creates stuff/hooks/version/ if needed. Assumes stuff/ exists
-    (ensure_workfolder_subfolders ran first)."""
+def ensure_hook_set(root: Path, work_folder: str, subdir: str,
+                    skill_dir: str, file_names) -> dict:
+    """Seeds {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md from the
+    .template.md files under .claude/skills/<skill_dir>/hooks/ -- one per
+    insertion point, only if absent, never overwritten (steps a project
+    added survive a re-run). Creates the hooks subdir if needed. Assumes
+    stuff/ exists (ensure_workfolder_subfolders ran first)."""
     hooks_dir = resolve_inside_repo(
-        root, f"{work_folder.rstrip('/')}/{VERSION_HOOKS_SUBDIR}"
+        root, f"{work_folder.rstrip('/')}/stuff/hooks/{subdir}"
     )
     hooks_dir.mkdir(parents=True, exist_ok=True)
-    tpl_dir = root / ".claude/skills/pv-version/hooks"
+    tpl_dir = root / ".claude/skills" / skill_dir / "hooks"
     created, skipped = [], []
-    for name in VERSION_HOOK_FILES:
+    for name in file_names:
         target = hooks_dir / name
         rel = target.relative_to(root).as_posix()
         if target.exists():
@@ -240,6 +258,15 @@ def ensure_version_hooks(root: Path, work_folder: str) -> dict:
         created.append(rel)
     return {"dir": hooks_dir.relative_to(root).as_posix(),
             "created": created, "skipped": skipped}
+
+
+def ensure_hooks(root: Path, work_folder: str) -> dict:
+    """Seeds every hook set in HOOK_SETS (version, do). Returns one entry
+    per set keyed by its subdir name."""
+    return {
+        subdir: ensure_hook_set(root, work_folder, subdir, skill_dir, names)
+        for subdir, (skill_dir, names) in HOOK_SETS.items()
+    }
 
 
 def rebuild_index(root: Path, folder: Path) -> None:
@@ -313,7 +340,7 @@ def main() -> None:
 
     result = {
         "workFolderSubfolders": ensure_workfolder_subfolders(root, work_folder),
-        "versionHooks": ensure_version_hooks(root, work_folder),
+        "hooks": ensure_hooks(root, work_folder),
         "docs": {
             "architecture": ensure_overview_doc(
                 root, work_folder, tech.get("architectureDocDir"), "Architecture",

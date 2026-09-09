@@ -59,6 +59,9 @@ flowchart TD
     S61Run --> S7Summary
     S61Hook -->|No| S7Summary
     S7Summary[INFO: summary of deliverable, docs, changelog, plus any hooks that ran] --> EndOK([End: release prepared])
+
+    classDef hook fill:#d9770e,color:#fff
+    class S07Hook,S07Run,S41Hook,S41Run,S61Hook,S61Run hook
 ```
 
 Legend:
@@ -66,3 +69,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
+- Orange nodes — the project's own hook insertion points (`stuff/hooks/version/*.md`): the check for defined steps and the run of those steps. Optional; a hook with no steps is skipped silently.

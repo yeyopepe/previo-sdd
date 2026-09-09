@@ -274,23 +274,69 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
                 actual=f"**Risk**: {raw_tail} in plan.md header")
 
 
-# pv-version's hooks: one file per insertion point at
-# {workFolder}/stuff/hooks/version/<NN>-<slug>.md. NN is the normative id the
-# skill matches on; the slug that follows is fixed too (pv-version warns on a
-# wrong slug and pv-update normalizes it).
-VERSION_HOOK_FILES = {
-    "10": "10-pre-release.md",
-    "20": "20-post-build.md",
-    "30": "30-post-changelog.md",
+# pv-* skills that expose project hooks keep them one file per insertion
+# point at {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md. NN is the
+# normative id the skill matches on; the slug that follows is fixed too (the
+# skill warns on a wrong slug and pv-update normalizes it). HOOK_SETS maps
+# the stuff/hooks/<subdir> to (owning skill name, {NN: canonical filename}).
+HOOK_SETS = {
+    "version": ("pv-version", {
+        "10": "10-pre-release.md",
+        "20": "20-post-build.md",
+        "30": "30-post-changelog.md",
+    }),
+    "do": ("pv-do", {
+        "10": "10-before-start.md",
+        "20": "20-before-finish.md",
+    }),
 }
 HOOK_ID_RE = re.compile(r"^(\d{2})-.+\.md$")
 
 
+def _check_one_hook_set(root: Path, stuff_dir: Path, subdir: str,
+                        owner: str, canonical_by_id: dict, problems: list) -> None:
+    """Presence + canonical-slug check for one stuff/hooks/<subdir> set.
+    Emits `stuff-<subdir>-hook-missing:<NN>` (seed absent -- recreated by
+    re-running scaffold-project.py, which never overwrites an existing file)
+    and `stuff-<subdir>-hook-badslug:<file>` (right <NN> id, wrong slug --
+    renamed to the canonical name, contents unchanged). Contents are never
+    inspected."""
+    hooks_dir = stuff_dir / "hooks" / subdir
+    present_by_id: dict[str, list[Path]] = {}
+    if hooks_dir.is_dir():
+        for f in sorted(hooks_dir.glob("*.md")):
+            m = HOOK_ID_RE.match(f.name)
+            if m:
+                present_by_id.setdefault(m.group(1), []).append(f)
+
+    for nn, canonical in canonical_by_id.items():
+        matches = present_by_id.get(nn, [])
+        canonical_rel = (hooks_dir / canonical).relative_to(root).as_posix()
+        if not matches:
+            add(problems, f"stuff-{subdir}-hook-missing:{nn}", "optional",
+                f"framework.workFolder (stuff/hooks/{subdir}/)",
+                f"{owner}'s hook file '{canonical_rel}' is missing. A project "
+                f"scaffolded before this hook existed won't have it; without it "
+                f"the insertion point isn't discoverable. Recreate the seed "
+                f"(header + zero steps) by re-running scaffold-project.py.",
+                expected=canonical_rel, actual="missing")
+            continue
+        if not any(f.name == canonical for f in matches):
+            wrong = matches[0].relative_to(root).as_posix()
+            add(problems, f"stuff-{subdir}-hook-badslug:{matches[0].name}", "optional",
+                f"framework.workFolder (stuff/hooks/{subdir}/)",
+                f"'{wrong}' has the right id '{nn}' but not the canonical name. "
+                f"Rename it to '{canonical_rel}' (contents unchanged) so "
+                f"{owner}'s slug check stays quiet.",
+                expected=canonical_rel, actual=wrong)
+
+
 def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> None:
     """pv-init's scaffold-project.py seeds
-    {workFolder}/stuff/hooks/version/<NN>-<slug>.md (one file per insertion
-    point, copied from pv-version/hooks/*.template.md) so the mechanism is
-    discoverable. Problems reported:
+    {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md for every hook-exposing
+    skill (see HOOK_SETS: version, do), one file per insertion point, copied
+    from that skill's hooks/*.template.md, so the mechanism is discoverable.
+    Problems reported:
 
     - `stuff-pipeline-legacy-obsolete`: a pre-hooks single-file pipeline
       (stuff/custom-version-pipeline.md, or the intermediate
@@ -300,10 +346,12 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
     - `stuff-pipeline-legacy-location`: the same legacy file but WITH at least
       one `### Step`. NOT auto-fixed -- it holds project-authored steps;
       pv-update reports the section->file mapping and the user migrates.
-    - `stuff-version-hook-missing:<NN>`: a seed hook file is absent. Recreate
-      it (re-run scaffold-project.py) -- it never overwrites an existing one.
-    - `stuff-version-hook-badslug:<file>`: a file with a valid <NN> id but the
-      wrong slug. Rename it to the canonical <NN>-<slug>.md, keeping contents.
+    - `stuff-<subdir>-hook-missing:<NN>` (subdir = version | do): a seed hook
+      file is absent. Recreate it (re-run scaffold-project.py) -- it never
+      overwrites an existing one.
+    - `stuff-<subdir>-hook-badslug:<file>`: a file with a valid <NN> id but
+      the wrong slug. Rename it to the canonical <NN>-<slug>.md, keeping
+      contents.
 
     The legacy-file check reads the file only to count `### Step` headings
     (empty seed vs. real content); the per-point hook files' contents are
@@ -313,11 +361,13 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
     if not stuff_dir.is_dir():
         return  # the workfolder-subfolder-missing:stuff check already fired
 
-    # --- legacy single-file pipeline (either old location) ---
+    # --- legacy single-file pipeline (either old location), version only ---
+    legacy_pipeline_found = False
     for legacy in (stuff_dir / "custom-version-pipeline.md",
                    stuff_dir / "hooks" / "custom-version-pipeline.md"):
         if not legacy.is_file():
             continue
+        legacy_pipeline_found = True
         rel_legacy = legacy.relative_to(root).as_posix()
         try:
             has_steps = bool(re.search(r"^###\s+Step\b", legacy.read_text(encoding="utf-8"),
@@ -348,37 +398,16 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
                 f"new layout.",
                 expected="file removed",
                 actual=rel_legacy)
-        return  # deal with the legacy file first; hook-seed checks are moot until then
+        break  # deal with the legacy file first; version's seed checks are moot until then
 
-    # --- the three seed hook files ---
-    hooks_dir = stuff_dir / "hooks" / "version"
-    present_by_id: dict[str, list[Path]] = {}
-    if hooks_dir.is_dir():
-        for f in sorted(hooks_dir.glob("*.md")):
-            m = HOOK_ID_RE.match(f.name)
-            if m:
-                present_by_id.setdefault(m.group(1), []).append(f)
-
-    for nn, canonical in VERSION_HOOK_FILES.items():
-        matches = present_by_id.get(nn, [])
-        canonical_rel = (hooks_dir / canonical).relative_to(root).as_posix()
-        if not matches:
-            add(problems, f"stuff-version-hook-missing:{nn}", "optional",
-                "framework.workFolder (stuff/hooks/version/)",
-                f"pv-version's hook file '{canonical_rel}' is missing. A project "
-                f"scaffolded before this hook existed won't have it; without it "
-                f"the insertion point isn't discoverable. Recreate the seed "
-                f"(header + zero steps) by re-running scaffold-project.py.",
-                expected=canonical_rel, actual="missing")
+    # --- the seed hook files, one set per hook-exposing skill ---
+    # The version legacy pipeline (if any) is handled first: skip version's
+    # seed checks this pass, but still check every other set (e.g. do), which
+    # is unrelated to it.
+    for subdir, (owner, canonical_by_id) in HOOK_SETS.items():
+        if subdir == "version" and legacy_pipeline_found:
             continue
-        if not any(f.name == canonical for f in matches):
-            wrong = matches[0].relative_to(root).as_posix()
-            add(problems, f"stuff-version-hook-badslug:{matches[0].name}", "optional",
-                "framework.workFolder (stuff/hooks/version/)",
-                f"'{wrong}' has the right id '{nn}' but not the canonical name. "
-                f"Rename it to '{canonical_rel}' (contents unchanged) so "
-                f"pv-version's slug check stays quiet.",
-                expected=canonical_rel, actual=wrong)
+        _check_one_hook_set(root, stuff_dir, subdir, owner, canonical_by_id, problems)
 
 
 def check_how_to_compile_name(root: Path, work_folder: str, problems: list) -> None:
@@ -812,7 +841,7 @@ def main() -> None:
                     f"Change code '{code}' exists in both inProgress/ and implemented/ -- codes must never repeat.",
                     actual=code)
 
-    # --- stuff/hooks/version/*.md seeds + retired single-file pipeline (optional) ---
+    # --- stuff/hooks/<subdir>/*.md seeds (version, do) + retired single-file pipeline (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
         check_version_hooks_seed(root, work_folder, problems)
 
