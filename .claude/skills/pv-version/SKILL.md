@@ -13,11 +13,11 @@ metadata:
 
 Orchestrates preparing a project release: resolves change/fix entries pending closure, generates the deliverable, copies the current technical documentation, and chains `pv-internal-changelog` to draft the functional changelog from `{workFolder}/changes/closed/`.
 
-**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation, including the fixed messages below. Copying technical documentation and generating the deliverable are copy/build operations, not new prose (`language` doesn't apply); it chains `pv-internal-changelog` for `changelog.md`. `{workFolder}/stuff/how-to-compile-version.md` and `{workFolder}/stuff/custom-version-pipeline.md`, which this skill reads/writes/executes directly (see steps 0.2, 0.6 and 3), also follow `interaction.language` — there's no dedicated language field for `stuff/*` in the schema. If `language` is not configured anywhere, everything is English.
+**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation, including the fixed messages below. Copying technical documentation and generating the deliverable are copy/build operations, not new prose (`language` doesn't apply); it chains `pv-internal-changelog` for `changelog.md`. `{workFolder}/stuff/how-to-compile.md` and the hook files under `{workFolder}/stuff/hooks/version/`, which this skill reads/writes/executes directly (see steps 0.2, 0.6 and 3), also follow `interaction.language` — there's no dedicated language field for `stuff/*` in the schema. If `language` is not configured anywhere, everything is English.
 
-**This skill is installed framework, not editable from a consumer project.** If the user asks to change *how* the version flow works (add a step, change the order, a precondition check, publish something when it finishes), the right answer is **not** to edit this `SKILL.md`, `workflow.version.md`, or any file under `.claude/skills/pv-*/`. There are exactly two customization points, both in `{workFolder}/stuff/`: compiling the deliverable → `how-to-compile-version.md` (steps 3–4); the project's own steps at three points of the flow (before starting / in the middle / at the end) → `custom-version-pipeline.md` (step 0.6). If what's asked doesn't fit either one, say so and propose opening a change in the framework repo — never a local patch to the skill. The presence of `framework.frameworkStatus` in `pv-context.json` means these skills are managed via `pv-update`; editing them by hand leaves them inconsistent (step 0 already checks versions).
+**This skill is installed framework, not editable from a consumer project.** If the user asks to change *how* the version flow works (add a step, change the order, a precondition check, publish something when it finishes), the right answer is **not** to edit this `SKILL.md`, `workflow.version.md`, or any file under `.claude/skills/pv-*/`. There are exactly two customization points in `{workFolder}/stuff/`: compiling the deliverable → `how-to-compile.md` (steps 3–4); the project's own steps at three points of the flow → the hook files `hooks/version/{10-pre-release,20-post-build,30-post-changelog}.md` (step 0.6). If what's asked doesn't fit either one, say so and propose opening a change in the framework repo — never a local patch to the skill. The presence of `framework.frameworkStatus` in `pv-context.json` means these skills are managed via `pv-update`; editing them by hand leaves them inconsistent (step 0 already checks versions).
 
-`{workFolder}` is `.claude/pv-context.json`'s `framework.workFolder` value (default `"/previo-sdd"`, never asked/confirmed by `pv-init`). Inside it, `changes/`, `versions/` and `stuff/` are fixed-name subfolders the framework creates by itself — not asked about or configured separately. `{workFolder}/stuff/` holds this skill's own project-specific files: `how-to-compile-version.md` (how to build the deliverable) and `custom-version-pipeline.md` (the project's own steps at three points of the flow — see step 0.6). `{workFolder}/versions/{XXXX}/` is a free-text numbering space, chosen by the user on each invocation, with no relation to change/fix's `xxxx` nor to any other folder called "versions" that might exist in the repo (e.g. a build script's own output): this skill never reads or writes outside `{workFolder}/versions/`.
+`{workFolder}` is `.claude/pv-context.json`'s `framework.workFolder` value (default `"/previo-sdd"`, never asked/confirmed by `pv-init`). Inside it, `changes/`, `versions/` and `stuff/` are fixed-name subfolders the framework creates by itself — not asked about or configured separately. `{workFolder}/stuff/` holds this skill's own project-specific files: `how-to-compile.md` (how to build the deliverable) and `hooks/version/*.md` (the project's own steps at three points of the flow — see step 0.6). `{workFolder}/versions/{XXXX}/` is a free-text numbering space, chosen by the user on each invocation, with no relation to change/fix's `xxxx` nor to any other folder called "versions" that might exist in the repo (e.g. a build script's own output): this skill never reads or writes outside `{workFolder}/versions/`.
 
 **Before any other step**, read [`workflow.version.md`](workflow.version.md) — it's the source of truth for this flow's sequence and branches (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which script to run, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match. Don't confuse it with [`version-flow-diagram.template.md`](version-flow-diagram.template.md): that one is a simplified, user-facing diagram shown as-is when the user asks how the process works (step 0.1) — it doesn't drive this skill's own execution.
 
@@ -39,7 +39,7 @@ At any point during invocation, if the user asks how the process works or explic
 
 The user might invoke this skill only to report a change in the build/deliverable-generation procedure (e.g. "the build now also generates a rules PDF", "change the build command to..."), without explicitly asking to prepare a release right now.
 
-If that's the intent: update `{workFolder}/stuff/how-to-compile-version.md` with the new information, following [`how-to-compile-version.template.md`](how-to-compile-version.template.md) (including its support for multi-step/multi-artifact processes if applicable — see the template itself), and **don't continue with the rest of the flow**. Explicitly ask the user whether they want to launch the versioning process now with this now-updated procedure. Only if they specifically confirm, continue with step 0.5; if they don't confirm (or don't answer that), stop here.
+If that's the intent: update `{workFolder}/stuff/how-to-compile.md` with the new information, following [`how-to-compile.template.md`](how-to-compile.template.md) (including its support for multi-step/multi-artifact processes if applicable — see the template itself), and **don't continue with the rest of the flow**. Explicitly ask the user whether they want to launch the versioning process now with this now-updated procedure. Only if they specifically confirm, continue with step 0.5; if they don't confirm (or don't answer that), stop here.
 
 ## 0.5. Guardrail: `implemented/` must be empty before starting
 
@@ -57,17 +57,27 @@ For each folder found, explicitly ask the user whether that change/fix moves to 
 
 Repeat until `implemented/` is empty; only then continue with step 0.6.
 
-## 0.6. Load the custom pipeline
+## 0.6. Load the project's hooks
 
-Look for `{workFolder}/stuff/custom-version-pipeline.md`. If it doesn't exist, continue as normal without saying anything (an old project that hasn't run `pv-update` since this was added won't have it — same behavior as before). If it exists, **read it and parse its steps per section**: three fixed `##` headings (`## Before starting` / `## In the middle` / `## At the end`, translated to `interaction.language`), each holding 0..N `### Step N: {name}` blocks with `**Command(s) to run**` / `**Generated file(s)**` / `**Notes**` (same shape as `how-to-compile-version.md`). A section with zero steps is skipped silently at its anchor.
+`pv-version`'s hooks live one file per insertion point at `{workFolder}/stuff/hooks/version/<NN>-<slug>.md`. Three points are defined:
 
-Each step is prose + a command block run from the repo root, with a note of what it produces / how to verify. Substitutable variables: `{workFolder}` everywhere; `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths (`.../files/`, `.../docs/`) **only** in "In the middle" and "At the end" — "Before starting" runs before step 1, so `{XXXX}` isn't resolved there. Don't substitute anything now; do it at each anchor, at execution time. Nothing else is substituted — a step needing e.g. the current branch runs its own command for it.
+| `<NN>` | file | runs |
+|--------|------|------|
+| `10` | `10-pre-release.md` | step 0.7, before `XXXX` is resolved |
+| `20` | `20-post-build.md` | step 4.1, after artifacts are in `files/` |
+| `30` | `30-post-changelog.md` | step 6.1, after the changelog, before the summary |
 
-Same guardrail as step 0.2/§top: if the user is asking to *change* how the flow works, and it fits one of the three sections, the fix is to edit this file (via this skill), not `SKILL.md` or `workflow.version.md`.
+List `{workFolder}/stuff/hooks/version/*.md`. For each file, take the `<NN>` id from its `^(\d+)-` prefix and read its `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`, same shape as `how-to-compile.md`). A file that's absent, or present with zero `### Step` blocks, means its hook is skipped silently. A file whose `<NN>` matches no point above → ignore it, and mention it to the user (a typo, or a hook from a newer framework version). The `<slug>` after the id is fixed (`pre-release` / `post-build` / `post-changelog`); a file with the right id but a different slug still runs, but tell the user so `pv-update` can normalize the name.
 
-## 0.7. Hook: "Before starting"
+If none of the three files exists, continue as normal without saying anything (an old project that hasn't run `pv-update` since hooks moved to this layout won't have them; `pv-update` flags a legacy single-file pipeline for the user to migrate — don't read it here).
 
-If the custom pipeline (step 0.6) defines steps for the "Before starting" section, run them **now**, in order, before resolving `XXXX`. Only `{workFolder}` is substituted here — `{XXXX}` and the `versions/{XXXX}/` paths aren't available yet. Run each step's command(s) from the repo root and verify what it says it produces. If a step's command fails or its expected output doesn't appear, **stop and explain it to the user** instead of improvising an alternative — same criterion as step 4. If there are no steps for this section, continue silently.
+Each step is prose + a command block run from the repo root, with a note of what it produces / how to verify. Substitutable variables: `{workFolder}` everywhere; `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths (`.../files/`, `.../docs/`) **only** in `20-post-build.md` and `30-post-changelog.md` — `10-pre-release.md` runs before step 1, so `{XXXX}` isn't resolved there. Don't substitute anything now; do it at each anchor, at execution time. Nothing else is substituted — a step needing e.g. the current branch runs its own command for it.
+
+Same guardrail as step 0.2/§top: if the user is asking to *change* how the flow works and it fits one of the three hooks, the fix is to edit that hook file (via this skill), not `SKILL.md` or `workflow.version.md`.
+
+## 0.7. Hook: `10-pre-release`
+
+If `10-pre-release.md` (step 0.6) defines `### Step` blocks, run them **now**, in order, before resolving `XXXX`. Only `{workFolder}` is substituted here — `{XXXX}` and the `versions/{XXXX}/` paths aren't available yet. Run each step's command(s) from the repo root and verify what it says it produces. If a step's command fails or its expected output doesn't appear, **stop and explain it to the user** instead of improvising an alternative — same criterion as step 4. If there are no steps, continue silently.
 
 ## 1. Resolve `XXXX`
 
@@ -83,16 +93,16 @@ python .claude/skills/pv-version/scripts/init-version-folder.py --xxxx <XXXX>
 
 Creates `{workFolder}/versions/{XXXX}/` with empty `files/` and `docs/` subfolders, and prints the created path. If `{workFolder}/versions/{XXXX}/` already exists, the script exits with an error without touching anything — in that case, ask the user whether they want to continue over what already exists (regenerate) or choose another `XXXX`, and return to this step with the new value if applicable.
 
-## 3. Check `how-to-compile-version.md`
+## 3. Check `how-to-compile.md`
 
-Look for `{workFolder}/stuff/how-to-compile-version.md` (the project's own file, not the skill's nor `pv-context.json`'s: it's a shell/build procedure, not declarative configuration).
+Look for `{workFolder}/stuff/how-to-compile.md` (the project's own file, not the skill's nor `pv-context.json`'s: it's a shell/build procedure, not declarative configuration).
 
-- **If it doesn't exist**: ask the user for this project's exact procedure to generate the deliverable (which command(s) to run, where the resulting file ends up and how to identify it — or, if the process has several steps generating different artifacts, each step with its own command and resulting file), and write it following [`how-to-compile-version.template.md`](how-to-compile-version.template.md). Don't continue with step 4 in the same reply without having saved the file.
+- **If it doesn't exist**: ask the user for this project's exact procedure to generate the deliverable (which command(s) to run, where the resulting file ends up and how to identify it — or, if the process has several steps generating different artifacts, each step with its own command and resulting file), and write it following [`how-to-compile.template.md`](how-to-compile.template.md). Don't continue with step 4 in the same reply without having saved the file.
 - **If it already exists**: read it and follow it as-is, without asking again.
 
 ## 4. Generate the version
 
-Run the command(s) `how-to-compile-version.md` gives (one per step, if the procedure has several) and locate the resulting file(s) as it describes. If any command fails or the expected file doesn't show up, stop and explain it to the user instead of improvising an alternative solution.
+Run the command(s) `how-to-compile.md` gives (one per step, if the procedure has several) and locate the resulting file(s) as it describes. If any command fails or the expected file doesn't show up, stop and explain it to the user instead of improvising an alternative solution.
 
 With all artifacts located, copy them to `{workFolder}/versions/{XXXX}/files/` by running from the repo root (one `--source` per artifact, even if it comes from a single step):
 
@@ -100,9 +110,9 @@ With all artifacts located, copy them to `{workFolder}/versions/{XXXX}/files/` b
 python .claude/skills/pv-version/scripts/copy-build-artifacts.py --xxxx <XXXX> --source <artifact-path-1> [--source <artifact-path-2> ...]
 ```
 
-### 4.1. Hook: "In the middle"
+### 4.1. Hook: `20-post-build`
 
-With the artifacts now in `{workFolder}/versions/{XXXX}/files/` and before step 5, if the custom pipeline (step 0.6) defines steps for the "In the middle" section, run them in order. `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths (`.../files/`, `.../docs/`) are available and substituted. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise an alternative. No steps for this section: continue silently.
+With the artifacts now in `{workFolder}/versions/{XXXX}/files/` and before step 5, if `20-post-build.md` (step 0.6) defines `### Step` blocks, run them in order. `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths (`.../files/`, `.../docs/`) are available and substituted. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise an alternative. No steps: continue silently.
 
 ## 5. Copy technical and functional documentation
 
@@ -118,10 +128,10 @@ Reads `.claude/pv-context.json`'s `framework.docs.tech.architectureDocDir`, `fra
 
 Invoke the `pv-internal-changelog` skill (Skill tool) passing it the destination folder `{workFolder}/versions/{XXXX}/`.
 
-### 6.1. Hook: "At the end"
+### 6.1. Hook: `30-post-changelog`
 
-After the changelog is drafted and before the step 7 summary, if the custom pipeline (step 0.6) defines steps for the "At the end" section, run them in order. `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths are available and substituted. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise. This hook runs before the summary on purpose, so step 7 can report what it produced. No steps for this section: continue silently.
+After the changelog is drafted and before the step 7 summary, if `30-post-changelog.md` (step 0.6) defines `### Step` blocks, run them in order. `{XXXX}` and the `{workFolder}/versions/{XXXX}/` paths are available and substituted. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise. This hook runs before the summary on purpose, so step 7 can report what it produced. No steps: continue silently.
 
 ## 7. Confirm to the user
 
-Summarize what was generated: the deliverable in `files/`, the three zipped docs in `docs/`, and that the changelog ended up in `changelog.md` — use the summary `pv-internal-changelog` returns to you (number of entries per section, including Fixes, and whether `{workFolder}/changes/closed/`'s folders were deleted or not). If the custom pipeline ran, also mention which sections executed and what they produced — especially "At the end" (e.g. "uploaded to X", "release notes in `notes.pdf`").
+Summarize what was generated: the deliverable in `files/`, the three zipped docs in `docs/`, and that the changelog ended up in `changelog.md` — use the summary `pv-internal-changelog` returns to you (number of entries per section, including Fixes, and whether `{workFolder}/changes/closed/`'s folders were deleted or not). If any hook ran, also mention which ones executed and what they produced — especially `30-post-changelog` (e.g. "uploaded to X", "release notes in `notes.pdf`").

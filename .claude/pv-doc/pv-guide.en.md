@@ -233,10 +233,10 @@ When there's work ready (`changes/implemented/`) and you want to prepare a relea
 `{XXXX}` is free text that you choose on each invocation (e.g. `00001`, `v1`, `beta3`) — it has no relation to the `xxxx` numbering of a change/fix, nor to `src/_output/versions/` (the folder that `build.py` already generates on its own with its own `NNNN` counter): they are three completely independent spaces.
 
 > ❗**IMPORTANT:**
-> /pv-version uses the file `{workFolder}/stuff/how-to-compile-version.md` to know how to compile a version of your application. If, when the time comes, this file doesn't exist or is empty, it asks you about the process to document it and figure out what to do. <u>Before you reach this point</u>, you should already have your build pipeline ready (usually with scripts) so you can tell Previo what steps to follow.
+> /pv-version uses the file `{workFolder}/stuff/how-to-compile.md` to know how to compile a version of your application. If, when the time comes, this file doesn't exist or is empty, it asks you about the process to document it and figure out what to do. <u>Before you reach this point</u>, you should already have your build pipeline ready (usually with scripts) so you can tell Previo what steps to follow.
 
 > ❗**IMPORTANT:**
-> If you invoke `/pv-version` only to report a change in the build procedure (e.g. "the build now also generates a rules PDF"), without asking to prepare a release, it updates `{workFolder}/stuff/how-to-compile-version.md` with that and asks whether you want to run the versioning process now — it doesn't run it on its own.
+> If you invoke `/pv-version` only to report a change in the build procedure (e.g. "the build now also generates a rules PDF"), without asking to prepare a release, it updates `{workFolder}/stuff/how-to-compile.md` with that and asks whether you want to run the versioning process now — it doesn't run it on its own.
 
 
 ```mermaid
@@ -244,7 +244,7 @@ flowchart LR
     Guard{"implemented/\nempty?"}
     Resolve["Resolve each entry\n(user confirms → closed)"]
     Folder["Create versions/XXXX\n(files/, docs/)"]
-    Compile["Generate the deliverable\n(how-to-compile-version.md)"]
+    Compile["Generate the deliverable\n(how-to-compile.md)"]
     Docs["Compress and copy technical\nand functional documentation to docs/"]
     Changelog["pv-internal-changelog\ndrafts changelog.md from closed/"]
     Confirm["Confirm the release\nto the user"]
@@ -268,7 +268,7 @@ In prose:
 
 1. **Startup guardrail**: if `changes/implemented/` has any entry, `/pv-version` doesn't proceed until they're all resolved — for each one it asks whether it moves to `closed` (irreversible without confirmation) before continuing.
 2. **Create the version folder**: `{workFolder}/versions/{XXXX}/{files,docs}/`. If `{XXXX}` already exists, it asks whether to regenerate over what's there or choose a different code.
-3. **Generate the deliverable**: it follows the procedure in `{workFolder}/stuff/how-to-compile-version.md` (asked and written the first time it's needed, with one step per artifact if the build generates several; in this repo it runs `python ./src/scripts/build.py`) and copies the result to `files/` via a script.
+3. **Generate the deliverable**: it follows the procedure in `{workFolder}/stuff/how-to-compile.md` (asked and written the first time it's needed, with one step per artifact if the build generates several; in this repo it runs `python ./src/scripts/build.py`) and copies the result to `files/` via a script.
 4. **Compress and copy documentation**: the paths configured in `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir`/`docs.functional.featuresDocPathDir` (whichever are configured) are each compressed into a `.zip` and saved in `docs/`, as a record of which documentation was current at the time of this release.
 5. **Functional changelog**: `pv-internal-changelog` (an internal skill) reads each `description.md` in `changes/closed/`. `fix`-type entries go straight to **Fixes**; the rest are compared against the changelog of the previous version detected in `{workFolder}/versions/` (confirming it with you before using it) and classified into **New** / **Changes** / **Removed**. `changelog.md` carries a header with the number of entries in each section, in purely functional language. After your explicit confirmation, it deletes from `closed/` only the folders already folded in (never "all of `closed/`" blindly); if you don't confirm the deletion, the changelog is written anyway and `closed/` is left untouched.
 
@@ -278,7 +278,7 @@ You can ask "how does `/pv-version` work?" in the middle of the invocation and i
 
 > ❗**NOTE ON LARGER PROJECTS**:
 > Obviously, in larger projects, the process of releasing a new version doesn't end here — it probably still has to go through many more states (deployment to several environments, updating configuration values per environment, automated-test validations, etc.).
-> `/pv-version` makes sure everything is prepared so you have a version of your app with everything it needs. From this point on, if the project requires it, we'll have our pipelines take the result of this process from the `versions/{XXXX}` folder (the generated files, the changelog, the collected documentation, etc.) and continue our delivery process. That's why it's important to design how and what a release includes and have Previo store it in `{workFolder}/stuff/how-to-compile-version.md`.
+> `/pv-version` makes sure everything is prepared so you have a version of your app with everything it needs. From this point on, if the project requires it, we'll have our pipelines take the result of this process from the `versions/{XXXX}` folder (the generated files, the changelog, the collected documentation, etc.) and continue our delivery process. That's why it's important to design how and what a release includes and have Previo store it in `{workFolder}/stuff/how-to-compile.md`.
 
 ## A full-cycle example
 
@@ -375,34 +375,26 @@ After editing `default` or `overrides`, you need to sync the framework for the c
 
 It's an automatic process that doesn't spend tokens; it can be repeated at any time after editing `skillModels` by hand, or you can ask `pv-init` to do it for you the next time you invoke it.
 
-### 4. Custom steps in the release pipeline
+### 4. Custom steps in the release pipeline (hooks)
 
-The `pv-version` flow is not editable from a project — its `SKILL.md`, `workflow.version.md`, and everything else under `.claude/skills/pv-*/` are installed framework, kept in sync via `pv-update`, and editing them by hand leaves them inconsistent. To make the release flow do something specific to your project (publish the release somewhere, run a precondition check, produce extra artifacts), there are exactly two customization points, both files in `{workFolder}/stuff/`:
+The `pv-version` flow is not editable from a project — its `SKILL.md`, `workflow.version.md`, and everything else under `.claude/skills/pv-*/` are installed framework, kept in sync via `pv-update`, and editing them by hand leaves them inconsistent. To make the release flow do something specific to your project (publish the release somewhere, run a precondition check, produce extra artifacts), there are exactly two customization points in `{workFolder}/stuff/`:
 
-- **`how-to-compile-version.md`** — how to build the deliverable (steps 3–4 of the flow), covered above.
-- **`custom-version-pipeline.md`** — your project's own steps, run at three fixed points of the flow.
+- **`how-to-compile.md`** — how to build the deliverable (steps 3–4 of the flow), covered above.
+- **`hooks/version/*.md`** — your project's own steps, run at three fixed points of the flow, one file per point.
 
-`pv-init` creates `custom-version-pipeline.md` from the start, with three fixed section headings and no steps:
+`{workFolder}/stuff/hooks/` is where a project's hook files live. Each hooked process gets a subfolder; `pv-version`'s is `hooks/version/`, with three files `pv-init` seeds from the start (header + no steps):
 
-```markdown
-# Custom steps for this project's release pipeline
+| file | runs |
+|------|------|
+| `10-pre-release.md` | before anything else — before the version code `{XXXX}` is even resolved. Only `{workFolder}` is available. |
+| `20-post-build.md` | once the deliverable's artifacts are in `{workFolder}/versions/{XXXX}/files/`, before the documentation is zipped. `{XXXX}` and the `versions/{XXXX}/` paths are available. |
+| `30-post-changelog.md` | after the changelog is drafted, before the final summary. `{XXXX}` and the `versions/{XXXX}/` paths are available; the summary reports which hooks ran and what they produced. |
 
-## Before starting
+The `NN-` number prefix is the id `pv-version` matches on; the slug after it (`pre-release` / `post-build` / `post-changelog`) is fixed too. Each file holds `### Step N: {name}` blocks with the same shape as `how-to-compile.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`); `pv-version` runs whatever steps a file defines, in order, at that point.
 
-## In the middle
+A file with no steps (or absent) is skipped silently, so a project that never touches these files behaves exactly as before. If a hook step's command fails or its expected output doesn't appear, the release stops and the problem is explained — it isn't worked around. If you ask `pv-version` to *change* how the flow works and it fits one of the three points, it edits that hook file rather than the skill.
 
-## At the end
-```
-
-Each section holds `### Step N: {name}` blocks with the same shape as `how-to-compile-version.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). When `pv-version` runs, it reads this file and, at each of the three points, runs whatever steps that section defines, in order:
-
-- **Before starting** — before anything else (before the version code `{XXXX}` is even resolved). Only `{workFolder}` is substituted here; `{XXXX}` and the `versions/{XXXX}/` paths aren't available yet.
-- **In the middle** — once the deliverable's artifacts are in `{workFolder}/versions/{XXXX}/files/`, before the documentation is zipped. `{XXXX}` and the `versions/{XXXX}/` paths are available.
-- **At the end** — after the changelog is drafted, before the final summary. `{XXXX}` and the `versions/{XXXX}/` paths are available; the final summary reports which sections ran and what they produced.
-
-A section with no steps is skipped silently, so a project that never touches this file behaves exactly as before. If a custom step's command fails or its expected output doesn't appear, the release stops and the problem is explained — it isn't worked around. If you ask `pv-version` to *change* how the flow works and it fits one of the three sections, it edits this file rather than the skill.
-
-A project scaffolded before this file existed won't have it; running `/pv-update` once recreates the empty seed (it never overwrites an existing file, so steps you've already added are safe).
+A project scaffolded before these files existed won't have them; running `/pv-update` once recreates `stuff/hooks/version/` and any missing seed (it never overwrites an existing file, so steps you've already added are safe). A project that still has the old single-file pipeline (`{workFolder}/stuff/custom-version-pipeline.md`) is flagged by `/pv-update` too — it doesn't migrate the file itself (your steps might be in it), it gives you the section→file mapping to move them.
 
 ## The `pv.py` script: inspect and close changes without Claude Code
 

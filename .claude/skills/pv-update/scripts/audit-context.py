@@ -77,6 +77,7 @@ WORKFOLDER_SUBFOLDERS = (
     "changes/closed",
     "versions",
     "stuff",
+    "stuff/hooks",
 )
 
 
@@ -273,28 +274,146 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
                 actual=f"**Risk**: {raw_tail} in plan.md header")
 
 
-def check_custom_pipeline_seed(root: Path, work_folder: str, problems: list) -> None:
-    """pv-init's scaffold-project.py creates {workFolder}/stuff/custom-version-pipeline.md
-    from the start (the three fixed sections, zero steps) so pv-version's
-    customization mechanism is discoverable. If stuff/ exists but the file
-    doesn't, a project scaffolded before this was added never got it -- flag it
-    so pv-update recreates the seed (re-run scaffold-project.py). Only the
-    file's presence is checked, never its contents (a user who added steps and
-    then deleted a section is out of scope)."""
+# pv-version's hooks: one file per insertion point at
+# {workFolder}/stuff/hooks/version/<NN>-<slug>.md. NN is the normative id the
+# skill matches on; the slug that follows is fixed too (pv-version warns on a
+# wrong slug and pv-update normalizes it).
+VERSION_HOOK_FILES = {
+    "10": "10-pre-release.md",
+    "20": "20-post-build.md",
+    "30": "30-post-changelog.md",
+}
+HOOK_ID_RE = re.compile(r"^(\d{2})-.+\.md$")
+
+
+def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> None:
+    """pv-init's scaffold-project.py seeds
+    {workFolder}/stuff/hooks/version/<NN>-<slug>.md (one file per insertion
+    point, copied from pv-version/hooks/*.template.md) so the mechanism is
+    discoverable. Problems reported:
+
+    - `stuff-pipeline-legacy-obsolete`: a pre-hooks single-file pipeline
+      (stuff/custom-version-pipeline.md, or the intermediate
+      stuff/hooks/custom-version-pipeline.md) with NO `### Step` under any
+      section -- an untouched seed. Auto-fixed: just delete it; the
+      stuff-version-hook-missing:* checks reseed the new layout.
+    - `stuff-pipeline-legacy-location`: the same legacy file but WITH at least
+      one `### Step`. NOT auto-fixed -- it holds project-authored steps;
+      pv-update reports the section->file mapping and the user migrates.
+    - `stuff-version-hook-missing:<NN>`: a seed hook file is absent. Recreate
+      it (re-run scaffold-project.py) -- it never overwrites an existing one.
+    - `stuff-version-hook-badslug:<file>`: a file with a valid <NN> id but the
+      wrong slug. Rename it to the canonical <NN>-<slug>.md, keeping contents.
+
+    The legacy-file check reads the file only to count `### Step` headings
+    (empty seed vs. real content); the per-point hook files' contents are
+    never inspected."""
     wf_path = resolve_under(root, work_folder)
     stuff_dir = wf_path / "stuff"
     if not stuff_dir.is_dir():
         return  # the workfolder-subfolder-missing:stuff check already fired
-    if not (stuff_dir / "custom-version-pipeline.md").is_file():
-        add(problems, "stuff-custom-pipeline-missing", "optional",
-            "framework.workFolder (stuff/custom-version-pipeline.md)",
-            f"'{stuff_dir.relative_to(root).as_posix()}' exists but has no "
-            f"custom-version-pipeline.md -- pv-version's per-project pipeline "
-            f"customization file. A project scaffolded before this file was "
-            f"added won't have it; without it the user never discovers the "
-            f"mechanism exists. Recreate the seed (three sections, zero steps).",
-            expected=f"{stuff_dir.relative_to(root).as_posix()}/custom-version-pipeline.md",
-            actual="missing")
+
+    # --- legacy single-file pipeline (either old location) ---
+    for legacy in (stuff_dir / "custom-version-pipeline.md",
+                   stuff_dir / "hooks" / "custom-version-pipeline.md"):
+        if not legacy.is_file():
+            continue
+        rel_legacy = legacy.relative_to(root).as_posix()
+        try:
+            has_steps = bool(re.search(r"^###\s+Step\b", legacy.read_text(encoding="utf-8"),
+                                       re.MULTILINE))
+        except OSError:
+            has_steps = True  # unreadable -> treat as content, don't auto-delete
+        if has_steps:
+            add(problems, "stuff-pipeline-legacy-location", "optional",
+                "framework.workFolder (stuff/hooks/version/)",
+                f"'{rel_legacy}' is a pre-hooks single-file release pipeline "
+                f"with project-authored steps. pv-version now reads one file "
+                f"per insertion point under 'stuff/hooks/version/'. Migrate its "
+                f"sections: '## Before starting' -> 10-pre-release.md, "
+                f"'## In the middle' -> 20-post-build.md, "
+                f"'## At the end' -> 30-post-changelog.md (move each section's "
+                f"'### Step N' blocks into the matching file), then delete "
+                f"'{rel_legacy}'. Not done automatically -- it holds "
+                f"project-authored steps.",
+                expected=f"{wf_path.relative_to(root).as_posix()}/stuff/hooks/version/<NN>-<slug>.md",
+                actual=rel_legacy)
+        else:
+            add(problems, "stuff-pipeline-legacy-obsolete", "optional",
+                "framework.workFolder (stuff/hooks/version/)",
+                f"'{rel_legacy}' is an untouched pre-hooks single-file pipeline "
+                f"seed (no '### Step' under any section). The mechanism moved to "
+                f"one file per insertion point under 'stuff/hooks/version/'. "
+                f"Delete it; the stuff-version-hook-missing checks reseed the "
+                f"new layout.",
+                expected="file removed",
+                actual=rel_legacy)
+        return  # deal with the legacy file first; hook-seed checks are moot until then
+
+    # --- the three seed hook files ---
+    hooks_dir = stuff_dir / "hooks" / "version"
+    present_by_id: dict[str, list[Path]] = {}
+    if hooks_dir.is_dir():
+        for f in sorted(hooks_dir.glob("*.md")):
+            m = HOOK_ID_RE.match(f.name)
+            if m:
+                present_by_id.setdefault(m.group(1), []).append(f)
+
+    for nn, canonical in VERSION_HOOK_FILES.items():
+        matches = present_by_id.get(nn, [])
+        canonical_rel = (hooks_dir / canonical).relative_to(root).as_posix()
+        if not matches:
+            add(problems, f"stuff-version-hook-missing:{nn}", "optional",
+                "framework.workFolder (stuff/hooks/version/)",
+                f"pv-version's hook file '{canonical_rel}' is missing. A project "
+                f"scaffolded before this hook existed won't have it; without it "
+                f"the insertion point isn't discoverable. Recreate the seed "
+                f"(header + zero steps) by re-running scaffold-project.py.",
+                expected=canonical_rel, actual="missing")
+            continue
+        if not any(f.name == canonical for f in matches):
+            wrong = matches[0].relative_to(root).as_posix()
+            add(problems, f"stuff-version-hook-badslug:{matches[0].name}", "optional",
+                "framework.workFolder (stuff/hooks/version/)",
+                f"'{wrong}' has the right id '{nn}' but not the canonical name. "
+                f"Rename it to '{canonical_rel}' (contents unchanged) so "
+                f"pv-version's slug check stays quiet.",
+                expected=canonical_rel, actual=wrong)
+
+
+def check_how_to_compile_name(root: Path, work_folder: str, problems: list) -> None:
+    """pv-version's build-procedure file was renamed from
+    how-to-compile-version.md to how-to-compile.md. A project that ran
+    pv-version under the old name still has stuff/how-to-compile-version.md;
+    pv-version now only looks for the new name, so the old file is dead
+    content and the procedure would be asked for again from scratch. Flag it
+    so pv-update renames it in place (git mv). If BOTH names exist, still
+    flag it -- the user must reconcile them, pv-update won't overwrite the
+    new one."""
+    wf_path = resolve_under(root, work_folder)
+    stuff_dir = wf_path / "stuff"
+    if not stuff_dir.is_dir():
+        return  # the workfolder-subfolder-missing:stuff check already fired
+    legacy = stuff_dir / "how-to-compile-version.md"
+    current = stuff_dir / "how-to-compile.md"
+    if not legacy.is_file():
+        return
+    rel_legacy = legacy.relative_to(root).as_posix()
+    rel_current = current.relative_to(root).as_posix()
+    if current.is_file():
+        add(problems, "stuff-how-to-compile-legacy-name", "optional",
+            "framework.workFolder (stuff/how-to-compile.md)",
+            f"Both '{rel_legacy}' (the retired name) and '{rel_current}' "
+            f"exist. pv-version only reads the new name now; reconcile them "
+            f"by hand (keep whichever is current, delete the other).",
+            expected=rel_current, actual=f"{rel_legacy} + {rel_current}")
+    else:
+        add(problems, "stuff-how-to-compile-legacy-name", "optional",
+            "framework.workFolder (stuff/how-to-compile.md)",
+            f"'{rel_legacy}' uses the retired file name. pv-version's "
+            f"build-procedure file is now 'how-to-compile.md'. Rename it in "
+            f"place (git mv if tracked) -- the content doesn't change.",
+            expected=rel_current, actual=rel_legacy)
 
 
 def check_metadata_files(root: Path, work_folder: str, problems: list) -> None:
@@ -693,9 +812,13 @@ def main() -> None:
                     f"Change code '{code}' exists in both inProgress/ and implemented/ -- codes must never repeat.",
                     actual=code)
 
-    # --- stuff/custom-version-pipeline.md seed present (optional) ---
+    # --- stuff/hooks/version/*.md seeds + retired single-file pipeline (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
-        check_custom_pipeline_seed(root, work_folder, problems)
+        check_version_hooks_seed(root, work_folder, problems)
+
+    # --- stuff/how-to-compile-version.md -> how-to-compile.md rename (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_how_to_compile_name(root, work_folder, problems)
 
     # --- structural markers in changes/**-derived documents (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():

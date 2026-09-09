@@ -134,7 +134,7 @@ python .claude/skills/pv-init/scripts/scaffold-project.py
 
 It reads the `.claude/pv-context.json` just written in step 4 and deterministically creates, only where nothing already exists (never overwrites or touches existing content):
 
-- `workFolder`'s fixed subfolders — `changes/{inProgress,implemented,todo,closed}`, `versions/`, `stuff/` — empty, with a `.gitkeep` so git tracks them.
+- `workFolder`'s fixed subfolders — `changes/{inProgress,implemented,todo,closed}`, `versions/`, `stuff/`, `stuff/hooks/` — empty, with a `.gitkeep` so git tracks them. `stuff/hooks/version/` also gets `pv-version`'s three hook seeds (`10-pre-release.md`, `20-post-build.md`, `30-post-changelog.md` — header + zero steps), each written only if absent.
 - The folder + placeholder for whichever of `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir`/`docs.functional.featuresDocPathDir` are configured. `docs.functional.featuresDocPathDir` follows a different convention from the other two (an `INDEX.md` regenerated via `pv-internal-doc-features`, never hand-written, and no `01-overview.md`) — the script already applies that difference on its own, nothing to decide here.
 - `{architectureDocDir}/00-namespace.md` — the single per-project namespace tree seed (only for `architectureDocDir`, not `styleBibleDocDir`). Created only if absent; an already-present one is never overwritten. If the folder already existed but lacked the file, the script reports `status: "namespace_seeded"` for `architecture` instead of `"skipped"`.
 
