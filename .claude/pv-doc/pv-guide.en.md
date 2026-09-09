@@ -382,19 +382,7 @@ The `pv-version` flow is not editable from a project — its `SKILL.md`, `workfl
 - **`how-to-compile.md`** — how to build the deliverable (steps 3–4 of the flow), covered above.
 - **`hooks/version/*.md`** — your project's own steps, run at three fixed points of the flow, one file per point.
 
-`{workFolder}/stuff/hooks/` is where a project's hook files live. Each hooked process gets a subfolder; `pv-version`'s is `hooks/version/`, with three files `pv-init` seeds from the start (header + no steps):
-
-| file | runs |
-|------|------|
-| `10-pre-release.md` | before anything else — before the version code `{XXXX}` is even resolved. Only `{workFolder}` is available. |
-| `20-post-build.md` | once the deliverable's artifacts are in `{workFolder}/versions/{XXXX}/files/`, before the documentation is zipped. `{XXXX}` and the `versions/{XXXX}/` paths are available. |
-| `30-post-changelog.md` | after the changelog is drafted, before the final summary. `{XXXX}` and the `versions/{XXXX}/` paths are available; the summary reports which hooks ran and what they produced. |
-
-The `NN-` number prefix is the id `pv-version` matches on; the slug after it (`pre-release` / `post-build` / `post-changelog`) is fixed too. Each file holds `### Step N: {name}` blocks with the same shape as `how-to-compile.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`); `pv-version` runs whatever steps a file defines, in order, at that point.
-
-A file with no steps (or absent) is skipped silently, so a project that never touches these files behaves exactly as before. If a hook step's command fails or its expected output doesn't appear, the release stops and the problem is explained — it isn't worked around. If you ask `pv-version` to *change* how the flow works and it fits one of the three points, it edits that hook file rather than the skill.
-
-A project scaffolded before these files existed won't have them; running `/pv-update` once recreates `stuff/hooks/version/` and any missing seed (it never overwrites an existing file, so steps you've already added are safe). A project that still has the old single-file pipeline (`{workFolder}/stuff/custom-version-pipeline.md`) is flagged by `/pv-update` too — it doesn't migrate the file itself (your steps might be in it), it gives you the section→file mapping to move them.
+`{workFolder}/stuff/hooks/` is where a project's hook files live. Each hooked process gets a subfolder with the hooks the framework defines. To update any of them, something like ```Add a step so that whenever a change finishes being implemented the tests always run, and if they don't pass, review the work.``` is enough. The system tells you whether that hook is available and anything else it needs to be configured. You can check which hooks are currently defined in `{workFolder}/stuff/hooks/`
 
 ## The `pv.py` script: inspect and close changes without Claude Code
 

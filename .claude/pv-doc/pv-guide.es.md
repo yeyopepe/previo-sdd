@@ -382,19 +382,8 @@ El flujo de `pv-version` no se puede editar desde un proyecto — su `SKILL.md`,
 - **`how-to-compile.md`** — cómo construir el entregable (pasos 3–4 del flujo), tratado más arriba.
 - **`hooks/version/*.md`** — los pasos propios de tu proyecto, ejecutados en tres puntos fijos del flujo, un fichero por punto.
 
-`{workFolder}/stuff/hooks/` es donde viven los ficheros de hook de un proyecto. Cada proceso con hooks tiene su subcarpeta; la de `pv-version` es `hooks/version/`, con tres ficheros que `pv-init` siembra desde el principio (encabezado y ningún paso):
+`{workFolder}/stuff/hooks/` es donde viven los ficheros de hook de un proyecto. Cada proceso con hooks tiene su subcarpeta con los hooks definidos por el framework. Para actualizar cualquiera de ellos basta con algo del estilo ```Añade un paso para que al terminar de implementar cada cambio se lancen siempre los tests y, si no pasan, revisar el desarrollo.``` El sistema te informará si el hook está disponible y de cualquier otra cosa necesaria para configurarlo. Puedes consultar los hooks actualmente definiddos en `{workFolder}/stuff/hooks/`
 
-| fichero | se ejecuta |
-|---------|-----------|
-| `10-pre-release.md` | antes de nada — antes incluso de resolver el código de versión `{XXXX}`. Solo `{workFolder}` está disponible. |
-| `20-post-build.md` | una vez que los artefactos del entregable están en `{workFolder}/versions/{XXXX}/files/`, antes de comprimir la documentación. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles. |
-| `30-post-changelog.md` | después de redactar el changelog, antes del resumen final. `{XXXX}` y las rutas `versions/{XXXX}/` están disponibles; el resumen indica qué hooks se ejecutaron y qué produjeron. |
-
-El prefijo numérico `NN-` es el id por el que `pv-version` casa el fichero; el slug que sigue (`pre-release` / `post-build` / `post-changelog`) también es fijo. Cada fichero contiene bloques `### Step N: {name}` con la misma forma que `how-to-compile.md` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`); `pv-version` ejecuta los pasos que un fichero defina, en orden, en ese punto.
-
-Un fichero sin pasos (o ausente) se omite en silencio, así que un proyecto que nunca toca estos ficheros se comporta exactamente igual que antes. Si el comando de un paso de hook falla o no aparece su salida esperada, la versión se detiene y se explica el problema — no se busca un rodeo. Si le pides a `pv-version` que *cambie* cómo funciona el flujo y encaja en uno de los tres puntos, edita ese fichero de hook en vez de la skill.
-
-Un proyecto generado antes de que estos ficheros existieran no los tendrá; ejecutar `/pv-update` una vez recrea `stuff/hooks/version/` y cualquier semilla que falte (nunca sobrescribe un fichero existente, así que los pasos que ya hayas añadido están a salvo). Un proyecto que aún tenga el pipeline antiguo de fichero único (`{workFolder}/stuff/custom-version-pipeline.md`) también lo detecta `/pv-update` — no migra el fichero él mismo (puede llevar tus pasos), te da el mapeo sección→fichero para moverlos.
 
 ## El script `pv.py`: consultar y cerrar cambios sin Claude Code
 
