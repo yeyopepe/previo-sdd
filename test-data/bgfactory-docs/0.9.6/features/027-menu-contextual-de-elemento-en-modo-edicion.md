@@ -1,0 +1,18 @@
+# 027 — Menú contextual de elemento en modo edición
+
+**Area**: Mesa de juego
+
+En modo edición, pulsar el botón derecho del ratón sobre un elemento de la mesa abre, junto al cursor, un menú contextual con dos secciones — a diferencia del menú de modo juego, aquí no depende del ajuste "Click derecho" del componente ni de si está bloqueado: siempre se abre, e incluye siempre las mismas acciones.
+
+Si el elemento pulsado no formaba parte de la selección en ese momento, el click derecho lo selecciona a él en solitario (reemplazando cualquier selección anterior, igual que un click izquierdo normal) — o, si pertenece a un [grupo](034-agrupacion-de-elementos-agrupar-y-desagrupar.md), al grupo entero; si ya formaba parte de una selección múltiple, esa selección se mantiene intacta. El menú actúa siempre sobre el conjunto resultante — uno o varios elementos.
+
+- **Sección de acciones**: "Clonar" y "Copiar" (mismo efecto que sus botones equivalentes del panel de listado de Componentes, ver [Panel flotante de componentes](003-panel-flotante-de-componentes-con-seleccion-resaltado-arrastre-y-redimensionado.md)), "Eliminar" (mismo efecto y misma confirmación que ya tiene la tecla SUPR, ver [Atajos de teclado en modo edición](028-atajos-de-teclado-en-modo-edicion.md)) y "Agrupar"/"Desagrupar" (ver [Agrupación de elementos](034-agrupacion-de-elementos-agrupar-y-desagrupar.md)). Con varios elementos afectados, cada acción se aplica a todos ellos: se clonan todos, se copian todos, o se eliminan todos (con la ventana de confirmación en bloque si son dos o más). Si alguno de los elementos afectados es una Copia vinculada (ver [Elementos tipo Copia, vinculados y sincronizados con un original](005-elementos-tipo-copia-vinculados-y-sincronizados-con-un-original.md)), "Clonar" y "Copiar" lo omiten en silencio y actúan solo sobre el resto — igual que sus botones no aparecen para una fila que ya es una Copia; si **todos** los elementos afectados son Copias, ambas filas aparecen deshabilitadas. "Agrupar" solo se habilita con 2 o más elementos afectados sin ningún grupo entre ellos; "Desagrupar" solo con un único grupo completo como selección. Si la selección mezcla un grupo ya formado con cualquier otro elemento, no se muestra ningún menú contextual en absoluto — ni esta sección ni la siguiente.
+- **Sección "Añadir a etiqueta"**: una fila con un desplegable de todas las etiquetas existentes, en orden alfabético (ver [Etiquetas, organización de elementos por nombre](008-grupos-organizacion-de-elementos-por-nombre.md)). Elegir una etiqueta la añade a todos los elementos afectados que todavía no la tuvieran, sin quitarles ninguna otra etiqueta a la que ya pertenecieran ni tocar ninguna otra propiedad suya, y muestra un aviso breve de confirmación. Sin ninguna etiqueta creada todavía en la partida, esta fila aparece deshabilitada.
+- **Fila "Voltear carta"** (cambio 00205): solo aparece cuando todos los elementos afectados son cartas (`'carta'`). Al pulsarla, cada carta afectada pasa a mostrar la otra cara — de frontal a trasera o viceversa, según la cara que tuviera cada una en ese momento — de forma independiente entre sí; con varias cartas seleccionadas con caras distintas, cada una termina en la cara opuesta a la que tenía, no todas en una cara común. Mismo efecto que el volteo por click de [Modo Juego](022-componente-carta.md), disparado aquí desde el menú en vez de un click sobre la carta. No afecta a `bloqueado`, `oculto` ni a la sincronización de una Copia vinculada.
+
+El menú se cierra al hacer click fuera de él, al pulsar ESC, o al elegir cualquiera de sus acciones.
+
+- **Available in**: modo edición.
+- **Code**: 00170, 00190, 00193, 00205.
+- **Since**: 2026-08-06
+- **Last modified**: 2026-08-14
