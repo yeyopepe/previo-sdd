@@ -28,14 +28,21 @@ flowchart TD
     S11Issue -->|Yes| S11Ask[ASK: how to resolve it?]
     S11Ask --> S11Fix[Update affected documents with the answer]
     S11Fix --> S11Validate
-    S11Issue -->|No| S2PlanExists
+    S11Issue -->|No| S12Load
+
+    S12Load[List stuff/hooks/how/NN-slug.md files, match by NN id, parse each file's Step blocks] --> S2PlanExists
 
     S2PlanExists{plan.md already exists?}
-    S2PlanExists -->|No| S3Write
+    S2PlanExists -->|No| S30HookCheck
     S2PlanExists -->|Yes| S2Ask[ASK: re-analyze from scratch or implement current plan.md?]
     S2Ask --> S2Dec{User choice}
-    S2Dec -->|Re-analyze| S3Write
+    S2Dec -->|Re-analyze| S30HookCheck
     S2Dec -->|Implement current plan| S31Risk
+
+    S30HookCheck{10-before-analysis.md defines steps?}
+    S30HookCheck -->|Yes| S30HookRun[Run 10-before-analysis steps in order, workFolder and xxxx substituted; a failure stops the analysis]
+    S30HookRun --> S3Write
+    S30HookCheck -->|No| S3Write
 
     S3Write[Read description.md Type: fix scopes strictly to root cause, change has full scope] --> S3Doubt{Technical doubts remain?}
     S3Doubt -->|Yes| S3Ask[ASK: resolve technical doubt]
@@ -45,7 +52,12 @@ flowchart TD
     S3WritePlan --> S31Risk
 
     S31Risk[Invoke pv-internal-tech-risks on plan.md/description.md] --> S31Write[Write risk median to .metadata.json via set-metadata.py --set-risk]
-    S31Write --> S31Detail{User asks for the 9-factor detail, now or later?}
+    S31Write --> S315HookCheck
+    S315HookCheck{20-after-plan.md defines steps?}
+    S315HookCheck -->|Yes| S315HookRun[Run 20-after-plan steps in order, workFolder and xxxx substituted; a failure stops before asking to implement]
+    S315HookRun --> S31Detail
+    S315HookCheck -->|No| S31Detail
+    S31Detail{User asks for the 9-factor detail, now or later?}
     S31Detail -->|Yes| S31AddSection[Show detail and add section f Risk analysis to plan.md]
     S31AddSection --> S32Ask
     S31Detail -->|No| S32Ask
@@ -54,6 +66,9 @@ flowchart TD
     S32Dec -->|Yes| S32Do[Invoke pv-do on the same xxxx]
     S32Do --> EndDo([End: continues in pv-do])
     S32Dec -->|No| EndPending([End: stays planned, pending implementation])
+
+    classDef hook fill:#d9770e,color:#fff
+    class S30HookCheck,S30HookRun,S315HookCheck,S315HookRun hook
 ```
 
 Legend:
@@ -61,3 +76,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
+- Orange nodes — the project's own hook insertion points (`stuff/hooks/how/*.md`): the check for defined steps and the run of those steps. Optional; a hook with no steps is skipped silently.

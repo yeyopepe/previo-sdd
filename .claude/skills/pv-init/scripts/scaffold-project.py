@@ -11,9 +11,12 @@ overwrites or touches existing content):
 - workFolder's fixed subfolders: changes/{inProgress,implemented,todo,closed},
   versions/, stuff/, stuff/hooks/ -- empty, with a .gitkeep so git tracks them.
   stuff/hooks/ also gets one subdir per hook-exposing skill with its seed
-  hook files (see HOOK_SETS): stuff/hooks/version/ gets pv-version's three
-  (10-pre-release.md / 20-post-build.md / 30-post-changelog.md),
-  stuff/hooks/do/ gets pv-do's two (10-before-start.md / 20-before-finish.md).
+  hook files (see HOOK_SETS): stuff/hooks/version/ gets pv-version's four
+  (05-before-guardrail.md / 10-before-version.md / 20-after-build.md /
+  30-after-changelog.md), stuff/hooks/do/ gets pv-do's two
+  (10-before-implementation.md / 20-after-implementation.md), stuff/hooks/how/ gets
+  pv-how's two (10-before-analysis.md / 20-after-plan.md), stuff/hooks/new/
+  gets pv-new's one (20-after-entry.md).
   Each is copied from the .template.md file under that skill's own hooks/
   dir -- written only if absent, never overwritten, so a project that has
   already added steps keeps them; same idea as docs/* starting with its
@@ -54,12 +57,12 @@ Prints ONLY a JSON summary on stdout, e.g.:
     "hooks": {
       "version": {
         "dir": "previo-sdd/stuff/hooks/version",
-        "created": ["previo-sdd/stuff/hooks/version/10-pre-release.md", ...],
+        "created": ["previo-sdd/stuff/hooks/version/05-before-guardrail.md", ...],
         "skipped": []
       },
       "do": {
         "dir": "previo-sdd/stuff/hooks/do",
-        "created": ["previo-sdd/stuff/hooks/do/10-before-start.md", ...],
+        "created": ["previo-sdd/stuff/hooks/do/10-before-implementation.md", ...],
         "skipped": []
       }
     },
@@ -75,8 +78,9 @@ Prints ONLY a JSON summary on stdout, e.g.:
 path -- folder or, for docs, even a legacy single file -- left untouched),
 "namespace_seeded" (architecture folder already existed but was missing
 00-namespace.md, now added) or "not_configured" (the field isn't set in
-pv-context.json). 'hooks' instead has one entry per hook set (version, do),
-each listing created/skipped paths (each hook file is seeded only if absent).
+pv-context.json). 'hooks' instead has one entry per hook set (version, do,
+how, new), each listing created/skipped paths (each hook file is seeded only
+if absent).
 
 Usage:
   python .claude/skills/pv-init/scripts/scaffold-project.py
@@ -195,13 +199,21 @@ A `path.decision.<slug>` node records its rationale as a `[motivación]` line \
 # HOOK_SETS maps stuff/hooks/<subdir> -> (owning skill dir, hook file names).
 HOOK_SETS = {
     "version": ("pv-version", (
-        "10-pre-release.md",
-        "20-post-build.md",
-        "30-post-changelog.md",
+        "05-before-guardrail.md",
+        "10-before-version.md",
+        "20-after-build.md",
+        "30-after-changelog.md",
     )),
     "do": ("pv-do", (
-        "10-before-start.md",
-        "20-before-finish.md",
+        "10-before-implementation.md",
+        "20-after-implementation.md",
+    )),
+    "how": ("pv-how", (
+        "10-before-analysis.md",
+        "20-after-plan.md",
+    )),
+    "new": ("pv-new", (
+        "20-after-entry.md",
     )),
 }
 
@@ -261,8 +273,8 @@ def ensure_hook_set(root: Path, work_folder: str, subdir: str,
 
 
 def ensure_hooks(root: Path, work_folder: str) -> dict:
-    """Seeds every hook set in HOOK_SETS (version, do). Returns one entry
-    per set keyed by its subdir name."""
+    """Seeds every hook set in HOOK_SETS (version, do, how, new). Returns one
+    entry per set keyed by its subdir name."""
     return {
         subdir: ensure_hook_set(root, work_folder, subdir, skill_dir, names)
         for subdir, (skill_dir, names) in HOOK_SETS.items()

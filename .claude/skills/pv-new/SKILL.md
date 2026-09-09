@@ -13,7 +13,7 @@ metadata:
 
 Analyzes and documents an intentional change to the project (new functionality or a deliberate modification to existing behavior — for bugs use the `pv-fix` skill, not this one). Part of the `pv-*` framework.
 
-**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation. `description.md`, `design_navigation_*.md`, and the sample text inside `design_*.html`/`design_data_*.md` follow `framework.changes.language` (default `interaction.language`, English if neither is configured) — `description.md`'s own `[[[...]]]`-marked field labels are `pv-internal-workflow`'s concern (which actually writes the file): see its "Language." note. If `language` is not configured anywhere, everything is English.
+**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation. `description.md`, `design_navigation_*.md`, and the sample text inside `design_*.html`/`design_data_*.md` follow `framework.changes.language` (default `interaction.language`, English if neither is configured) — `description.md`'s own `[[[...]]]`-marked field labels are `pv-internal-workflow`'s concern (which actually writes the file): see its "Language." note. The hook file under `{workFolder}/stuff/hooks/new/`, which this skill reads and executes directly (steps 0.3 and 5), follows `interaction.language` — there is no dedicated language field for `stuff/*` in the schema. If `language` is not configured anywhere, everything is English.
 
 **It implements nothing.** This skill only understands and documents the functional scope of what's being asked; the technical solution is done afterward by the `pv-how` skill, and the implementation by the `pv-do` skill, once it's decided to plan/implement this entry.
 
@@ -29,7 +29,9 @@ Only skip all four when the change truly has no representable visual, flow, or s
 
 **Source of truth.** When anticipating doubts and proposing answers (step 1), the only source of truth about how the project currently works is the technical documentation and the real code — never assumptions, what's remembered from previous conversations, or what the user believes the code does. To gather that context, invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of what's being analyzed, instead of reading `framework.docs.tech` yourself or exploring the code blindly: it's in charge of resolving `docs.tech` via `resolve-path.py`, reading that documentation first and exploring code only if needed, and returns the gathered context and any inconsistency it detects between documentation and code (remember: in that case the code rules, not the documentation). If it reports a resolution failure, the framework config is broken and the user must run `/pv-update`. If it detects any inconsistency, note it in **Technical notes** when documenting (step 2) so `pv-how` can take it into account later. The content of other changes/fixes under `{changesDir}/**` (their `description.md` or `plan.md`, whether in `inProgress`, `implemented` or `closed`) also doesn't count as a source of truth: they're another entry's intent or analysis, not the project's real state. Check them before settling on a proposal about coexisting with what already exists.
 
-**Before any other step**, read [`workflow.new.md`](workflow.new.md) — it's the source of truth for this flow's sequence and branches (its multiple entry points and the visual-representation cases; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+**This skill is installed framework, not editable from a consumer project.** If the user asks to change *how* the documentation flow works (register the entry somewhere, post it to a channel, open a tracker issue once it's documented), the right answer is **not** to edit this `SKILL.md` or any file under `.claude/skills/pv-*/`. The customization point is `{workFolder}/stuff/hooks/new/*.md` — the project's own steps at one point of the flow (end of step 5; see step 0.3). If what's asked doesn't fit that hook, say so and propose opening a change in the framework repo — never a local patch to the skill. The presence of `framework.frameworkStatus` in `pv-context.json` means these skills are managed via `pv-update`; editing them by hand leaves them inconsistent (step 0 already checks versions).
+
+**Before any other step**, read [`workflow.new.md`](workflow.new.md) — it's the source of truth for this flow's sequence and branches (its multiple entry points, the visual-representation cases, and the hook insertion point at the end of step 5; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
 ## 0. Check that the framework is initialized
 
@@ -60,6 +62,22 @@ If, when invoking this skill, the user gives a change/fix code (`xxxx`) — e.g.
 If the user invokes this skill as `/pv-new todo <code>` (or explicitly asks to "turn idea `<code>` from todo into a change"), this entry doesn't originate from a new request from the user in chat, but from content already noted by `pv-todo`: read and follow [`todo-mode.md`](todo-mode.md) in this same folder in full before continuing.
 
 If it wasn't invoked this way, continue with the usual process from step 1 of "Steps".
+
+## 0.3 Load the project's hooks
+
+`pv-new`'s hook lives one file per insertion point at `{workFolder}/stuff/hooks/new/<NN>-<slug>.md` (`{workFolder}` is `framework.workFolder`, default `/previo-sdd`). One point is defined:
+
+| `<NN>` | file | runs |
+|--------|------|------|
+| `20` | `20-after-entry.md` | end of step 5, after the `design_*` are validated and the `todo/` idea (if any) is deleted, before handing off to `pv-how` |
+
+List `{workFolder}/stuff/hooks/new/*.md`. For the file, take the `<NN>` id from its `^(\d+)-` prefix and read its `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). A file that's absent, or present with zero `### Step` blocks, means the hook is skipped silently. A file whose `<NN>` matches no point above → ignore it, and mention it to the user (a typo, or a hook from a newer framework version). The `<slug>` after the id is fixed (`after-entry`); a file with the right id but a different slug still runs, but tell the user so `pv-update` can normalize the name.
+
+If the file doesn't exist, continue as normal without saying anything (a project that hasn't run `pv-update` since this hook was added won't have it).
+
+Substitutable variables in the step commands: `{workFolder}` and `{xxxx}` (the entry is at `{changesDir}/inProgress/{xxxx}/`). Paths like `description.md` aren't dedicated variables — compose them, e.g. `{workFolder}/changes/inProgress/{xxxx}/description.md`. Don't substitute anything now; do it at the anchor, at execution time. Nothing else is substituted — a step needing e.g. the current branch runs its own command for it.
+
+Same guardrail as §top: if the user is asking to *change* how the flow works and it fits this hook, the fix is to edit that hook file, not `SKILL.md`.
 
 ## Steps
 
@@ -97,7 +115,11 @@ If it wasn't invoked this way, continue with the usual process from step 1 of "S
    ```
 
    If they ask for changes, adjust the file(s) or the diagram and present it again until they confirm. If the change didn't generate any diagram, `design_*.html`, `design_navigation_*.md` or `design_data_*.md`, skip this step.
-5. **State the next step.** Tell the user the change is documented (`description.md`) and, if applicable, with its visual and data proposal already validated (`design_*.html`, `design_navigation_*.md`, `design_data_*.md`); to plan and implement it they should invoke the `pv-how` skill on that `xxxx`. If the user wants to implement it right away, you can invoke `pv-how` directly yourself.
+5. **State the next step.**
+
+   **Hook: `20-after-entry`.** First, if `20-after-entry.md` (step 0.3) defines `### Step` blocks, run them **now**, in order — after step 4 validated the `design_*` and after the `todo/` idea (if this was `/pv-new todo <code>`) is already deleted, with the entry in `{changesDir}/inProgress/{xxxx}/`. `{workFolder}` and `{xxxx}` are substituted. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise an alternative (the entry is already documented on disk; only the external registration is missing). No steps, or file absent: continue silently.
+
+   Then tell the user the change is documented (`description.md`) and, if applicable, with its visual and data proposal already validated (`design_*.html`, `design_navigation_*.md`, `design_data_*.md`); to plan and implement it they should invoke the `pv-how` skill on that `xxxx`. If the user wants to implement it right away, you can invoke `pv-how` directly yourself.
 
 Don't write the change document yourself nor compute the `xxxx` number — `pv-internal-workflow` does that, to keep a single place with that logic. `design_*.html` files are generated by the configured mockups skill (`pv-internal-mockups-html` by default) — don't write them yourself. Step 2's Mermaid diagram code is generated by the configured diagrams skill (`pv-internal-tech-mermaid` by default) — don't draft it yourself either. `design_navigation_*.md` and `design_data_*.md` files, however, you do write directly yourself: they're not the responsibility of any internal skill, which are project-agnostic and don't analyze or design anything.
 

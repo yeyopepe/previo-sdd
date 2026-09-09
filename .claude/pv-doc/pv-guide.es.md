@@ -375,14 +375,28 @@ Después de editar `default` u `overrides`, hay que sincronizar el framework par
 
 Es un proceso automático que no gasta tokens; puede repetirse en cualquier momento tras editar `skillModels` a mano, o pedirle a `pv-init` que lo haga por ti la próxima vez que lo invoques.
 
-### 4. Pasos personalizados en el pipeline de versión (hooks)
+### 4. Pasos personalizados en los flujos del framework (hooks)
 
-El flujo de `pv-version` no se puede editar desde un proyecto — su `SKILL.md`, `workflow.version.md` y todo lo demás bajo `.claude/skills/pv-*/` son framework instalado, se mantienen sincronizados mediante `pv-update`, y editarlos a mano los deja inconsistentes. Para que el flujo de versión haga algo específico de tu proyecto (publicar la entrega en algún sitio, ejecutar una comprobación previa, generar artefactos extra), hay exactamente dos puntos de personalización en `{workFolder}/stuff/`:
+Los flujos de las skills `pv-*` no se pueden editar desde un proyecto — sus `SKILL.md`, `workflow.*.md` y todo lo demás bajo `.claude/skills/pv-*/` son framework instalado, se mantienen sincronizados mediante `pv-update`, y editarlos a mano los deja inconsistentes. Para que un flujo haga algo específico de tu proyecto (publicar la entrega en algún sitio, ejecutar una comprobación previa, dar de alta el cambio en un tracker, refrescar contexto antes de analizar…), cada flujo con hooks expone unos **puntos de inserción** fijos: un fichero por punto en `{workFolder}/stuff/hooks/<flujo>/<NN>-<slug>.md`, con los pasos (comandos) que quieras que se ejecuten ahí.
 
-- **`how-to-compile.md`** — cómo construir el entregable (pasos 3–4 del flujo), tratado más arriba.
-- **`hooks/version/*.md`** — los pasos propios de tu proyecto, ejecutados en tres puntos fijos del flujo, un fichero por punto.
+- **`how-to-compile.md`** — cómo construir el entregable (pasos 3–4 de `pv-version`), tratado más arriba. No es un hook, pero es el otro punto de personalización de `stuff/`.
+- **`hooks/<flujo>/*.md`** — los pasos propios de tu proyecto en cada punto de inserción. Un fichero sin pasos (o ausente) se salta en silencio; si un paso falla, el flujo se detiene y te lo explica.
 
-`{workFolder}/stuff/hooks/` es donde viven los ficheros de hook de un proyecto. Cada proceso con hooks tiene su subcarpeta con los hooks definidos por el framework. Para actualizar cualquiera de ellos basta con algo del estilo ```Añade un paso para que al terminar de implementar cada cambio se lancen siempre los tests y, si no pasan, revisar el desarrollo.``` El sistema te informará si el hook está disponible y de cualquier otra cosa necesaria para configurarlo. Puedes consultar los hooks actualmente definiddos en `{workFolder}/stuff/hooks/`
+**Hooks disponibles** (cada uno vive en su subcarpeta bajo `{workFolder}/stuff/hooks/`):
+
+| Skill | Hook | Cuándo se ejecuta / para qué sirve |
+|-------|------|------------------------------------|
+| `pv-how` | `how/10-before-analysis` | Al empezar a analizar un cambio (antes de recopilar contexto técnico). Para cargar contexto que el análisis debería tener siempre: refrescar tipos/OpenAPI generados, volcar el esquema de la BD, traer doc de una dependencia externa a un fichero local. No se ejecuta si eliges "implementar el `plan.md` que ya hay". |
+| `pv-how` | `how/20-after-plan` | Tras escribir `plan.md` y calcular la mediana de riesgo, antes de preguntarte si implementar. Para validar el plan (linter de formato, comprobar rutas citadas) o exportarlo: crear el ticket de implementación con el resumen y el riesgo. |
+| `pv-new` | `new/20-after-entry` | Al terminar de documentar un cambio nuevo, antes de ceder el turno a `pv-how`. Para dar de alta la entrada donde tu equipo la sigue: issue en un tracker, post en un canal, fila en un índice `CHANGES.md`. |
+| `pv-do` | `do/10-before-implementation` | Antes de tocar código al implementar un cambio (también en la vía rápida de `pv-fix`). Para preparar el entorno o comprobar precondiciones. |
+| `pv-do` | `do/20-after-implementation` | Con el código y las docs ya hechos, antes de mover la carpeta a `implemented/` (también vía rápida de `pv-fix`). Para lanzar los tests, un lint, o publicar/verificar algo al terminar. |
+| `pv-version` | `version/05-before-guardrail` | Al arrancar `pv-version`, antes incluso de comprobar que `implemented/` está vacío. Para abortar barato: árbol git limpio, rama correcta, CI en verde, que no exista ya un tag con el nombre previsto. |
+| `pv-version` | `version/10-before-version` | Tras ese guardarraíl, antes de resolver el código de versión `{XXXX}`. Otro punto de comprobación previa a la entrega. |
+| `pv-version` | `version/20-after-build` | Tras copiar los artefactos del entregable a `files/`. Para post-procesar o publicar el build. |
+| `pv-version` | `version/30-after-changelog` | Tras redactar el changelog, antes del resumen final. Para subir la entrega a algún sitio y que el resumen lo mencione. |
+
+Para configurar o cambiar un hook basta con pedirlo en lenguaje natural, p. ej. ```Añade un paso para que al terminar de implementar cada cambio se lancen siempre los tests y, si no pasan, se revise el desarrollo.``` El sistema te dirá en qué hook encaja y qué necesita para configurarlo. Puedes consultar los hooks realmente definidos en tu proyecto mirando `{workFolder}/stuff/hooks/`.
 
 
 ## El script `pv.py`: consultar y cerrar cambios sin Claude Code

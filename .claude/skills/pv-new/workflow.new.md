@@ -45,17 +45,25 @@ flowchart TD
     S31Data --> S4Validate
 
     S4Validate{Any diagram, design_*.html, design_navigation_*.md or design_data_*.md generated?}
-    S4Validate -->|No| S5State
+    S4Validate -->|No| S5HookCheck
     S4Validate -->|Yes| S4Ask[ASK: does the representation reflect what you had in mind?]
     S4Ask --> S4Dec{User confirms?}
     S4Dec -->|Changes requested| S4Adjust[Adjust file s or diagram and present again]
     S4Adjust --> S4Ask
-    S4Dec -->|Confirmed| S5State
+    S4Dec -->|Confirmed| S5HookCheck
+
+    S5HookCheck{20-after-entry.md defines steps?}
+    S5HookCheck -->|Yes| S5HookRun[Run 20-after-entry steps in order, workFolder and xxxx substituted; a failure stops before handing off to pv-how]
+    S5HookRun --> S5State
+    S5HookCheck -->|No| S5State
 
     S5State[INFO: change documented, next step is pv-how] --> S5Now{User wants to implement now?}
     S5Now -->|Yes| S5How[Invoke pv-how directly on the xxxx]
     S5How --> EndHow([End: continues in pv-how])
     S5Now -->|No| EndOK([End: documented, pending pv-how])
+
+    classDef hook fill:#d9770e,color:#fff
+    class S5HookCheck,S5HookRun hook
 ```
 
 Legend:
@@ -63,3 +71,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
+- Orange nodes — the project's own hook insertion point (`stuff/hooks/new/*.md`): the check for defined steps and the run of those steps. Optional; a hook with no steps is skipped silently.

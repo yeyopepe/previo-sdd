@@ -1,6 +1,6 @@
-# version/30 — post-changelog
+# version/30 — after-changelog
 
-Project-specific steps `pv-version` runs **after the changelog is drafted and before the final summary** (between steps 6 and 7). Runs before the summary on purpose, so step 7 can report what it produced (e.g. "uploaded to X", "release notes in `notes.pdf`"). LITERAL seed copied by `pv-init`/`pv-update` to `{workFolder}/stuff/hooks/version/30-post-changelog.md` — created only if absent, never overwritten.
+Project-specific steps `pv-version` runs **after the changelog is drafted and before the final summary** (between steps 6 and 7). Runs before the summary on purpose, so step 7 can report what it produced (e.g. "uploaded to X", "release notes in `notes.pdf`"). LITERAL seed copied by `pv-init`/`pv-update` to `{workFolder}/stuff/hooks/version/30-after-changelog.md` — created only if absent, never overwritten.
 
 Substitutable here: `{workFolder}`, `{XXXX}`, and the `{workFolder}/versions/{XXXX}/` paths. No `### Step` blocks below = hook skipped silently. If any step's command fails or its expected output doesn't appear, `pv-version` stops and explains — it doesn't work around it.
 

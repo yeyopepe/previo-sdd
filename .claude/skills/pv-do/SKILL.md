@@ -68,10 +68,10 @@ Once identified, that's `{xxxx}` and its folder `{changesDir}/inProgress/{xxxx}/
 
 | `<NN>` | file | runs |
 |--------|------|------|
-| `10` | `10-before-start.md` | step 2, before any code is edited |
-| `20` | `20-before-finish.md` | end of step 2.1, after code + docs, before the folder moves to `implemented/` (step 3) |
+| `10` | `10-before-implementation.md` | step 2, before any code is edited |
+| `20` | `20-after-implementation.md` | end of step 2.1, after code + docs, before the folder moves to `implemented/` (step 3) |
 
-List `{workFolder}/stuff/hooks/do/*.md`. For each file, take the `<NN>` id from its `^(\d+)-` prefix and read its `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). A file that's absent, or present with zero `### Step` blocks, means its hook is skipped silently. A file whose `<NN>` matches no point above → ignore it, and mention it to the user (a typo, or a hook from a newer framework version). The `<slug>` after the id is fixed (`before-start` / `before-finish`); a file with the right id but a different slug still runs, but tell the user so `pv-update` can normalize the name.
+List `{workFolder}/stuff/hooks/do/*.md`. For each file, take the `<NN>` id from its `^(\d+)-` prefix and read its `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`). A file that's absent, or present with zero `### Step` blocks, means its hook is skipped silently. A file whose `<NN>` matches no point above → ignore it, and mention it to the user (a typo, or a hook from a newer framework version). The `<slug>` after the id is fixed (`before-implementation` / `after-implementation`); a file with the right id but a different slug still runs (e.g. a project still on the old `10-before-start.md` / `20-before-finish.md`), but tell the user so `pv-update` can normalize the name.
 
 If neither file exists, continue as normal without saying anything (a project that hasn't run `pv-update` since these hooks were added won't have them).
 
@@ -81,9 +81,9 @@ Same guardrail as §top: if the user is asking to *change* how the flow works an
 
 ## 2. Implement
 
-### 2.0. Hook: `10-before-start`
+### 2.0. Hook: `10-before-implementation`
 
-If `10-before-start.md` (step 1.5) defines `### Step` blocks, run them **now**, in order, before editing any code. `{workFolder}` and `{xxxx}` are substituted. Run each step's command(s) from the repo root and verify what it says it produces. If a step's command fails or its expected output doesn't appear, **stop and explain it to the user** instead of improvising an alternative — same criterion as the rest of this step. If there are no steps, continue silently.
+If `10-before-implementation.md` (step 1.5) defines `### Step` blocks, run them **now**, in order, before editing any code. `{workFolder}` and `{xxxx}` are substituted. Run each step's command(s) from the repo root and verify what it says it produces. If a step's command fails or its expected output doesn't appear, **stop and explain it to the user** instead of improvising an alternative — same criterion as the rest of this step. If there are no steps, continue silently.
 
 
 Implement everything `plan.md` says. Its checklists (`(b)` and, if present, `(e)`) are the only reliable task list — don't trust what you remember from reading them earlier, go box by box:
@@ -119,9 +119,9 @@ Below, wherever a sub-step passes `folder=architectureDocDir` / `folder=styleBib
   - **If `featuresDocPathDir` is a single file** (projects that haven't migrated to a folder yet — `resolve-path.py` returned a path ending in `.md`): edit it yourself. If what was implemented extends or modifies a feature that already has its own entry, edit it in place so it keeps faithfully describing the current behavior (never add a new entry for the same thing), adding this entry's `xxxx` to its **Code** field; if it's a new feature, create an entry in the matching functional area (create the area if it doesn't exist yet) with this entry's `xxxx` in **Code**, using this skill's [`FEATURES.template.md`](FEATURES.template.md) as the template; create the file from that template if it doesn't exist yet. Carry over functional diagrams the same way described above for the folder case (as-is, joint-or-none rule for cross-referencing diagrams, never technical diagrams). Draft the body fresh in `docs.functional.language` rather than copying phrasing straight from `description.md`/`plan.md`.
 - **`docs.tech.styleBibleDocDir`** — invoke `pv-internal-doc-style` (Skill tool) with a summary of what was implemented, the context already gathered (touched code, `plan.md`, any `design_*` mockups this entry has, whether the project has a presentation layer — web/desktop/mobile/CLI all count, see that skill for the full criterion), and the existing `styleBibleDocDir` file(s) matching the touched area (find them the same way as `architectureDocDir` above, via `pv-internal-doc-files`'s `action=find` with `folder=styleBibleDocDir`). It returns which style categories apply, what each must record, which are already covered versus pending to document, and the writing rules to apply on top of `pv-internal-doc-technical`'s baseline. For every category it reports as pending, draft the `body` yourself and save it via `pv-internal-doc-files`'s `action=upsert` (`folder=styleBibleDocDir`, `area`, `title`, `body`, `existing_file` if applicable) — same mechanics as `architectureDocDir` above, one file per category/topic that doesn't fit an existing one. If `pv-internal-doc-style` reports nothing pending (e.g. the project has no presentation layer), skip without asking anything — the folder legitimately stays at just its placeholder. **Write it in technical English**, same rule as `architectureDocDir` above. Style concepts that become citable go on the `ui.*` branch of `{architectureDocDir}/00-namespace.md` (Read/Edit directly, same as above) — `styleBibleDocDir` has no namespace file of its own.
 
-## 2.2. Hook: `20-before-finish`
+## 2.2. Hook: `20-after-implementation`
 
-With the code implemented and the documentation updated, and **before** step 3 moves the folder, if `20-before-finish.md` (step 1.5) defines `### Step` blocks, run them in order. `{workFolder}` and `{xxxx}` are substituted; the folder is still at `{changesDir}/inProgress/{xxxx}/`. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise an alternative, and don't move the folder. No steps: continue silently.
+With the code implemented and the documentation updated, and **before** step 3 moves the folder, if `20-after-implementation.md` (step 1.5) defines `### Step` blocks, run them in order. `{workFolder}` and `{xxxx}` are substituted; the folder is still at `{changesDir}/inProgress/{xxxx}/`. Run each step's command(s) from the repo root and verify its output. If a step fails, **stop and explain it** — don't improvise an alternative, and don't move the folder. No steps: continue silently.
 
 ## 3. Move the folder to `implemented`
 

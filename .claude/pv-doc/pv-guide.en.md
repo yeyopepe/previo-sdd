@@ -375,14 +375,28 @@ After editing `default` or `overrides`, you need to sync the framework for the c
 
 It's an automatic process that doesn't spend tokens; it can be repeated at any time after editing `skillModels` by hand, or you can ask `pv-init` to do it for you the next time you invoke it.
 
-### 4. Custom steps in the release pipeline (hooks)
+### 4. Custom steps in the framework flows (hooks)
 
-The `pv-version` flow is not editable from a project — its `SKILL.md`, `workflow.version.md`, and everything else under `.claude/skills/pv-*/` are installed framework, kept in sync via `pv-update`, and editing them by hand leaves them inconsistent. To make the release flow do something specific to your project (publish the release somewhere, run a precondition check, produce extra artifacts), there are exactly two customization points in `{workFolder}/stuff/`:
+The `pv-*` skill flows are not editable from a project — their `SKILL.md`, `workflow.*.md`, and everything else under `.claude/skills/pv-*/` are installed framework, kept in sync via `pv-update`, and editing them by hand leaves them inconsistent. To make a flow do something specific to your project (publish the release somewhere, run a precondition check, register the change in a tracker, refresh context before analyzing…), each flow with hooks exposes fixed **insertion points**: one file per point at `{workFolder}/stuff/hooks/<flow>/<NN>-<slug>.md`, holding the steps (commands) you want run there.
 
-- **`how-to-compile.md`** — how to build the deliverable (steps 3–4 of the flow), covered above.
-- **`hooks/version/*.md`** — your project's own steps, run at three fixed points of the flow, one file per point.
+- **`how-to-compile.md`** — how to build the deliverable (steps 3–4 of `pv-version`), covered above. Not a hook, but the other `stuff/` customization point.
+- **`hooks/<flow>/*.md`** — your project's own steps at each insertion point. A file with no steps (or absent) is skipped silently; if a step fails, the flow stops and explains it.
 
-`{workFolder}/stuff/hooks/` is where a project's hook files live. Each hooked process gets a subfolder with the hooks the framework defines. To update any of them, something like ```Add a step so that whenever a change finishes being implemented the tests always run, and if they don't pass, review the work.``` is enough. The system tells you whether that hook is available and anything else it needs to be configured. You can check which hooks are currently defined in `{workFolder}/stuff/hooks/`
+**Available hooks** (each lives in its subfolder under `{workFolder}/stuff/hooks/`):
+
+| Skill | Hook | When it runs / what it's for |
+|-------|------|------------------------------|
+| `pv-how` | `how/10-before-analysis` | At the start of analyzing a change (before technical context is gathered). To load context the analysis should always have: refresh generated types / an OpenAPI spec, dump the DB schema, pull an external dependency's docs into a local file. Not run if you choose "implement the existing `plan.md`". |
+| `pv-how` | `how/20-after-plan` | After `plan.md` is written and the risk median computed, before you're asked whether to implement. To validate the plan (format linter, check cited paths) or export it: open the implementation ticket with the summary and the risk. |
+| `pv-new` | `new/20-after-entry` | When a new change finishes being documented, before handing off to `pv-how`. To register the entry where your team tracks it: a tracker issue, a channel post, a row in a `CHANGES.md` index. |
+| `pv-do` | `do/10-before-implementation` | Before any code is touched when implementing a change (also in `pv-fix`'s fast-track). To prepare the environment or check preconditions. |
+| `pv-do` | `do/20-after-implementation` | With code and docs done, before the folder moves to `implemented/` (also `pv-fix` fast-track). To run the tests, a lint, or publish/verify something on finish. |
+| `pv-version` | `version/05-before-guardrail` | When `pv-version` starts, before it even checks that `implemented/` is empty. To abort cheaply: git tree clean, right branch, CI green, no tag already exists with the planned name. |
+| `pv-version` | `version/10-before-version` | After that guardrail, before the version code `{XXXX}` is resolved. Another pre-release check point. |
+| `pv-version` | `version/20-after-build` | After the deliverable's artifacts are copied to `files/`. To post-process or publish the build. |
+| `pv-version` | `version/30-after-changelog` | After the changelog is drafted, before the final summary. To upload the release somewhere and have the summary mention it. |
+
+To configure or change a hook, just ask in natural language, e.g. ```Add a step so that whenever a change finishes being implemented the tests always run, and if they don't pass, review the work.``` The system tells you which hook it fits and what it needs to be configured. You can check which hooks are actually defined in your project by looking in `{workFolder}/stuff/hooks/`.
 
 ## The `pv.py` script: inspect and close changes without Claude Code
 

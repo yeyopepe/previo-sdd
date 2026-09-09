@@ -22,8 +22,8 @@ flowchart TD
     S1Found -->|Yes| S15Load
 
     S15Load[List stuff/hooks/do/NN-slug.md files, match by NN id, parse each file's Step blocks]
-    S15Load --> S20Hook{10-before-start.md defines steps?}
-    S20Hook -->|Yes| S20Run[Run 10-before-start steps in order, workFolder and xxxx substituted; a failure stops implementation]
+    S15Load --> S20Hook{10-before-implementation.md defines steps?}
+    S20Hook -->|Yes| S20Run[Run 10-before-implementation steps in order, workFolder and xxxx substituted; a failure stops implementation]
     S20Run --> S2Impl
     S20Hook -->|No| S2Impl
 
@@ -35,8 +35,8 @@ flowchart TD
     S2Verify --> S2Reread[Reread whole plan.md for unchecked b/e boxes, complete any left pending]
 
     S2Reread --> S21Docs[Update docs.tech.architectureDocDir / docs.functional.featuresDocPathDir / docs.tech.styleBibleDocDir that the change touched]
-    S21Docs --> S22Hook{20-before-finish.md defines steps?}
-    S22Hook -->|Yes| S22Run[Run 20-before-finish steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
+    S21Docs --> S22Hook{20-after-implementation.md defines steps?}
+    S22Hook -->|Yes| S22Run[Run 20-after-implementation steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
     S22Run --> S3Move
     S22Hook -->|No| S3Move
 

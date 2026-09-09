@@ -46,8 +46,8 @@ flowchart TD
     S6Chain[Invoke pv-how on the same xxxx, scoped strictly to root cause] --> EndHow([End: continues in pv-how -> pv-do])
 
     FT1[Invoke pv-internal-workflow: create description.md/history.md, type=fast] --> FTLoad[List stuff/hooks/do/NN-slug.md files, match by NN id, parse each file's Step blocks]
-    FTLoad --> FTHookStart{10-before-start.md defines steps?}
-    FTHookStart -->|Yes| FTRunStart[Run 10-before-start steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
+    FTLoad --> FTHookStart{10-before-implementation.md defines steps?}
+    FTHookStart -->|Yes| FTRunStart[Run 10-before-implementation steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
     FTRunStart --> FT2
     FTHookStart -->|No| FT2
     FT2[Apply the change directly in code]
@@ -57,8 +57,8 @@ flowchart TD
     FT2Route -->|Yes| S3Doc
     FT2Route -->|No| S2Warn
     FT2Check -->|No| FT3[Document applied changes in description.md]
-    FT3 --> FTHookFinish{20-before-finish.md defines steps?}
-    FTHookFinish -->|Yes| FTRunFinish[Run 20-before-finish steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
+    FT3 --> FTHookFinish{20-after-implementation.md defines steps?}
+    FTHookFinish -->|Yes| FTRunFinish[Run 20-after-implementation steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
     FTRunFinish --> FT4
     FTHookFinish -->|No| FT4
     FT4[Invoke pv-internal-workflow: move inProgress to implemented]
@@ -74,4 +74,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
-- Orange nodes — the project's own hook insertion points (`stuff/hooks/do/*.md`), shared with `pv-do`: the fast-track branch implements code, so it runs the same `10-before-start` and `20-before-finish` hooks. Optional; a hook with no steps is skipped silently.
+- Orange nodes — the project's own hook insertion points (`stuff/hooks/do/*.md`), shared with `pv-do`: the fast-track branch implements code, so it runs the same `10-before-implementation` and `20-after-implementation` hooks. Optional; a hook with no steps is skipped silently.

@@ -281,13 +281,21 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
 # the stuff/hooks/<subdir> to (owning skill name, {NN: canonical filename}).
 HOOK_SETS = {
     "version": ("pv-version", {
-        "10": "10-pre-release.md",
-        "20": "20-post-build.md",
-        "30": "30-post-changelog.md",
+        "05": "05-before-guardrail.md",
+        "10": "10-before-version.md",
+        "20": "20-after-build.md",
+        "30": "30-after-changelog.md",
     }),
     "do": ("pv-do", {
-        "10": "10-before-start.md",
-        "20": "20-before-finish.md",
+        "10": "10-before-implementation.md",
+        "20": "20-after-implementation.md",
+    }),
+    "how": ("pv-how", {
+        "10": "10-before-analysis.md",
+        "20": "20-after-plan.md",
+    }),
+    "new": ("pv-new", {
+        "20": "20-after-entry.md",
     }),
 }
 HOOK_ID_RE = re.compile(r"^(\d{2})-.+\.md$")
@@ -325,17 +333,20 @@ def _check_one_hook_set(root: Path, stuff_dir: Path, subdir: str,
             wrong = matches[0].relative_to(root).as_posix()
             add(problems, f"stuff-{subdir}-hook-badslug:{matches[0].name}", "optional",
                 f"framework.workFolder (stuff/hooks/{subdir}/)",
-                f"'{wrong}' has the right id '{nn}' but not the canonical name. "
-                f"Rename it to '{canonical_rel}' (contents unchanged) so "
-                f"{owner}'s slug check stays quiet.",
+                f"'{wrong}' has the right id '{nn}' but not the canonical name "
+                f"(either a hand-typed slug, or the framework renamed this "
+                f"insertion point in a later version). Rename it to "
+                f"'{canonical_rel}' (contents unchanged, so any steps the "
+                f"project added are kept) so {owner}'s slug check stays quiet.",
                 expected=canonical_rel, actual=wrong)
 
 
 def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> None:
     """pv-init's scaffold-project.py seeds
     {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md for every hook-exposing
-    skill (see HOOK_SETS: version, do), one file per insertion point, copied
-    from that skill's hooks/*.template.md, so the mechanism is discoverable.
+    skill (see HOOK_SETS: version, do, how, new), one file per insertion
+    point, copied from that skill's hooks/*.template.md, so the mechanism is
+    discoverable.
     Problems reported:
 
     - `stuff-pipeline-legacy-obsolete`: a pre-hooks single-file pipeline
@@ -346,12 +357,15 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
     - `stuff-pipeline-legacy-location`: the same legacy file but WITH at least
       one `### Step`. NOT auto-fixed -- it holds project-authored steps;
       pv-update reports the section->file mapping and the user migrates.
-    - `stuff-<subdir>-hook-missing:<NN>` (subdir = version | do): a seed hook
-      file is absent. Recreate it (re-run scaffold-project.py) -- it never
-      overwrites an existing one.
+    - `stuff-<subdir>-hook-missing:<NN>` (subdir = version | do | how | new):
+      a seed hook file is absent. Recreate it (re-run scaffold-project.py) --
+      it never overwrites an existing one.
     - `stuff-<subdir>-hook-badslug:<file>`: a file with a valid <NN> id but
-      the wrong slug. Rename it to the canonical <NN>-<slug>.md, keeping
-      contents.
+      the wrong slug -- a hand-typed name, or an insertion point the framework
+      renamed in a later version (e.g. do/10-before-start ->
+      10-before-implementation, do/20-before-finish -> 20-after-implementation).
+      Rename it to the canonical <NN>-<slug>.md,
+      keeping contents, so project-authored steps survive the migration.
 
     The legacy-file check reads the file only to count `### Step` headings
     (empty seed vs. real content); the per-point hook files' contents are
@@ -380,9 +394,9 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
                 f"'{rel_legacy}' is a pre-hooks single-file release pipeline "
                 f"with project-authored steps. pv-version now reads one file "
                 f"per insertion point under 'stuff/hooks/version/'. Migrate its "
-                f"sections: '## Before starting' -> 10-pre-release.md, "
-                f"'## In the middle' -> 20-post-build.md, "
-                f"'## At the end' -> 30-post-changelog.md (move each section's "
+                f"sections: '## Before starting' -> 10-before-version.md, "
+                f"'## In the middle' -> 20-after-build.md, "
+                f"'## At the end' -> 30-after-changelog.md (move each section's "
                 f"'### Step N' blocks into the matching file), then delete "
                 f"'{rel_legacy}'. Not done automatically -- it holds "
                 f"project-authored steps.",

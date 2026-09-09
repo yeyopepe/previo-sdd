@@ -4,15 +4,17 @@ General diagram of the release-preparation process, with no script or parameter-
 
 ```mermaid
 flowchart LR
+    PreHook["Project's own hook steps\n(stuff/hooks/version/05-before-guardrail.md)"]
     Guard{"implemented/\nempty?"}
     Resolve["Resolve each entry\n(user confirms → closed)"]
-    Custom["Project's own hook steps\n(stuff/hooks/version/*.md)"]
+    Custom["Project's own hook steps\n(stuff/hooks/version/10/20/30)"]
     Folder["Create versions/XXXX\n(files/, docs/)"]
     Compile["Generate the deliverable\n(how-to-compile.md)"]
     Docs["Zip and copy current technical\nand functional documentation to docs/"]
     Changelog["pv-internal-changelog\nmoves closed/ → closed/temp/,\ndrafts changelog.md, cleans up temp/"]
     Confirm["Confirm the release\nto the user"]
 
+    PreHook --> Guard
     Guard -- No --> Resolve --> Guard
     Guard -- Yes --> Custom --> Folder --> Compile --> Docs --> Changelog --> Confirm
 
@@ -24,8 +26,8 @@ flowchart LR
     class Guard,Resolve guardrail
     class Folder,Compile,Docs core
     class Changelog internal
-    class Custom extension
+    class PreHook,Custom extension
     class Confirm done
 ```
 
-Legend: red = `implemented/` guardrail (blocks until resolved); orange = the project's own extension point (the hook files in `stuff/hooks/version/`, optional steps `pv-version` runs at three fixed points of the flow); blue = `pv-version`'s mechanical steps; purple = delegated to `pv-internal-changelog`; green = end of the process.
+Legend: red = `implemented/` guardrail (blocks until resolved); orange = the project's own extension points (the hook files in `stuff/hooks/version/`, optional steps `pv-version` runs at four fixed points of the flow — one before the guardrail, three during); blue = `pv-version`'s mechanical steps; purple = delegated to `pv-internal-changelog`; green = end of the process.

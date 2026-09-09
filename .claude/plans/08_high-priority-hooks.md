@@ -96,6 +96,29 @@ punto concreto y enlaza a esa sección en vez de repetir el preámbulo. En el mi
 actualizan las menciones a los nombres viejos de hook por todo `pv-design.en.md` (ver
 paso 4). Es requisito de cierre de la tanda, no un extra.
 
+### Documentar los hooks en la guía de usuario
+
+La guía de usuario (`.claude/pv-doc/pv-guide.en.md` y `pv-guide.es.md`), apartado
+**"4. Pasos personalizados en el pipeline de versión (hooks)"**, hoy solo habla de
+`pv-version` ("tres puntos fijos", `hooks/version/*.md`). Al implementar esta tanda ese
+apartado debe:
+
+- Generalizarse: ya no son solo los del pipeline de versión — hay hooks en `pv-how`,
+  `pv-new`, `pv-do` y `pv-version`, cada uno con su subcarpeta bajo
+  `{workFolder}/stuff/hooks/`. Ajustar el título y el texto ("tres puntos fijos" ya no
+  vale).
+- Incluir una **lista de los hooks disponibles** — un ítem por hook, con: skill dueño,
+  slug (`<subdir>/<NN>-<temporal>-<objeto>`), y una frase de en qué punto del flujo corre
+  y para qué sirve. Es la tabla "Los 4 hooks" + "Los 5 hooks ya existentes" de este
+  documento, reescrita para usuario final (sin la parte de renombrado ni la mecánica de
+  implementación). Con los nombres **nuevos** ya (`10-before-implementation`,
+  `10-before-version`, `20-after-build`, `30-after-changelog`, más H1–H4).
+- Mantener el enlace a que se consultan los hooks realmente definidos en
+  `{workFolder}/stuff/hooks/` y que se editan pidiéndoselo a Claude en lenguaje natural.
+
+Se hace en el mismo pase de doc que la sección técnica, en ambos idiomas. Es requisito de
+cierre de la tanda.
+
 ### H1 — `pv-how` : `how/10-before-analysis`
 
 - **Momento exacto:** al principio del paso 3 (`## 3. Analyze and write plan.md`), antes

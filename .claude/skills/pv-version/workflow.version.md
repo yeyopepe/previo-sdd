@@ -9,13 +9,17 @@ flowchart TD
     S02Update --> S02Ask[ASK: launch the versioning process now with this updated procedure?]
     S02Ask --> S02Dec{User confirms?}
     S02Dec -->|No| End02([End: build procedure updated only])
-    S02Dec -->|Yes| S05Guard
-    S02Intent -->|No, wants a release| S05Guard
+    S02Dec -->|Yes| S04Load
+    S02Intent -->|No, wants a release| S04Load
+
+    S04Load[List stuff/hooks/version/NN-slug.md files, match by NN id, parse each file's Step blocks] --> S04Hook{05-before-guardrail.md defines steps?}
+    S04Hook -->|Yes| S04Run[Run 05-before-guardrail steps in order, workFolder only; a failure stops the release before the guardrail]
+    S04Run --> S05Guard
+    S04Hook -->|No| S05Guard
 
     S05Guard[List changes/implemented/ folders] --> S05Empty{implemented/ empty?}
-    S05Empty -->|Yes| S06Load[List stuff/hooks/version/NN-slug.md files, match by NN id, parse each file's Step blocks]
-    S06Load --> S07Hook{10-pre-release.md defines steps?}
-    S07Hook -->|Yes| S07Run[Run 10-pre-release steps in order, workFolder only; a failure stops the release]
+    S05Empty -->|Yes| S07Hook{10-before-version.md defines steps?}
+    S07Hook -->|Yes| S07Run[Run 10-before-version steps in order, workFolder only; a failure stops the release]
     S07Run --> S1Resolve
     S07Hook -->|No| S1Resolve
     S05Empty -->|No| S05Loop[Take next pending entry]
@@ -48,20 +52,20 @@ flowchart TD
     S4Stop --> End4([End: build failed])
     S4Ok -->|Yes| S4Copy[copy-build-artifacts.py to versions/XXXX/files/]
 
-    S4Copy --> S41Hook{20-post-build.md defines steps?}
-    S41Hook -->|Yes| S41Run[Run 20-post-build steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
+    S4Copy --> S41Hook{20-after-build.md defines steps?}
+    S41Hook -->|Yes| S41Run[Run 20-after-build steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
     S41Run --> S5Docs
     S41Hook -->|No| S5Docs
 
     S5Docs[Run copy-docs.py: zip the three docs.tech/docs.functional dirs] --> S6Changelog[Invoke pv-internal-changelog on versions/XXXX/]
-    S6Changelog --> S61Hook{30-post-changelog.md defines steps?}
-    S61Hook -->|Yes| S61Run[Run 30-post-changelog steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
+    S6Changelog --> S61Hook{30-after-changelog.md defines steps?}
+    S61Hook -->|Yes| S61Run[Run 30-after-changelog steps in order, XXXX and versions/XXXX/ paths available; a failure stops the release]
     S61Run --> S7Summary
     S61Hook -->|No| S7Summary
     S7Summary[INFO: summary of deliverable, docs, changelog, plus any hooks that ran] --> EndOK([End: release prepared])
 
     classDef hook fill:#d9770e,color:#fff
-    class S07Hook,S07Run,S41Hook,S41Run,S61Hook,S61Run hook
+    class S04Hook,S04Run,S07Hook,S07Run,S41Hook,S41Run,S61Hook,S61Run hook
 ```
 
 Legend:
