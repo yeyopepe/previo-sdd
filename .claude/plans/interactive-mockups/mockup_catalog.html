@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Maqueta — Catálogo del framework de notas (simplificado)</title>
+<style>
+  :root {
+    --page-bg: #eceff1;
+    --card-bg: #fff;
+    --ink: #1a1a1a;
+    --ink-muted: #5f6b73;
+    --border: #d6dce0;
+
+    /* Framework de notas: SOLO dos colores. */
+    --mnote-pin: #f5a623;   /* ámbar → notas vinculadas a un elemento */
+    --mnote-gen: #2c7dd8;   /* azul  → nota general / elemento seleccionado */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem;
+    background: var(--page-bg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink); line-height: 1.5;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1rem; margin: 2.25rem 0 .75rem; border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+  .lede { color: var(--ink-muted); font-size: .9rem; margin: 0 0 1.5rem; max-width: 64ch; }
+  .caption { font-size: .72rem; color: var(--ink-muted); font-weight: 600; margin: 0 0 .4rem; text-transform: uppercase; letter-spacing: .04em; }
+  .grid { display: flex; flex-wrap: wrap; gap: 1.5rem; align-items: flex-start; }
+  .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 8px; padding: 1.1rem; max-width: 380px; }
+  .hint { font-size: .82rem; color: var(--ink-muted); margin: .7rem 0 0; }
+  .stage { padding: 1rem; border: 1px solid var(--border); border-radius: 6px; background: #fafbfc; }
+  code { background: #f0f2f4; padding: .1em .35em; border-radius: 3px; font-size: .82em; }
+  .demo-btn { padding: .45rem .8rem; border: 1px solid #ccc; border-radius: 4px; background: #fff; font: inherit; }
+
+  /* =========================================================
+     FRAMEWORK DE NOTAS — 3 componentes, ~55 líneas.
+     (1) barra flotante  (2) tarjeta de nota  (3) panel-lista
+     Sin pin-globo ni modo "armado": clic simple = selección.
+     ========================================================= */
+
+  /* Elemento seleccionado (por un clic simple del usuario). */
+  .mnote-sel { outline: 2px solid var(--mnote-gen); outline-offset: 2px; border-radius: 3px; }
+
+  /* Elemento vinculado a la nota actualmente abierta: comparte el
+     contorno ámbar con su tarjeta mientras esa nota está abierta. */
+  .mnote-linked { outline: 2px solid var(--mnote-pin); outline-offset: 2px; border-radius: 3px; }
+
+  /* Contador ámbar en la esquina: nº de notas vinculadas a ese
+     elemento. SOLO visible cuando las anotaciones están visibles. */
+  .mnote-count { position: absolute; top: -8px; right: -8px;
+    min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
+    background: var(--mnote-pin); color: #2b2b2b; border: 2px solid #fff;
+    font: 700 10px/12px system-ui; display: inline-flex; align-items: center; justify-content: center; }
+
+  /* (1) Barra: gris claro, solo iconos, se desplaza junto al cursor. */
+  .mnote-bar { display: inline-flex; gap: .15rem; align-items: center;
+    background: #e9edf0; border: 1px solid var(--border); color: var(--ink);
+    padding: .25rem .3rem; border-radius: 6px; font-size: .95rem; box-shadow: 0 3px 10px rgba(0,0,0,.18); }
+  .mnote-bar button { border: 0; background: transparent; color: inherit; font: inherit; line-height: 1;
+    width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px; cursor: pointer; }
+  .mnote-bar button:hover { background: rgba(0,0,0,.08); }
+  .mnote-bar button[aria-pressed="true"] { background: var(--mnote-pin); }
+  .mnote-bar .count { background: var(--mnote-pin); color: #2b2b2b; font-weight: 700; font-size: .72rem;
+    border-radius: 4px; padding: 0 .35rem; margin-left: .15rem; }
+
+  /* Mini-menú que despliega el ➕ cuando hay un elemento seleccionado. */
+  .mnote-menu { border: 1px solid var(--border); background: #fff; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); font-size: .8rem; width: 210px; overflow: hidden; }
+  .mnote-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    font: inherit; padding: .5rem .6rem; cursor: pointer; }
+  .mnote-menu button:hover { background: #f4f6f8; }
+  .mnote-menu button + button { border-top: 1px solid var(--border); }
+  .mnote-menu code { font-size: .74em; }
+
+  /* (2) Tarjeta de nota (mismo aspecto vinculada / general, lectura / edición) */
+  .mnote-card { width: 250px; background: #fff; border: 1px solid var(--border);
+    border-left: 6px solid var(--mnote-pin); border-radius: 5px; font-size: .8rem; }
+  .mnote-card--gen { border-left-color: var(--mnote-gen); }
+  .mnote-card__head { padding: .4rem .55rem; font-size: .72rem; color: var(--ink-muted);
+    display: flex; gap: .35rem; align-items: center; }
+  .mnote-card__body { padding: 0 .55rem .5rem; }
+  .mnote-card__body textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit;
+    border: 1px solid var(--border); border-radius: 4px; padding: .35rem; }
+  .mnote-card__foot { display: flex; gap: .4rem; padding: .4rem .55rem; border-top: 1px solid var(--border); }
+  .mnote-card__foot button { border: 1px solid var(--border); background: #f7f8f9; font: inherit;
+    font-size: .74rem; padding: .25rem .5rem; border-radius: 4px; cursor: pointer; }
+  .mnote-card__foot .del { margin-left: auto; color: #b3261e; border-color: #e0b4b4; background: #fff; }
+  .mnote-card__foot .ok { background: var(--mnote-pin); border-color: var(--mnote-pin); color: #2b2b2b; font-weight: 600; }
+
+  /* (3) Panel-lista de notas generales */
+  .mnote-panel { width: 250px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+  .mnote-panel__head { padding: .45rem .6rem; font-size: .74rem; font-weight: 700; color: var(--ink-muted);
+    background: #f4f6f8; display: flex; justify-content: space-between; }
+  .mnote-panel__item { padding: .5rem .6rem; font-size: .8rem; border-top: 1px solid var(--border);
+    border-left: 6px solid var(--mnote-gen); }
+  .mnote-panel__item.detached { border-left-color: #b3261e; }
+  .mnote-panel__item .meta { font-size: .68rem; color: var(--ink-muted); margin-bottom: .15rem; }
+  .mnote-panel__item .acts { margin-top: .35rem; display: flex; gap: .6rem; }
+  .mnote-panel__item .acts button { border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: .72rem; cursor: pointer; padding: 0; }
+</style>
+</head>
+<body>
+
+<h1>Framework de notas — catálogo (versión simplificada)</h1>
+<p class="lede">
+  Tres componentes, dos colores. <strong>No hay pin ni modo "armado"</strong>: un clic simple
+  en cualquier elemento del mockup lo selecciona (contorno <span style="color:var(--mnote-gen)">azul</span>)
+  y la barra flotante se desplaza junto al cursor. El <strong>➕</strong> crea la nota: si no
+  hay elemento seleccionado la crea general; si lo hay, pregunta. Ámbar = nota vinculada a un
+  elemento; azul = nota general.
+</p>
+
+<!-- 1 -->
+<h2>1 · Barra flotante (se mueve al cursor)</h2>
+<div class="grid">
+  <div class="card">
+    <p class="caption">Sin elemento seleccionado</p>
+    <div class="mnote-bar">
+      <button title="Nueva nota" aria-label="Nueva nota">➕</button>
+      <button title="Ocultar anotaciones" aria-label="Ocultar anotaciones">👁</button>
+      <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+      <span class="count" title="Total de notas">3</span>
+    </div>
+    <p class="hint">Fondo gris claro, solo iconos (texto en tooltip). El <strong>➕</strong> crea una nota general directamente. El contador = notas vinculadas + generales.</p>
+  </div>
+  <div class="card">
+    <p class="caption">Con un elemento seleccionado · "Ocultar" activo</p>
+    <div class="mnote-bar">
+      <button title="Nueva nota" aria-label="Nueva nota">➕</button>
+      <button aria-pressed="true" title="Mostrar anotaciones" aria-label="Mostrar anotaciones">👁</button>
+      <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+      <span class="count" title="Total de notas">3</span>
+    </div>
+    <p class="hint">Mismos iconos. Estilo "activo" (<code>aria-pressed</code> → fondo ámbar). <kbd>Esc</kbd> deselecciona el elemento.</p>
+  </div>
+</div>
+
+<!-- 2 -->
+<h2>2 · Seleccionar un elemento y crear la nota</h2>
+<div class="grid">
+  <div class="card">
+    <p class="caption">Paso 1 · Clic simple → elemento seleccionado + barra junto al cursor</p>
+    <div class="stage" style="position:relative; padding-top:3.2rem;">
+      <div class="mnote-bar" style="position:absolute; top:.5rem; left:5rem;">
+        <button title="Nueva nota" aria-label="Nueva nota">➕</button>
+        <button title="Ocultar anotaciones" aria-label="Ocultar anotaciones">👁</button>
+        <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+        <span class="count">3</span>
+      </div>
+      <div style="display:flex; gap:.6rem;">
+        <span class="demo-btn">Guardar</span>
+        <span class="demo-btn mnote-sel">Cancelar</span>
+        <span class="demo-btn">Ayuda</span>
+      </div>
+    </div>
+    <p class="hint">
+      El clic selecciona <code>Cancelar</code> (contorno azul) y la barra salta a su lado. Se
+      calcula su selector (<code>#id</code>; si no, ruta <code>nth-of-type</code>).
+    </p>
+  </div>
+
+  <div class="card">
+    <p class="caption">Paso 2 · Pulsa ➕ con elemento seleccionado → mini-menú</p>
+    <div class="stage" style="position:relative; padding-top:3.2rem; min-height:150px;">
+      <div class="mnote-bar" style="position:absolute; top:.5rem; left:5rem;">
+        <button aria-pressed="true" title="Nueva nota" aria-label="Nueva nota">➕</button>
+        <button title="Ocultar anotaciones" aria-label="Ocultar anotaciones">👁</button>
+        <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+        <span class="count">3</span>
+      </div>
+      <div class="mnote-menu" style="position:absolute; top:3rem; left:5rem;">
+        <button>📌 Nota en <code>button.launcher__cancel</code></button>
+        <button>➕ Nota general</button>
+      </div>
+    </div>
+    <p class="hint">
+      Sin elemento seleccionado, el <strong>➕</strong> no muestra menú: crea la nota general
+      y punto.
+    </p>
+  </div>
+
+  <div class="card">
+    <p class="caption">Paso 3 · Tarjeta de nota (vinculada)</p>
+    <div class="mnote-card">
+      <div class="mnote-card__head">Nota en <code>button.launcher__cancel</code></div>
+      <div class="mnote-card__body">
+        <textarea>Este botón sobra: la acción se cancela con Esc.</textarea>
+      </div>
+      <div class="mnote-card__foot">
+        <button class="del">🗑 Eliminar</button>
+        <button>Cancelar</button>
+        <button class="ok">Guardar</button>
+      </div>
+    </div>
+    <p class="hint">Editar solo cambia el <code>&lt;div&gt;</code> del cuerpo por un <code>&lt;textarea&gt;</code>. Vinculada = borde ámbar; general = borde azul.</p>
+  </div>
+</div>
+
+<!-- 3 -->
+<h2>3 · Elemento con notas + relación al abrirla</h2>
+<div class="grid">
+  <div class="card">
+    <p class="caption">Contador ámbar en la esquina (solo con anotaciones visibles)</p>
+    <div class="stage" style="display:flex; gap:1rem;">
+      <span class="demo-btn" style="position:relative;">Nueva hoja<span class="mnote-count">2</span></span>
+      <span class="demo-btn" style="position:relative;">Cerrar<span class="mnote-count">1</span></span>
+      <span class="demo-btn">Ayuda</span>
+    </div>
+    <p class="hint">
+      Insignia mínima con el nº de notas vinculadas. Al ocultar las anotaciones (👁)
+      desaparece y el mockup queda limpio.
+    </p>
+  </div>
+
+  <div class="card">
+    <p class="caption">Al pulsar un elemento con notas → se abre su tarjeta</p>
+    <div class="stage" style="display:flex; gap:1.5rem; align-items:flex-start;">
+      <span class="demo-btn mnote-linked" style="position:relative;">Nueva hoja<span class="mnote-count">2</span></span>
+      <div class="mnote-card mnote-linked">
+        <div class="mnote-card__head">Nota 1 / 2 · <code>button.launcher__new-btn</code></div>
+        <div class="mnote-card__body">Más grande, y quitar el contador "(3)".</div>
+        <div class="mnote-card__foot">
+          <button>‹ ›</button>
+          <button>✏️ Editar</button>
+          <button class="del">🗑</button>
+        </div>
+      </div>
+    </div>
+    <p class="hint">
+      <strong>Elemento y tarjeta comparten el contorno ámbar</strong> mientras la nota está
+      abierta — así se ve la relación sin dibujar líneas. Si el elemento tiene varias notas,
+      <code>‹ ›</code> las recorre.
+    </p>
+  </div>
+</div>
+
+<!-- 4 -->
+<h2>4 · Notas generales y estado limpio</h2>
+<div class="grid">
+  <div class="card">
+    <p class="caption">Panel-lista de notas generales</p>
+    <div class="mnote-panel">
+      <div class="mnote-panel__head"><span>Notas generales</span><span>2</span></div>
+      <div class="mnote-panel__item">
+        <div class="meta">general</div>
+        <div>El conjunto se ve apretado: subir el espaciado entre tarjetas.</div>
+        <div class="acts"><button>✏️ Editar</button><button>🗑 Eliminar</button></div>
+      </div>
+      <div class="mnote-panel__item detached">
+        <div class="meta">desvinculada · su elemento ya no existe</div>
+        <div>El botón "Exportar PDF" debería volver.</div>
+        <div class="acts"><button>✏️ Editar</button><button>🗑 Eliminar</button></div>
+      </div>
+    </div>
+    <p class="hint">
+      Lista sobria, borde izquierdo azul. Una nota vinculada que pierde su elemento baja aquí
+      como <strong>desvinculada</strong> (borde rojo) sin perder el texto.
+    </p>
+  </div>
+
+  <div class="card">
+    <p class="caption">"Ocultar anotaciones" → diseño limpio</p>
+    <div class="stage" style="display:flex; gap:.6rem;">
+      <span class="demo-btn">Guardar</span>
+      <span class="demo-btn">Cancelar</span>
+      <span class="demo-btn">Ayuda</span>
+    </div>
+    <p class="hint">Sin contadores, contornos, tarjetas ni panel: exactamente el mockup de la skill. El toggle se recuerda por archivo en <code>localStorage</code>.</p>
+  </div>
+</div>
+
+</body>
+</html>
