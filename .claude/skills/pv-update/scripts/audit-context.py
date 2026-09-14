@@ -8,7 +8,11 @@ skillModels vs each SKILL.md's real frontmatter, the [[[...]]]-marked
 structural labels AND section headings (see pv-design.en.md's "Marker
 convention in templates") in every template-derived document under
 workFolder's changes/ subtree -- catching ones left translated by a
-document written under an older, still-localized framework version, and
+document written under an older, still-localized framework version,
+stuff/hooks/*/*.md files that carry project-authored '### Step' blocks
+(stuff-<subdir>-hook-language:*, flagged for pv-update itself to read and
+judge whether the content is in English -- hooks are technical
+documentation, same fixed-English category as docs.tech), and
 version consistency -- every pv-* skill's metadata.version should share the
 same major.minor (skill-version-mismatch:*), and pv-context.json's
 frameworkStatus.lastVerifiedVersion should match pv-init/SKILL.md's real
@@ -304,14 +308,30 @@ HOOK_SETS = {
 HOOK_ID_RE = re.compile(r"^(\d{2})-.+\.md$")
 
 
+HOOK_STEP_RE = re.compile(r"^###\s+Step\b", re.MULTILINE)
+HTML_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+
+
+def strip_html_comments(text: str) -> str:
+    """Every hook seed's example '### Step 1: {name}' block sits inside an
+    HTML comment (see any *.template.md) so it never counts as real content
+    -- strip comments before matching HOOK_STEP_RE, or an untouched seed
+    would falsely look like it has a project-authored step."""
+    return HTML_COMMENT_RE.sub("", text)
+
+
 def _check_one_hook_set(root: Path, stuff_dir: Path, subdir: str,
                         owner: str, canonical_by_id: dict, problems: list) -> None:
     """Presence + canonical-slug check for one stuff/hooks/<subdir> set.
     Emits `stuff-<subdir>-hook-missing:<NN>` (seed absent -- recreated by
-    re-running scaffold-project.py, which never overwrites an existing file)
-    and `stuff-<subdir>-hook-badslug:<file>` (right <NN> id, wrong slug --
-    renamed to the canonical name, contents unchanged). Contents are never
-    inspected."""
+    re-running scaffold-project.py, which never overwrites an existing file),
+    `stuff-<subdir>-hook-badslug:<file>` (right <NN> id, wrong slug --
+    renamed to the canonical name, contents unchanged), and
+    `stuff-<subdir>-hook-language:<file>` (the file has at least one
+    `### Step` block, i.e. project-authored content -- flagged for pv-update
+    itself to read and judge whether it's written in English, since that's a
+    natural-language judgment no script here can make reliably). Beyond the
+    `### Step` presence check, content is never inspected by this script."""
     hooks_dir = stuff_dir / "hooks" / subdir
     present_by_id: dict[str, list[Path]] = {}
     if hooks_dir.is_dir():
@@ -342,6 +362,23 @@ def _check_one_hook_set(root: Path, stuff_dir: Path, subdir: str,
                 f"'{canonical_rel}' (contents unchanged, so any steps the "
                 f"project added are kept) so {owner}'s slug check stays quiet.",
                 expected=canonical_rel, actual=wrong)
+
+        for f in matches:
+            try:
+                text = f.read_text(encoding="utf-8")
+            except OSError:
+                continue
+            if not HOOK_STEP_RE.search(strip_html_comments(text)):
+                continue
+            rel = f.relative_to(root).as_posix()
+            add(problems, f"stuff-{subdir}-hook-language:{rel}", "optional", rel,
+                f"'{rel}' has at least one '### Step' block (project-authored "
+                f"content). Hook files are technical documentation, same fixed-English "
+                f"category as docs.tech -- read it and, if any step's title, "
+                f"command notes or prose isn't written in English, translate it "
+                f"in place (never change commands, paths, or any other literal "
+                f"value, only the surrounding natural-language text).",
+                expected="step content in English", actual="contains steps, language unverified")
 
 
 def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> None:
