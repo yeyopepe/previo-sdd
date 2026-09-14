@@ -297,6 +297,9 @@ HOOK_SETS = {
     "new": ("pv-new", {
         "20": "20-after-entry.md",
     }),
+    "fix": ("pv-fix", {
+        "10": "10-before-entry.md",
+    }),
 }
 HOOK_ID_RE = re.compile(r"^(\d{2})-.+\.md$")
 
@@ -344,7 +347,7 @@ def _check_one_hook_set(root: Path, stuff_dir: Path, subdir: str,
 def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> None:
     """pv-init's scaffold-project.py seeds
     {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md for every hook-exposing
-    skill (see HOOK_SETS: version, do, how, new), one file per insertion
+    skill (see HOOK_SETS: version, do, how, new, fix), one file per insertion
     point, copied from that skill's hooks/*.template.md, so the mechanism is
     discoverable.
     Problems reported:
@@ -357,7 +360,7 @@ def check_version_hooks_seed(root: Path, work_folder: str, problems: list) -> No
     - `stuff-pipeline-legacy-location`: the same legacy file but WITH at least
       one `### Step`. NOT auto-fixed -- it holds project-authored steps;
       pv-update reports the section->file mapping and the user migrates.
-    - `stuff-<subdir>-hook-missing:<NN>` (subdir = version | do | how | new):
+    - `stuff-<subdir>-hook-missing:<NN>` (subdir = version | do | how | new | fix):
       a seed hook file is absent. Recreate it (re-run scaffold-project.py) --
       it never overwrites an existing one.
     - `stuff-<subdir>-hook-badslug:<file>`: a file with a valid <NN> id but

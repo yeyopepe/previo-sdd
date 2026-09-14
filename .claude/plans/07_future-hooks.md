@@ -2,14 +2,18 @@
 
 ## Context
 
-El framework `pv-*` acaba de estrenar su primer mecanismo de **hooks de proyecto**
-(commit `8194c30`): puntos de inserción donde un skill instalado ejecuta pasos
-*definidos por el proyecto consumidor*, sin tocar el `SKILL.md`. Hoy existen en:
+El framework `pv-*` tiene un mecanismo de **hooks de proyecto**: puntos de inserción donde
+un skill instalado ejecuta pasos *definidos por el proyecto consumidor*, sin tocar el
+`SKILL.md`. Catálogo completo y actualizado en `pv-design.en.md`/`.es.md`, sección
+"Project hooks"/"Hooks de proyecto". Hoy existen en:
 
-| Skill        | Hooks actuales (nombres tras el renombrado de `08_high-priority-hooks.md`)  | Fichero seed en el proyecto                          |
-|--------------|--------------------------------------------------------------------------- |-----------------------------------------------------|
-| `pv-do`      | `do/10-before-implementation`, `do/20-before-finish`                       | `{workFolder}/stuff/hooks/do/*.md`                   |
-| `pv-version` | `version/10-before-version`, `version/20-after-build`, `version/30-after-changelog` | `{workFolder}/stuff/hooks/version/*.md`     |
+| Skill        | Hooks actuales                                                              | Fichero seed en el proyecto                          |
+|--------------|------------------------------------------------------------------------------|-----------------------------------------------------|
+| `pv-how`     | `how/10-before-analysis`, `how/20-after-plan`                                | `{workFolder}/stuff/hooks/how/*.md`                  |
+| `pv-new`     | `new/20-after-entry`                                                          | `{workFolder}/stuff/hooks/new/*.md`                  |
+| `pv-fix`     | `fix/10-before-entry` (vía rápida; reutiliza además los dos hooks de `pv-do`) | `{workFolder}/stuff/hooks/fix/*.md`                  |
+| `pv-do`      | `do/10-before-implementation`, `do/20-after-implementation`                  | `{workFolder}/stuff/hooks/do/*.md`                   |
+| `pv-version` | `version/05-before-guardrail`, `version/10-before-version`, `version/20-after-build`, `version/30-after-changelog` | `{workFolder}/stuff/hooks/version/*.md` |
 
 Contrato compartido de un hook (ya establecido, se respeta en todo lo que sigue):
 
@@ -26,14 +30,11 @@ Contrato compartido de un hook (ya establecido, se respeta en todo lo que sigue)
   verdad de dónde se insertan.
 
 **Objetivo de este plan:** aparcar propuestas de hooks para una revisión más adelante.
-Nada de aquí está decidido ni planificado — es un banco de ideas. Los hooks que **sí** se
-van a implementar (H1–H4), y el renombrado de los 5 ya existentes para que cumplan la
-nomenclatura, están en [`08_high-priority-hooks.md`](08_high-priority-hooks.md), que además
-fija la **convención de nombres** que se aplica a cualquier hook futuro, incluidos los de
-este documento.
+Nada de aquí está decidido ni planificado — es un banco de ideas. La convención de nombres
+(`<NN>-<before|after>-<objeto>`) y el catálogo de hooks ya implementados están documentados
+en `pv-design.en.md`/`.es.md`, sección "Project hooks"/"Hooks de proyecto".
 
-Cuando una de estas propuestas se apruebe, se mueve a un plan de implementación propio
-(como se hizo con H1–H4) y se borra de aquí.
+Cuando una de estas propuestas se apruebe, se implementa y se borra de aquí.
 
 ## Principios para decidir si un punto merece un hook
 
@@ -53,10 +54,10 @@ Cuando una de estas propuestas se apruebe, se mueve a un plan de implementación
 ## Vocabulario de `<objeto>` (pre-acordado, para nombrar estas propuestas si se aprueban)
 
 El nombre de un hook es `<NN>-<before|after>-<objeto>` (catálogo completo en
-[`08_high-priority-hooks.md`](08_high-priority-hooks.md)). Ya están en uso (H1–H4 o los
-5 hooks renombrados): `analysis`, `plan`, `entry`, `guardrail`, `implementation`,
-`version`, `build`, `changelog`. Estos otros están **pre-acordados** para los puntos que
-aún no tienen hook, para no reinventarlos en cada propuesta:
+`pv-design.en.md`/`.es.md`, sección "Project hooks"/"Hooks de proyecto"). Ya están en uso:
+`analysis`, `plan`, `entry`, `guardrail`, `implementation`, `version`, `build`, `changelog`.
+Estos otros están **pre-acordados** para los puntos que aún no tienen hook, para no
+reinventarlos en cada propuesta:
 
 | `<objeto>`       | Hito que nombra                                                    | Skill         |
 |------------------|------------------------------------------------------------------ |---------------|
@@ -67,29 +68,16 @@ aún no tienen hook, para no reinventarlos en cada propuesta:
 | `note`           | El guardado/expansión de una idea en `todo/`                       | `pv-todo`     |
 | `report`         | El informe de estado                                               | `pv-status`   |
 
-(`entry` ya lo usa H3 para `pv-new`; P2 lo reutiliza para `pv-fix` — mismo hito, otro
-skill.)
+(`entry` ya lo usa `pv-new` para `new/20-after-entry` y `pv-fix` para `fix/10-before-entry`;
+P2 lo reutilizaría de nuevo para `fix/20-after-entry` — mismo hito, otro punto del flujo.)
 
 ## Propuestas
 
 Ninguna está decidida. "Utilidad aparente media/baja" es solo una intuición, no un
-compromiso. Los slugs son tentativos pero ya siguen el catálogo de nombres de
-[`08_high-priority-hooks.md`](08_high-priority-hooks.md).
+compromiso. Los slugs son tentativos pero ya siguen el catálogo de nombres documentado en
+`pv-design.en.md`/`.es.md`.
 
 ### Utilidad aparente media
-
-#### P1 — `pv-fix` : `fix/10-before-entry` (antes de crear/aplicar un fix trivial en el mismo turno)
-
-- **Momento:** `pv-fix` ha decidido que el cambio es trivial y va a aplicarlo directamente
-  sin pasar por `plan.md`.
-- **Para qué:** aun en lo trivial, el equipo puede querer una barrera mínima: correr el
-  linter/formatter sobre el fichero tocado, exigir que exista un test que cubra la línea,
-  bloquear si el fichero está en una lista de "no tocar sin revisión".
-- **Variables:** `{workFolder}`, `{xxxx}` si ya se creó la entrada; si es tan trivial que
-  no hay carpeta, solo `{workFolder}` + el/los fichero(s) objetivo (a definir cómo se
-  pasan).
-- **Riesgo:** el atractivo de `pv-fix` trivial es que es de un turno; un hook lento lo
-  penaliza. Documentar que este hook debe ser barato.
 
 #### P2 — `pv-fix` : `fix/20-after-entry` (después de documentar un fix no trivial en `inProgress/`)
 
@@ -159,7 +147,6 @@ compromiso. Los slugs son tentativos pero ya siguen el catálogo de nombres de
 
 | ID | Skill        | Slug tentativo               | Utilidad aparente | Depende de cuestión abierta |
 |----|--------------|------------------------------|-------------------|-----------------------------|
-| P1 | `pv-fix`     | `fix/10-before-entry`        | Media             | semántica de fallo          |
 | P2 | `pv-fix`     | `fix/20-after-entry`         | Media             | —                           |
 | P3 | `pv-do`      | `do/15-after-task`           | Media             | política de reanudación     |
 | P4 | `pv-version` | `version/40-after-docs-copy` | Media             | solape con 20/30            |
@@ -170,24 +157,21 @@ compromiso. Los slugs son tentativos pero ya siguen el catálogo de nombres de
 
 ## Cuestiones abiertas (a resolver si alguna propuesta se aprueba)
 
-Las de nombres y numeración **ya están resueltas** en
-[`08_high-priority-hooks.md`](08_high-priority-hooks.md) (catálogo de partículas +
-convención de `NN`); su documentación en `pv-design.en.md` es tarea de cierre de la
-primera tanda (H1–H4). Lo que sigue solo afecta a estas propuestas:
+Las de nombres y numeración (catálogo de partículas + convención de `NN`), y el "cómo" de
+dar de alta un hook nuevo (`HOOK_SETS` de `scaffold-project.py`/`audit-context.py`, checks
+de auditoría), **ya están resueltas y aplicadas** — ver el catálogo completo en
+`pv-design.en.md`/`.es.md`, sección "Project hooks"/"Hooks de proyecto". `fix/10-before-entry`
+(antes P1) ya se implementó con semántica de fallo dura ("para y explica"), sin necesitar
+la variante blanda ni paso de ficheros al hook. Lo que sigue solo afecta a P3:
 
-1. **Semántica de fallo por hook: ¿siempre "para y explica", o algunos hooks son
-   "best-effort" (avisan y siguen)?** Hoy el contrato es "para". P1 y P3 pedirían la
-   variante blanda. Si se añade, el fichero seed necesita un campo explícito
-   (`**On failure:** stop | warn-and-continue`) y el diagrama otra forma de nodo.
-2. **Hooks a mitad de bucle (P3): política de reanudación.** Si el hook falla en la tarea
+1. **Hooks a mitad de bucle (P3): política de reanudación.** Si el hook falla en la tarea
    4 de 9, ¿`pv-do` se reanuda desde la 4 al reinvocarlo? ¿Marca la entrada como
    `blocked`? Hay que definirlo antes de exponer cualquier hook dentro de un bucle.
-3. **Paso de ficheros al hook (P1, P3).** Varios candidatos necesitan "los ficheros que
-   tocó esta tarea/este fix". Hoy solo se sustituyen `{workFolder}` y `{xxxx}`. Hace falta
-   una convención: ¿el skill escribe un `changed-files.txt` en la carpeta de la entrada y
-   el hook lo lee? ¿Se añade una variable `{changedFiles}`?
-4. **Alta de nuevos seeds en `pv-init`/`pv-update`.** Cada propuesta que se apruebe añade
-   un fichero seed que `pv-update` debe saber crear si falta. El "cómo" (cambios en
-   `HOOK_SETS` de ambos scripts, checks de auditoría) está resuelto en
-   [`08_high-priority-hooks.md`](08_high-priority-hooks.md), "Cómo se implementa un hook
-   nuevo" — cada tanda solo amplía las mismas listas.
+2. **Semántica de fallo "best-effort" (avisan y siguen).** Hoy el contrato de todo hook es
+   "para y explica". P3, por correr a mitad de bucle, podría necesitar la variante blanda.
+   Si se añade, el fichero seed necesita un campo explícito
+   (`**On failure:** stop | warn-and-continue`) y el diagrama otra forma de nodo.
+3. **Paso de ficheros al hook (P3).** Necesita "los ficheros que tocó esta tarea". Hoy solo
+   se sustituyen `{workFolder}` y `{xxxx}`. Hace falta una convención: ¿el skill escribe un
+   `changed-files.txt` en la carpeta de la entrada y el hook lo lee? ¿Se añade una variable
+   `{changedFiles}`?

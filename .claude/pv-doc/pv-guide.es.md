@@ -382,15 +382,28 @@ Los flujos de las skills `pv-*` no se pueden editar desde un proyecto — sus `S
 - **`how-to-compile.md`** — cómo construir el entregable (pasos 3–4 de `pv-version`), tratado más arriba. No es un hook, pero es el otro punto de personalización de `stuff/`.
 - **`hooks/<flujo>/*.md`** — los pasos propios de tu proyecto en cada punto de inserción. Un fichero sin pasos (o ausente) se salta en silencio; si un paso falla, el flujo se detiene y te lo explica.
 
-**Hooks disponibles** (cada uno vive en su subcarpeta bajo `{workFolder}/stuff/hooks/`):
+**Hooks disponibles** (cada uno vive en su subcarpeta bajo `{workFolder}/stuff/hooks/`), agrupados por la fase del flujo a la que pertenecen:
+
+**Fase de análisis** (`pv-new`, `pv-how`, `pv-fix`):
 
 | Skill | Hook | Cuándo se ejecuta / para qué sirve |
 |-------|------|------------------------------------|
+| `pv-new` | `new/20-after-entry` | Al terminar de documentar un cambio nuevo, antes de ceder el turno a `pv-how`. Para dar de alta la entrada donde tu equipo la sigue: issue en un tracker, post en un canal, fila en un índice `CHANGES.md`. |
 | `pv-how` | `how/10-before-analysis` | Al empezar a analizar un cambio (antes de recopilar contexto técnico). Para cargar contexto que el análisis debería tener siempre: refrescar tipos/OpenAPI generados, volcar el esquema de la BD, traer doc de una dependencia externa a un fichero local. No se ejecuta si eliges "implementar el `plan.md` que ya hay". |
 | `pv-how` | `how/20-after-plan` | Tras escribir `plan.md` y calcular la mediana de riesgo, antes de preguntarte si implementar. Para validar el plan (linter de formato, comprobar rutas citadas) o exportarlo: crear el ticket de implementación con el resumen y el riesgo. |
-| `pv-new` | `new/20-after-entry` | Al terminar de documentar un cambio nuevo, antes de ceder el turno a `pv-how`. Para dar de alta la entrada donde tu equipo la sigue: issue en un tracker, post en un canal, fila en un índice `CHANGES.md`. |
+| `pv-fix` | `fix/10-before-entry` | En la vía rápida de `pv-fix`, justo tras documentar la entrada trivial, antes de sus propios hooks de `pv-do` y antes de tocar código. Barrera mínima y barata: correr el linter/formatter sobre el/los fichero(s) tocado(s), exigir que exista un test que lo cubra, bloquear un fichero de la lista de no-tocar. Mantenlo rápido — la vía rápida está pensada para ser de un solo turno. |
+
+**Fase de desarrollo** (`pv-do`):
+
+| Skill | Hook | Cuándo se ejecuta / para qué sirve |
+|-------|------|------------------------------------|
 | `pv-do` | `do/10-before-implementation` | Antes de tocar código al implementar un cambio (también en la vía rápida de `pv-fix`). Para preparar el entorno o comprobar precondiciones. |
 | `pv-do` | `do/20-after-implementation` | Con el código y las docs ya hechos, antes de mover la carpeta a `implemented/` (también vía rápida de `pv-fix`). Para lanzar los tests, un lint, o publicar/verificar algo al terminar. |
+
+**Fase de entrega** (`pv-version`):
+
+| Skill | Hook | Cuándo se ejecuta / para qué sirve |
+|-------|------|------------------------------------|
 | `pv-version` | `version/05-before-guardrail` | Al arrancar `pv-version`, antes incluso de comprobar que `implemented/` está vacío. Para abortar barato: árbol git limpio, rama correcta, CI en verde, que no exista ya un tag con el nombre previsto. |
 | `pv-version` | `version/10-before-version` | Tras ese guardarraíl, antes de resolver el código de versión `{XXXX}`. Otro punto de comprobación previa a la entrega. |
 | `pv-version` | `version/20-after-build` | Tras copiar los artefactos del entregable a `files/`. Para post-procesar o publicar el build. |

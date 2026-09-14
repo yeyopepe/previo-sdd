@@ -16,7 +16,8 @@ overwrites or touches existing content):
   30-after-changelog.md), stuff/hooks/do/ gets pv-do's two
   (10-before-implementation.md / 20-after-implementation.md), stuff/hooks/how/ gets
   pv-how's two (10-before-analysis.md / 20-after-plan.md), stuff/hooks/new/
-  gets pv-new's one (20-after-entry.md).
+  gets pv-new's one (20-after-entry.md), stuff/hooks/fix/ gets pv-fix's one
+  (10-before-entry.md).
   Each is copied from the .template.md file under that skill's own hooks/
   dir -- written only if absent, never overwritten, so a project that has
   already added steps keeps them; same idea as docs/* starting with its
@@ -214,6 +215,9 @@ HOOK_SETS = {
     )),
     "new": ("pv-new", (
         "20-after-entry.md",
+    )),
+    "fix": ("pv-fix", (
+        "10-before-entry.md",
     )),
 }
 

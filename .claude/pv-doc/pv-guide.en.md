@@ -382,15 +382,28 @@ The `pv-*` skill flows are not editable from a project — their `SKILL.md`, `wo
 - **`how-to-compile.md`** — how to build the deliverable (steps 3–4 of `pv-version`), covered above. Not a hook, but the other `stuff/` customization point.
 - **`hooks/<flow>/*.md`** — your project's own steps at each insertion point. A file with no steps (or absent) is skipped silently; if a step fails, the flow stops and explains it.
 
-**Available hooks** (each lives in its subfolder under `{workFolder}/stuff/hooks/`):
+**Available hooks** (each lives in its subfolder under `{workFolder}/stuff/hooks/`), grouped by the phase of the flow they belong to:
+
+**Analysis phase** (`pv-new`, `pv-how`, `pv-fix`):
 
 | Skill | Hook | When it runs / what it's for |
 |-------|------|------------------------------|
+| `pv-new` | `new/20-after-entry` | When a new change finishes being documented, before handing off to `pv-how`. To register the entry where your team tracks it: a tracker issue, a channel post, a row in a `CHANGES.md` index. |
 | `pv-how` | `how/10-before-analysis` | At the start of analyzing a change (before technical context is gathered). To load context the analysis should always have: refresh generated types / an OpenAPI spec, dump the DB schema, pull an external dependency's docs into a local file. Not run if you choose "implement the existing `plan.md`". |
 | `pv-how` | `how/20-after-plan` | After `plan.md` is written and the risk median computed, before you're asked whether to implement. To validate the plan (format linter, check cited paths) or export it: open the implementation ticket with the summary and the risk. |
-| `pv-new` | `new/20-after-entry` | When a new change finishes being documented, before handing off to `pv-how`. To register the entry where your team tracks it: a tracker issue, a channel post, a row in a `CHANGES.md` index. |
+| `pv-fix` | `fix/10-before-entry` | In `pv-fix`'s fast-track, right after the trivial entry is documented, before its own `pv-do` hooks and before any code is edited. A cheap minimum barrier: run the linter/formatter on the touched file(s), require a covering test, block a do-not-touch file. Keep it fast — the fast-track is meant to be a single turn. |
+
+**Development phase** (`pv-do`):
+
+| Skill | Hook | When it runs / what it's for |
+|-------|------|------------------------------|
 | `pv-do` | `do/10-before-implementation` | Before any code is touched when implementing a change (also in `pv-fix`'s fast-track). To prepare the environment or check preconditions. |
 | `pv-do` | `do/20-after-implementation` | With code and docs done, before the folder moves to `implemented/` (also `pv-fix` fast-track). To run the tests, a lint, or publish/verify something on finish. |
+
+**Release phase** (`pv-version`):
+
+| Skill | Hook | When it runs / what it's for |
+|-------|------|------------------------------|
 | `pv-version` | `version/05-before-guardrail` | When `pv-version` starts, before it even checks that `implemented/` is empty. To abort cheaply: git tree clean, right branch, CI green, no tag already exists with the planned name. |
 | `pv-version` | `version/10-before-version` | After that guardrail, before the version code `{XXXX}` is resolved. Another pre-release check point. |
 | `pv-version` | `version/20-after-build` | After the deliverable's artifacts are copied to `files/`. To post-process or publish the build. |

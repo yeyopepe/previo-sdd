@@ -97,7 +97,7 @@ Leyenda:
 - **pv-fix** — Documenta un bug y lo implementa de punta a punta, y además es la vía rápida del framework para cambios tan pequeños que casi no requieren análisis (typo, texto, un valor/constante, un ajuste de estilo aislado, sea o no un bug). Primero invoca `pv-internal-tech-analysis` para valorar si lo pedido es `fast` (sin ambigüedad, ≤2 ficheros, sin afectar a `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir` ni incongruencias detectadas con ellos, sin comportamiento nuevo). Si es `fast`, crea la entrada vía `pv-internal-workflow` (`action=create`, `type=fast`), aplica el cambio directamente y la mueve a `implemented` (`action=move`) en la misma invocación, sin `plan.md`. Como la vía rápida edita código igual que `pv-do`, ejecuta los dos hooks de proyecto de `pv-do` (`{workFolder}/stuff/hooks/do/10-before-implementation.md` antes de tocar código, `20-after-implementation.md` tras aplicar y documentar el cambio, antes de mover la carpeta) — los mismos ficheros, localizados igual; no hay un conjunto de hooks `fix/` aparte. Si no es `fast` y es un bug, genera `description.md` vía `pv-internal-workflow` (`type=fix`), invocando `pv-internal-tech-mermaid`/`pv-internal-mockups-html` cuando el fix tiene flujo o componente visual que representar, y encadena automáticamente `pv-how` para corregirlo de punta a punta, con el análisis acotado estrictamente a la causa raíz (sin ampliar alcance). Si no es `fast` y no es un bug, avisa al usuario e invoca `pv-new` con su petición. *Usa:* `pv-internal-workflow`, `pv-internal-tech-analysis`, `pv-internal-tech-mermaid`, `pv-internal-mockups-html`, `pv-new`, `pv-how`.
 
   Assets y scripts:
-  - [`workflow.fix.md`](skills/pv-fix/workflow.fix.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba), cubriendo tanto el subflujo rápido (fast-track) como el no trivial; se lee antes de ejecutar cualquier paso, fuente de verdad de la secuencia y las ramas. El subflujo rápido dibuja en naranja los dos puntos de hook de `pv-do` (`10-before-implementation`, `20-after-implementation`) — reutiliza el conjunto de hooks de `pv-do`, no define uno propio.
+  - [`workflow.fix.md`](skills/pv-fix/workflow.fix.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba), cubriendo tanto el subflujo rápido (fast-track) como el no trivial; se lee antes de ejecutar cualquier paso, fuente de verdad de la secuencia y las ramas. El subflujo rápido dibuja en naranja su propio punto de hook (`fix/10-before-entry`, justo tras crear la entrada y antes de tocar código) y además los dos de `pv-do` (`10-before-implementation`, `20-after-implementation`), que reutiliza.
   - Reutiliza `extend-entry.md` de `pv-new` cuando el `xxxx` indicado ya existe en `inProgress`.
 
 - **pv-how** — Toma una entrada ya documentada en `inProgress`, invoca `pv-internal-tech-analysis` para reunir el contexto técnico, analiza la solución técnica y escribe `plan.md` (usando `pv-internal-tech-mermaid`/`pv-internal-mockups-html` cuando lo que hay que describir es un flujo o requiere maqueta visual). Con `plan.md` ya escrito, invoca `pv-internal-tech-risks` para valorar el riesgo de romper algo al implementarlo y escribe la mediana devuelta en `.metadata.json` (campo `risk`) vía `set-metadata.py --set-risk` — no en `plan.md` (el detalle de los 9 factores solo se añade si el usuario lo pide, en la sección `(f)` del plan). Si el usuario confirma que quiere implementar ya, encadena directamente `pv-do` sobre la misma entrada. *Usa:* `pv-internal-tech-analysis`, `pv-internal-tech-mermaid`, `pv-internal-mockups-html`, `pv-internal-tech-risks`, `pv-do`.
@@ -517,7 +517,7 @@ Leyenda:
 
 ## Hooks de proyecto
 
-Cuatro skills exponen puntos de inserción de **hooks de proyecto**: `pv-how`, `pv-new`, `pv-do`, `pv-version` (la vía rápida de `pv-fix` reutiliza el conjunto de `pv-do`, no define ninguno propio). Cada punto es un fichero en `{workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md` con 0..N bloques `### Step N: {name}` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`, misma forma que `how-to-compile.md`). `scaffold-project.py` (`pv-init`) siembra cada fichero con encabezado + cero pasos; la skill dueña los lee en el paso indicado abajo, casa un fichero por su prefijo de id `<NN>` y ejecuta los bloques `### Step` que contenga. Un fichero sin pasos, o ausente, se salta en silencio; si el comando de un paso falla o no aparece su salida esperada, el flujo se detiene y lo explica — nunca lo sortea. `pv-update` resiembra un fichero que falte y renombra uno cuyo `<NN>` sea correcto pero cuyo slug no sea canónico (también la vía de migración cuando el framework renombra un punto).
+Cinco skills exponen puntos de inserción de **hooks de proyecto**: `pv-how`, `pv-new`, `pv-do`, `pv-version`, `pv-fix` (cuya vía rápida además reutiliza el conjunto de `pv-do`, sumado al suyo propio). Cada punto es un fichero en `{workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md` con 0..N bloques `### Step N: {name}` (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`, misma forma que `how-to-compile.md`). `scaffold-project.py` (`pv-init`) siembra cada fichero con encabezado + cero pasos; la skill dueña los lee en el paso indicado abajo, casa un fichero por su prefijo de id `<NN>` y ejecuta los bloques `### Step` que contenga. Un fichero sin pasos, o ausente, se salta en silencio; si el comando de un paso falla o no aparece su salida esperada, el flujo se detiene y lo explica — nunca lo sortea. `pv-update` resiembra un fichero que falte y renombra uno cuyo `<NN>` sea correcto pero cuyo slug no sea canónico (también la vía de migración cuando el framework renombra un punto).
 
 **Nomenclatura: `<NN>-<temporal>-<objeto>`.**
 
@@ -525,13 +525,14 @@ Cuatro skills exponen puntos de inserción de **hooks de proyecto**: `pv-how`, `
 - `<temporal>` — exactamente una de `before-` (corre justo antes de que la skill haga `<objeto>`) o `after-` (justo después). `pre-`/`post-` quedan descartadas en favor de estas.
 - `<objeto>` — un sustantivo en singular que nombra el hito del flujo al que el hook se ancla, usando un término que el propio `SKILL.md`/`workflow.*.md` de la skill ya use para ese paso. Singular siempre, sin verbo, un guion interno solo si el hito no tiene nombre de una palabra. Una pareja `before-`/`after-` sobre el mismo hito comparte un único `<objeto>` y solo se diferencia en `<NN>` y partícula — `do/10-before-implementation` y `do/20-after-implementation` acotan así el bloque de implementar-y-documentar.
 
-**Los nueve puntos:**
+**Los diez puntos:**
 
 | Skill | Hook | Corre |
 |-------|------|-------|
 | `pv-how` | `how/10-before-analysis` | inicio del paso 3 (analizar), antes de `pv-internal-tech-analysis`; no en la rama "implementar el `plan.md` actual" |
 | `pv-how` | `how/20-after-plan` | tras el paso 3.1 (mediana de riesgo persistida), antes del paso 3.2 (preguntar si implementar) |
 | `pv-new` | `new/20-after-entry` | fin del paso 5, tras validar los `design_*` (y borrar la idea de `todo/`, si la hubo), antes de ceder el turno a `pv-how` |
+| `pv-fix` | `fix/10-before-entry` | vía rápida (fast-track), justo tras crear `description.md`/`history.md`, antes de los hooks de `pv-do` y antes de tocar código |
 | `pv-do` | `do/10-before-implementation` | inicio del paso 2, antes de editar código (también vía rápida de `pv-fix`) |
 | `pv-do` | `do/20-after-implementation` | fin del paso 2.1, tras código + docs sincronizadas, antes de mover la carpeta a `implemented/` (también vía rápida de `pv-fix`) |
 | `pv-version` | `version/05-before-guardrail` | paso 0.4, antes del guardarraíl de `implemented/` vacío (paso 0.5) y antes de resolver `XXXX` |
@@ -539,9 +540,9 @@ Cuatro skills exponen puntos de inserción de **hooks de proyecto**: `pv-how`, `
 | `pv-version` | `version/20-after-build` | paso 4.1, tras copiar los artefactos del entregable a `files/` |
 | `pv-version` | `version/30-after-changelog` | paso 6.1, tras redactar el changelog, antes del resumen final |
 
-**Variables.** Todo hook sustituye `{workFolder}`; los de `pv-how`/`pv-new`/`pv-do` sustituyen además `{xxxx}` (el código del cambio/fix); los `20-`/`30-` de `pv-version` sustituyen además `{XXXX}` y las rutas `versions/{XXXX}/` (los `05-`/`10-` corren antes de que `XXXX` exista). Rutas como `plan.md` / `description.md` / la carpeta de la entrada **no** son variables dedicadas — un paso las compone con `{workFolder}` + `{xxxx}` (p. ej. `{workFolder}/changes/inProgress/{xxxx}/plan.md`). Cualquier otra cosa (rama, timestamp, lista de ficheros) — el paso corre su propio comando. Los ficheros `stuff/hooks/*` siguen `interaction.language`; no hay campo de idioma para `stuff/*`.
+**Variables.** Todo hook sustituye `{workFolder}`; los de `pv-how`/`pv-new`/`pv-fix`/`pv-do` sustituyen además `{xxxx}` (el código del cambio/fix); los `20-`/`30-` de `pv-version` sustituyen además `{XXXX}` y las rutas `versions/{XXXX}/` (los `05-`/`10-` corren antes de que `XXXX` exista). Rutas como `plan.md` / `description.md` / la carpeta de la entrada **no** son variables dedicadas — un paso las compone con `{workFolder}` + `{xxxx}` (p. ej. `{workFolder}/changes/inProgress/{xxxx}/plan.md`). Cualquier otra cosa (rama, timestamp, lista de ficheros) — el paso corre su propio comando. Los ficheros `stuff/hooks/*` siguen `interaction.language`; no hay campo de idioma para `stuff/*`.
 
-Estos cinco (los dos de `pv-do`, los cuatro de `pv-version` menos los renombrados, es decir el conjunto del commit `8194c30`) más los cuatro nuevos (`how/10`, `how/20`, `new/20`, `version/05`) son todo el catálogo; las propuestas aún sin decidir viven en `plans/07_future-hooks.md` del repo del framework.
+Estos cinco (los dos de `pv-do`, los cuatro de `pv-version` menos los renombrados, es decir el conjunto del commit `8194c30`) más los cuatro añadidos después (`how/10`, `how/20`, `new/20`, `version/05`) más `fix/10-before-entry` son todo el catálogo; las propuestas aún sin decidir viven en `plans/07_future-hooks.md` del repo del framework.
 
 ## Estructura completa de carpetas y ficheros
 
@@ -563,6 +564,8 @@ Vista completa de qué crea el framework y dónde, con la configuración por def
 │       ├── pv-init/                   # inicializa/completa pv-context.json
 │       ├── pv-new/                    # documenta un change
 │       ├── pv-fix/                    # documenta+implementa un fix (o atajo fast)
+│       │   └── hooks/                        # semilla NN-slug.template.md copiada a stuff/hooks/fix/
+│       │       └── 10-before-entry.template.md
 │       ├── pv-how/                    # planifica: escribe plan.md
 │       │   └── hooks/                        # semillas NN-slug.template.md copiadas a stuff/hooks/how/
 │       │       ├── 10-before-analysis.template.md
@@ -623,8 +626,10 @@ Vista completa de qué crea el framework y dónde, con la configuración por def
     │       ├── how/                        # ficheros de hook de pv-how
     │       │   ├── 10-before-analysis.md   # corre al empezar el análisis (paso 3)
     │       │   └── 20-after-plan.md        # corre tras persistir la mediana de riesgo, antes de preguntar si implementar
-    │       └── new/                        # fichero de hook de pv-new
-    │           └── 20-after-entry.md       # corre al final del paso 5, antes de ceder el turno a pv-how
+    │       ├── new/                        # fichero de hook de pv-new
+    │       │   └── 20-after-entry.md       # corre al final del paso 5, antes de ceder el turno a pv-how
+    │       └── fix/                        # fichero de hook propio de pv-fix (vía rápida)
+    │           └── 10-before-entry.md      # corre justo tras crear la entrada, antes de tocar código
     │
     └── docs/                          # docs.* — rutas configurables (relativas a workFolder), mantenidas por pv-do
         ├── architecture/              # docs.tech.architectureDocDir

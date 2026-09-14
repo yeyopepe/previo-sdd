@@ -517,7 +517,7 @@ Leyenda:
 
 ## Project hooks
 
-Four skills expose **project hook** insertion points: `pv-how`, `pv-new`, `pv-do`, `pv-version` (`pv-fix`'s fast-track reuses `pv-do`'s set, it defines none of its own). Each point is one file at `{workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md` holding 0..N `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`, same shape as `how-to-compile.md`). `scaffold-project.py` (`pv-init`) seeds every file header + zero steps; the owning skill reads them at the step noted below, matching a file by its `<NN>` id prefix and running whatever `### Step` blocks it contains. A file with no steps, or absent, is skipped silently; if a step's command fails or its expected output doesn't appear, the flow stops and explains it — it never works around it. `pv-update` reseeds a missing file and renames one whose `<NN>` is right but whose slug isn't canonical (also the migration path when the framework renames a point).
+Five skills expose **project hook** insertion points: `pv-how`, `pv-new`, `pv-do`, `pv-version`, `pv-fix` (its fast-track also reuses `pv-do`'s set, in addition to its own). Each point is one file at `{workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md` holding 0..N `### Step N: {name}` blocks (`**Command(s) to run**` / `**Generated file(s)**` / `**Notes**`, same shape as `how-to-compile.md`). `scaffold-project.py` (`pv-init`) seeds every file header + zero steps; the owning skill reads them at the step noted below, matching a file by its `<NN>` id prefix and running whatever `### Step` blocks it contains. A file with no steps, or absent, is skipped silently; if a step's command fails or its expected output doesn't appear, the flow stops and explains it — it never works around it. `pv-update` reseeds a missing file and renames one whose `<NN>` is right but whose slug isn't canonical (also the migration path when the framework renames a point).
 
 **Naming: `<NN>-<temporal>-<object>`.**
 
@@ -525,13 +525,14 @@ Four skills expose **project hook** insertion points: `pv-how`, `pv-new`, `pv-do
 - `<temporal>` — exactly one of `before-` (runs just before the skill does `<object>`) or `after-` (just after). `pre-`/`post-` are retired in favor of these.
 - `<object>` — one singular noun naming the flow milestone the hook anchors to, using a term the skill's own `SKILL.md`/`workflow.*.md` already uses for that step. Singular always, no verb, an internal hyphen only if the milestone has no one-word name. A `before-`/`after-` pair on the same milestone shares one `<object>` and differs only in `<NN>` and particle — `do/10-before-implementation` and `do/20-after-implementation` bracket the implement-and-document block that way.
 
-**The nine points:**
+**The ten points:**
 
 | Skill | Hook | Runs |
 |-------|------|------|
 | `pv-how` | `how/10-before-analysis` | start of step 3 (analyze), before `pv-internal-tech-analysis`; not on the "implement current `plan.md`" branch |
 | `pv-how` | `how/20-after-plan` | after step 3.1 (risk median persisted), before step 3.2 (ask whether to implement) |
 | `pv-new` | `new/20-after-entry` | end of step 5, after the `design_*` are validated (and the `todo/` idea deleted, if any), before handing off to `pv-how` |
+| `pv-fix` | `fix/10-before-entry` | fast-track branch, right after `description.md`/`history.md` are created, before the `pv-do` hooks and before any code is edited |
 | `pv-do` | `do/10-before-implementation` | top of step 2, before any code is edited (also `pv-fix` fast-track) |
 | `pv-do` | `do/20-after-implementation` | end of step 2.1, after code + synced docs, before the folder moves to `implemented/` (also `pv-fix` fast-track) |
 | `pv-version` | `version/05-before-guardrail` | step 0.4, before the `implemented/`-empty guardrail (step 0.5) and before `XXXX` is resolved |
@@ -539,9 +540,9 @@ Four skills expose **project hook** insertion points: `pv-how`, `pv-new`, `pv-do
 | `pv-version` | `version/20-after-build` | step 4.1, after the deliverable's artifacts are copied to `files/` |
 | `pv-version` | `version/30-after-changelog` | step 6.1, after the changelog is drafted, before the final summary |
 
-**Variables.** Every hook substitutes `{workFolder}`; `pv-how`/`pv-new`/`pv-do` hooks also substitute `{xxxx}` (the change/fix code); `pv-version`'s `20-`/`30-` hooks also substitute `{XXXX}` and the `versions/{XXXX}/` paths (`05-`/`10-` run before `XXXX` exists). Paths like `plan.md` / `description.md` / the entry folder are **not** dedicated variables — a step composes them from `{workFolder}` + `{xxxx}` (e.g. `{workFolder}/changes/inProgress/{xxxx}/plan.md`). Anything else (branch, timestamp, file list) — the step runs its own command. `stuff/hooks/*` files follow `interaction.language`; there is no `stuff/*` language field.
+**Variables.** Every hook substitutes `{workFolder}`; `pv-how`/`pv-new`/`pv-fix`/`pv-do` hooks also substitute `{xxxx}` (the change/fix code); `pv-version`'s `20-`/`30-` hooks also substitute `{XXXX}` and the `versions/{XXXX}/` paths (`05-`/`10-` run before `XXXX` exists). Paths like `plan.md` / `description.md` / the entry folder are **not** dedicated variables — a step composes them from `{workFolder}` + `{xxxx}` (e.g. `{workFolder}/changes/inProgress/{xxxx}/plan.md`). Anything else (branch, timestamp, file list) — the step runs its own command. `stuff/hooks/*` files follow `interaction.language`; there is no `stuff/*` language field.
 
-These five (`pv-do`'s two, `pv-version`'s four minus the renames, i.e. the set in commit `8194c30`) plus the four new (`how/10`, `how/20`, `new/20`, `version/05`) are the whole catalog; proposals not yet decided live in the framework repo's `plans/07_future-hooks.md`.
+These five (`pv-do`'s two, `pv-version`'s four minus the renames, i.e. the set in commit `8194c30`) plus the four added next (`how/10`, `how/20`, `new/20`, `version/05`) plus `fix/10-before-entry` are the whole catalog; proposals not yet decided live in the framework repo's `plans/07_future-hooks.md`.
 
 ## Full folder and file structure
 
@@ -563,6 +564,8 @@ A complete view of what the framework creates and where, with the default config
 │       ├── pv-init/                   # initializes/completes pv-context.json
 │       ├── pv-new/                    # documents a change
 │       ├── pv-fix/                    # documents+implements a fix (or the fast shortcut)
+│       │   └── hooks/                        # NN-slug.template.md seed copied to stuff/hooks/fix/
+│       │       └── 10-before-entry.template.md
 │       ├── pv-how/                    # plans: writes plan.md
 │       ├── pv-do/                     # implements the code
 │       │   └── hooks/                        # NN-slug.template.md seeds copied to stuff/hooks/do/
@@ -624,8 +627,10 @@ A complete view of what the framework creates and where, with the default config
     │       ├── how/                        # pv-how's hook files
     │       │   ├── 10-before-analysis.md   # runs at the start of the analysis (step 3)
     │       │   └── 20-after-plan.md        # runs after the risk median is persisted, before asking to implement
-    │       └── new/                        # pv-new's hook file
-    │           └── 20-after-entry.md       # runs at the end of step 5, before handing off to pv-how
+    │       ├── new/                        # pv-new's hook file
+    │       │   └── 20-after-entry.md       # runs at the end of step 5, before handing off to pv-how
+    │       └── fix/                        # pv-fix's own hook file (fast-track branch)
+    │           └── 10-before-entry.md      # runs right after the entry is created, before any code is edited
     │
     └── docs/                          # docs.* — configurable paths (relative to workFolder), maintained by pv-do
         ├── architecture/              # docs.tech.architectureDocDir
