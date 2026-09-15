@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Maqueta — Ejemplos de uso del framework de notas</title>
+<style>
+  :root {
+    --page-bg: #c2c2c2;
+    --card-bg: #fff;
+    --ink: #1a1a1a;
+    --ink-muted: #5f6b73;
+    --border: #d6dce0;
+    --radius: 8px;
+    --shadow: 0 2px 8px rgba(0,0,0,.10), 0 1px 3px rgba(0,0,0,.08);
+    --accent-yellow: #f5c518;
+
+    /* Framework de notas: solo dos colores */
+    --mnote-pin: #f5a623;   /* ámbar → nota vinculada a un elemento */
+    --mnote-gen: #2c7dd8;   /* azul  → nota general / elemento seleccionado */
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 2rem;
+    background: var(--page-bg);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--ink); line-height: 1.5;
+  }
+  h1 { font-size: 1.3rem; margin: 0 0 .25rem; }
+  h2 { font-size: 1rem; margin: 2.5rem 0 1rem; color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,.3); }
+  .lede { color: #333; font-size: .9rem; margin: 0 0 1rem; max-width: 68ch; }
+  .scene { background: #dfe3e6; border-radius: 12px; padding: 2.5rem 2rem 2rem; position: relative; min-height: 200px; }
+  .scene__label { position: absolute; top: 10px; left: 14px; font-size: .7rem; font-weight: 700;
+    color: var(--ink-muted); text-transform: uppercase; letter-spacing: .04em; }
+  code { background: #f0f2f4; padding: .1em .35em; border-radius: 3px; font-size: .82em; }
+
+  /* --- Mockup de ejemplo: lanzador "Bloc de notas" + hoja --- */
+  .launcher { display: inline-flex; align-items: center; gap: .6rem; background: #fff;
+    padding: .5rem; border-radius: var(--radius); box-shadow: var(--shadow); }
+  .launcher__new-btn { border: 1px solid rgba(0,0,0,.15); border-radius: 4px; background: var(--accent-yellow);
+    color: var(--ink); font-size: .8rem; font-weight: 600; padding: .5rem .75rem; cursor: pointer; }
+  .launcher__eye-btn { width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--border);
+    background: #fff; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+  .launcher__eye-btn svg { width: 18px; height: 18px; }
+  .sheet { width: 230px; background: #fff; border-radius: var(--radius); box-shadow: var(--shadow);
+    overflow: hidden; display: flex; flex-direction: column; }
+  .sheet__header { background: #fdf3c7; padding: .45rem .55rem; display: flex; align-items: center; gap: .4rem; }
+  .sheet__title { flex: 1; font-size: .875rem; font-weight: 500; }
+  .sheet__icon { width: 18px; height: 18px; color: var(--ink-muted); }
+  .sheet__body { padding: .65rem; font-size: .8rem; min-height: 70px; }
+
+  /* ============================================================
+     FRAMEWORK DE NOTAS (mnote-*) — mismo sistema que el catálogo
+     Sin pin-globo ni modo "armado": clic simple = selección,
+     la barra se desplaza al cursor, el ➕ decide global/vinculada.
+     ============================================================ */
+
+  .mnote-sel    { outline: 2px solid var(--mnote-gen); outline-offset: 2px; border-radius: 3px; }
+  .mnote-linked { outline: 2px solid var(--mnote-pin); outline-offset: 2px; border-radius: 3px; }
+
+  /* Contador ámbar en la esquina: nº de notas vinculadas. Solo visible
+     con las anotaciones visibles. */
+  .mnote-count { position: absolute; top: -8px; right: -8px;
+    min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
+    background: var(--mnote-pin); color: #2b2b2b; border: 2px solid #fff;
+    font: 700 10px/12px system-ui; display: inline-flex; align-items: center; justify-content: center; z-index: 5; }
+
+  /* (1) Barra: gris claro, solo iconos, se mueve junto al cursor */
+  .mnote-bar { position: absolute;
+    display: inline-flex; gap: .15rem; align-items: center;
+    background: #e9edf0; border: 1px solid var(--border); color: var(--ink);
+    padding: .25rem .3rem; border-radius: 6px; font-size: .95rem; box-shadow: 0 3px 10px rgba(0,0,0,.18); z-index: 7; }
+  .mnote-bar button { border: 0; background: transparent; color: inherit; font: inherit; line-height: 1;
+    width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px; cursor: pointer; }
+  .mnote-bar button:hover { background: rgba(0,0,0,.08); }
+  .mnote-bar button[aria-pressed="true"] { background: var(--mnote-pin); }
+  .mnote-bar .count { background: var(--mnote-pin); color: #2b2b2b; font-weight: 700; font-size: .72rem;
+    border-radius: 4px; padding: 0 .35rem; margin-left: .15rem; }
+
+  .mnote-menu { position: absolute; border: 1px solid var(--border); background: #fff; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2); font-size: .78rem; width: 220px; overflow: hidden; z-index: 8; }
+  .mnote-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    font: inherit; padding: .5rem .6rem; cursor: pointer; }
+  .mnote-menu button:hover { background: #f4f6f8; }
+  .mnote-menu button + button { border-top: 1px solid var(--border); }
+
+  /* (2) Tarjeta de nota (vinculada / general, lectura / edición) */
+  .mnote-card { position: absolute; width: 240px; background: #fff; border: 1px solid var(--border);
+    border-left: 6px solid var(--mnote-pin); border-radius: 5px; font-size: .8rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); z-index: 6; }
+  .mnote-card--gen { border-left-color: var(--mnote-gen); }
+  .mnote-card__head { padding: .4rem .55rem; font-size: .72rem; color: var(--ink-muted);
+    display: flex; gap: .35rem; align-items: center; }
+  .mnote-card__body { padding: 0 .55rem .5rem; }
+  .mnote-card__body textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit;
+    border: 1px solid var(--border); border-radius: 4px; padding: .35rem; }
+  .mnote-card__foot { display: flex; gap: .4rem; padding: .4rem .55rem; border-top: 1px solid var(--border); }
+  .mnote-card__foot button { border: 1px solid var(--border); background: #f7f8f9; font: inherit;
+    font-size: .74rem; padding: .25rem .5rem; border-radius: 4px; cursor: pointer; }
+  .mnote-card__foot .del { margin-left: auto; color: #b3261e; border-color: #e0b4b4; background: #fff; }
+  .mnote-card__foot .ok { background: var(--mnote-pin); border-color: var(--mnote-pin); color: #2b2b2b; font-weight: 600; }
+
+  /* (3) Panel-lista de notas generales */
+  .mnote-panel { position: absolute; top: 12px; right: 12px; width: 240px;
+    border: 1px solid var(--border); border-radius: 6px; overflow: hidden; background: #fff; z-index: 4; }
+  .mnote-panel__head { padding: .45rem .6rem; font-size: .74rem; font-weight: 700; color: var(--ink-muted);
+    background: #f4f6f8; display: flex; justify-content: space-between; }
+  .mnote-panel__item { padding: .5rem .6rem; font-size: .8rem; border-top: 1px solid var(--border);
+    border-left: 6px solid var(--mnote-gen); }
+  .mnote-panel__item.detached { border-left-color: #b3261e; }
+  .mnote-panel__item .meta { font-size: .68rem; color: var(--ink-muted); margin-bottom: .15rem; }
+  .mnote-panel__item .acts { margin-top: .35rem; display: flex; gap: .6rem; }
+  .mnote-panel__item .acts button { border: 0; background: transparent; color: var(--ink-muted);
+    font: inherit; font-size: .72rem; cursor: pointer; padding: 0; }
+
+  .callout { margin-top: 1rem; background: #fff; border: 1px solid var(--border);
+    border-left: 6px solid var(--mnote-gen); border-radius: 6px; padding: .7rem .85rem; font-size: .82rem; }
+  .callout strong { color: #1b4a78; }
+</style>
+</head>
+<body>
+
+<h1>Ejemplos de uso — el framework de notas sobre un mockup real</h1>
+<p class="lede">
+  El mockup de ejemplo es el lanzador "Bloc de notas" y una hoja. <strong>No hay pin ni modo
+  "armado"</strong>: un clic simple selecciona el elemento y la barra (solo iconos) se
+  desplaza junto al cursor. El <strong>➕</strong> crea la nota — general si no hay selección,
+  o preguntando con un mini-menú si la hay.
+</p>
+
+<!-- ESCENA 1 -->
+<h2>Escena 1 · Clic en un elemento → barra al cursor → ➕ → mini-menú</h2>
+<div class="scene" style="min-height:220px;">
+  <span class="scene__label">design_bloc-notas.html — "Nueva hoja" seleccionada</span>
+
+  <div style="margin-top:.5rem;">
+    <div class="launcher">
+      <button class="launcher__new-btn mnote-sel">Nueva hoja (3)</button>
+      <button class="launcher__eye-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <!-- barra desplazada junto al elemento pulsado -->
+  <div class="mnote-bar" style="top:38px; left:170px;">
+    <button aria-pressed="true" title="Nueva nota" aria-label="Nueva nota">➕</button>
+    <button title="Ocultar anotaciones" aria-label="Ocultar anotaciones">👁</button>
+    <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+    <span class="count" title="Total de notas">0</span>
+  </div>
+  <div class="mnote-menu" style="top:78px; left:170px;">
+    <button>📌 Nota en <code>button.launcher__new-btn</code></button>
+    <button>➕ Nota general</button>
+  </div>
+</div>
+<div class="callout">
+  <strong>Flujo:</strong> clic en "Nueva hoja" → contorno azul + la barra salta a su lado →
+  <strong>➕</strong> despliega el mini-menú. Si no hubiera nada seleccionado, <strong>➕</strong>
+  crearía la nota general sin preguntar.
+</div>
+
+<!-- ESCENA 2 -->
+<h2>Escena 2 · Varias notas + relación nota↔elemento al abrirla</h2>
+<div class="scene" style="min-height:300px;">
+  <span class="scene__label">design_bloc-notas.html — revisión: 3 notas, la de la hoja abierta</span>
+
+  <div style="margin-top:.5rem; display:flex; gap:2rem; align-items:flex-start;">
+    <div style="position:relative;">
+      <div class="launcher">
+        <button class="launcher__new-btn" style="position:relative;">Nueva hoja (3)<span class="mnote-count">1</span></button>
+        <button class="launcher__eye-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div style="position:relative;">
+      <div class="sheet">
+        <div class="sheet__header mnote-linked" style="position:relative;">
+          <div class="sheet__title">Notas de la partida</div>
+          <svg class="sheet__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M7 11V7a5 5 0 0 1 9-3"/></svg>
+          <span class="mnote-count">1</span>
+        </div>
+        <div class="sheet__body">Recuerda traer el mazo de eventos y el track de turnos.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- tarjeta de la nota de la hoja, abierta: comparte contorno ámbar con .sheet__header -->
+  <div class="mnote-card mnote-linked" style="top:110px; left:320px;">
+    <div class="mnote-card__head">Nota en <code>.sheet__header</code></div>
+    <div class="mnote-card__body">Falta el icono de arrastrar para reordenar hojas, a la izquierda del título.</div>
+    <div class="mnote-card__foot">
+      <button>✏️ Editar</button>
+      <button class="del">🗑</button>
+    </div>
+  </div>
+
+  <div class="mnote-panel">
+    <div class="mnote-panel__head"><span>Notas generales</span><span>1</span></div>
+    <div class="mnote-panel__item">
+      <div class="meta">general</div>
+      <div>El amarillo del botón y el de la cabecera de la hoja chocan. Unificar a un solo tono.</div>
+      <div class="acts"><button>✏️ Editar</button><button>🗑 Eliminar</button></div>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  <strong>Relación nota↔elemento:</strong> al abrir la nota de la hoja, su tarjeta y
+  <code>.sheet__header</code> comparten el contorno ámbar — sin líneas. Cada elemento con
+  notas lleva su contador ámbar (aquí 1 y 1). Total = 3 (2 vinculadas + 1 general).
+</div>
+
+<!-- ESCENA 3 -->
+<h2>Escena 3 · "Ocultar anotaciones" — el diseño limpio</h2>
+<div class="scene">
+  <span class="scene__label">design_bloc-notas.html — 👁 anotaciones ocultas</span>
+
+  <!-- la barra sigue visible (sin elemento seleccionado, vuelve a una esquina) -->
+  <div class="mnote-bar" style="top:10px; right:12px; left:auto;">
+    <button title="Nueva nota" aria-label="Nueva nota">➕</button>
+    <button aria-pressed="true" title="Mostrar anotaciones" aria-label="Mostrar anotaciones">👁</button>
+    <button title="Guardar anotaciones" aria-label="Guardar anotaciones">💾</button>
+    <span class="count" title="Total de notas">3</span>
+  </div>
+
+  <div style="margin-top:1rem; display:flex; gap:2rem; align-items:flex-start;">
+    <div class="launcher">
+      <button class="launcher__new-btn">Nueva hoja (3)</button>
+      <button class="launcher__eye-btn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <div class="sheet">
+      <div class="sheet__header">
+        <div class="sheet__title">Notas de la partida</div>
+        <svg class="sheet__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="9" rx="1.5"/><path d="M7 11V7a5 5 0 0 1 9-3"/></svg>
+      </div>
+      <div class="sheet__body">Recuerda traer el mazo de eventos y el track de turnos.</div>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  <strong>Nada de <code>.mnote-*</code> visible</strong> salvo la barra: ni contadores, ni
+  contornos, ni tarjetas, ni panel. Es el mockup que propuso la skill. Las 3 notas siguen
+  guardadas (contador = 3) y el toggle se recuerda por archivo en <code>localStorage</code>.
+</div>
+
+<!-- ESCENA 4 -->
+<h2>Escena 4 · Guardar y cierre del ciclo en pv-new / pv-fix</h2>
+<div class="scene" style="min-height:auto; padding-bottom:1.5rem;">
+  <span class="scene__label">Al pulsar 💾 Guardar</span>
+  <div style="margin-top:1.25rem; display:flex; gap:1.5rem; flex-wrap:wrap;">
+    <div style="flex:1; min-width:290px; background:#fff; border:1px solid var(--border); border-radius:6px; padding:.9rem;">
+      <p style="margin:0 0 .5rem; font-size:.82rem;"><strong>1.</strong> Descarga <code>design_bloc-notas.html</code> con las notas en <code>#mnote-data</code>:</p>
+      <pre style="margin:0; background:#f0f2f4; padding:.6rem; border-radius:4px; overflow:auto; font-size:.7rem;">&lt;script type="application/json" id="mnote-data"&gt;
+[
+ {"id":"n1","kind":"linked",
+  "selector":"button.launcher__new-btn",
+  "text":"Más grande, quitar el (3)"},
+ {"id":"n2","kind":"linked",
+  "selector":".sheet__header",
+  "text":"Falta icono de arrastrar"},
+ {"id":"n3","kind":"general","selector":null,
+  "text":"Unificar el amarillo"}
+]
+&lt;/script&gt;</pre>
+    </div>
+    <div style="flex:1; min-width:290px; background:#fff; border:1px solid var(--border); border-radius:6px; padding:.9rem; font-size:.82rem;">
+      <p style="margin:0 0 .5rem;"><strong>2.</strong> El usuario reemplaza el archivo y vuelve al chat.</p>
+      <p style="margin:0 0 .5rem;"><strong>3.</strong> En el paso de validación visual, <code>pv-new</code> / <code>pv-fix</code> / <code>extend-entry.md</code> detectan <code>#mnote-data</code> con notas, y por cada una:</p>
+      <ul style="margin:.25rem 0 .5rem 1rem; padding:0;">
+        <li>aplican el cambio al <code>design_*.html</code> (vía la skill de mockups con <code>action: edit</code>, o edición directa si es menor);</li>
+        <li>eliminan la nota resuelta de <code>#mnote-data</code>;</li>
+        <li>resumen en la respuesta qué se cambió por cada nota.</li>
+      </ul>
+      <p style="margin:0;"><strong>4.</strong> Se vuelve a presentar la maqueta ya corregida para confirmar.</p>
+    </div>
+  </div>
+</div>
+<div class="callout">
+  <strong>Round-trip:</strong> si el usuario reabre el archivo antes de volver al chat, el
+  framework lee <code>#mnote-data</code> y rehidrata las 3 notas (contadores y panel). Si una
+  nota vinculada ya no encuentra su elemento (mockup editado entre medias), baja al panel
+  como <em>desvinculada</em> (borde rojo) sin perder el texto.
+</div>
+
+</body>
+</html>

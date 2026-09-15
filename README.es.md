@@ -27,14 +27,13 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 |<u>**Rápido y sin complicaciones**</u>|Prioriza la velocidad y el trabajo secuencial frente al trabajo en paralelo, evitando la complejidad de coordinar varios cambios a la vez, resolver conflictos entre PRs o gestionar ramas simultáneas.|
 |<u>**Especificación completa, formato libre**</u>|Cada entrada exige la estructura mínima necesaria para ser útil (intención, plan, estado), sin formatos de *spec* complejos que haya que aprender o mantener a mano.|
 |<u>**Valida siempre sobre diseños**</u>|Visualiza y valida los cambios visuales y los flujos de trabajo con maquetas estáticas (HTML/CSS o personalizado) antes implementar nada, evitando el ciclo de "implementar → ver que no convence → rehacer".|
-|<u>**Análisis detallados, riesgos claros**</u>|Cada cambio es analizado y escrito en un plan al detalle para asegurar el éxito y anticipar el riesgo que conlleva.|
-|<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación técnica y funcional del proyecto, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial o dejar que **Previo** la vaya generando por su cuenta.|
-|<u>**Trazabilidad**</u>| Qué, cuándo y cómo de todo. Siempre. |
+|<u>**Riesgos claros**</u>|Cada cambio se analiza para calcular el riesgo que conlleva de generar potenciales efectos secundarios: 9 factores de riesgo que dan una puntuación de 0 (sin riesgo) a 10 (riesgo extremo).|
+|<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación  del proyecto de forma autónoma, tanto técnica como funcional, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial, analizando un proyecto ya existente o dejar que **Previo** la vaya generando según avance el proyecto.|
 |<u>**Adaptable y versátil**</u> | Ideal para proyectos de cualquier tamaño y se adapta al stack de cada uno.|
 |<u>**Sin herramientas adicionales**</u> |No requiere más que Claude Code y Python en la máquina de desarrollo — sin instalaciones en tu máquina, servicios externos, bases de datos ni otros quebraderos de cabeza.|
 |<u>**100% construido con IA y para IA**</u> |Todo el ciclo (desde la idea hasta su realización) es un proceso 100% guiado por IA, para cualquier tipo de perfil. Unos pocos tokens más, mucha complejidad menos.|
 |<u>**Soporte multi-idioma**</u>| Habla en español, escribe la documentación técnica en inglés y redacta el changelog en francés (por ejemplo). El soporte multi-idioma es configurable hasta en 5 puntos. |
-|<u>**El script único**</u>| Un script/temrinal `pv.py` para gestionar de forma fácil y rápida tus cambios. |
+|<u>**Un Script Único**</u>| Una terminal para gestionar de forma fácil y rápida tus cambios. |
 |<u>**Y muchas cosas más**</u>| Gestión y trazabilidad de cada cambio, generación de versiones (incluidos los changelogs), histórico de prompts relacionados con cada cambio, cambios rápidos, evaluaciones de seguridad, sistema autónomo de actualizaciones, etc.|
 
 
@@ -42,8 +41,8 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 
 | Qué puedes personalizar | Cómo |
 |---|---|
+|<u>**Piezas a tu medida y hooks**</u>| Muchos de los procesos definidos disponen de puntos de personalización (*hooks*) que te permitirán añadir tareas específicas en tu flujo de trabajo, o sustituir algunas skills del framework por otras propias para cambiar la forma en que se hacen ciertas tareas. |
 |<u>**Idioma**</u>|Habla con **Previo** en tu idioma mientras cada tipo de documento (changes, changelog, documentación funcional y técnica) se escribe en el suyo propio — configurable punto por punto en `.claude/pv-context.json`.|
-|<u>**Piezas a tu medida**</u>|Sustituye la generación de maquetas o diagramas por una skill propia de tu proyecto, sin tocar el resto del framework o personaliza el proceso de generación de versiones añadiendo tus propios pasos en el flujo. |
 |<u>**Estructura de carpetas y documentación**</u>|Define dónde vive cada cosa — carpeta de cambios, código fuente, documentación de arquitectura, estilo y funcionalidades — para encajar **Previo** en la estructura que ya tiene tu proyecto.|
 |<u>**Modelo por skill**</u>|Asigna el modelo y el nivel de esfuerzo que prefieras a cada skill (por ejemplo, uno más ligero para tareas de consulta y uno más potente para el análisis técnico).|
 
@@ -52,7 +51,6 @@ Consulta la [`Guía de usuario`](.claude/pv-doc/pv-guide.es.md#más-formas-de-pe
 ## ⚠️Puntos menos fuertes y lo que está por llegar
 - <u>**Contextos grandes.**</u> A medida que el proyecto crezca, el contexto necesario para que **Previo** haga su trabajo también crecerá (y el consumo de tokens). Hemos priorizado la calidad de los resultados frente al supuesto ahorro de tokens (aunque no los hemos olvidado) porque nuestra experiencia nos dice que el retrabajo siempre sale más caro que un buen análisis **Previo**.
 - <u>**Mejor con mejores modelos.**</u> **Previo** puede funcionar con cualquier modelo, aunque los resultados irán en consonancia, claro. Esto es como decidir qué perfil quieres contratar para hacer un trabajo: un junior (ej: Haiku) irá más rápido y te costará menos, pero el riesgo de errores y retrabajo es grande. Incluso puedes tener varios en paralelo si quieres, pero entonces ya no te sale tan barato. Un senior (ej: Sonnet) te costará un poco más, pero se lo pensará mejor y el riesgo será mucho menor. Hemos probado **Previo** con ambos enfoques (Sonnet ya es lo bastante senior) y siempre nos ha compensado el uso de un senior (porcentaje de retrabajo en el último proyecto: 5%) para todo, en lugar de intentar ahorrar con juniors (retrabajo en el mismo proyecto: 40%). Son solo nuestros números, lo sabemos, así que pruébalo tú mismo.
-- <u>**Riesgo vs. pruebas.**</u> Como hemos priorizado la calidad del trabajo y la reducción de riesgos, hemos dejado de lado de momento la implementación de herramientas de pruebas más específicas. Estamos pensando cómo incorporarlo de manera que no afecte a la agilidad del framework. Obviamente solo tienes que indicar en un cambio qué tipos de tests quieres que se hagan de ahora en adelante y el framework se asegurará de hacerlo, pero creemos que puede haber una manera mejor en el futuro cercano.
 
 ## 🛜Instalación
 

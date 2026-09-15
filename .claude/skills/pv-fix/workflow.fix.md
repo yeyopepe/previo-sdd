@@ -45,16 +45,32 @@ flowchart TD
 
     S6Chain[Invoke pv-how on the same xxxx, scoped strictly to root cause] --> EndHow([End: continues in pv-how -> pv-do])
 
-    FT1[Invoke pv-internal-workflow: create description.md/history.md, type=fast] --> FT2[Apply the change directly in code]
+    FT1[Invoke pv-internal-workflow: create description.md/history.md, type=fast] --> FTLoad[List stuff/hooks/fix/NN-slug.md and stuff/hooks/do/NN-slug.md files, match by NN id, parse each file's Step blocks]
+    FTLoad --> FTHookEntry{fix/10-before-entry.md defines steps?}
+    FTHookEntry -->|Yes| FTRunEntry[Run fix/10-before-entry steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
+    FTRunEntry --> FTHookStart
+    FTHookEntry -->|No| FTHookStart
+    FTHookStart{do/10-before-implementation.md defines steps?}
+    FTHookStart -->|Yes| FTRunStart[Run 10-before-implementation steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
+    FTRunStart --> FT2
+    FTHookStart -->|No| FT2
+    FT2[Apply the change directly in code]
     FT2 --> FT2Check{Turns out not trivial while implementing? architecture/style touched, or scope grows}
     FT2Check -->|Yes| FT2Undo[Undo partial edits if any]
     FT2Undo --> FT2Route{Is it a bug?}
     FT2Route -->|Yes| S3Doc
     FT2Route -->|No| S2Warn
     FT2Check -->|No| FT3[Document applied changes in description.md]
-    FT3 --> FT4[Invoke pv-internal-workflow: move inProgress to implemented]
-    FT4 --> FT5[INFO: confirm what was implemented and the doc path]
+    FT3 --> FTHookFinish{20-after-implementation.md defines steps?}
+    FTHookFinish -->|Yes| FTRunFinish[Run 20-after-implementation steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
+    FTRunFinish --> FT4
+    FTHookFinish -->|No| FT4
+    FT4[Invoke pv-internal-workflow: move inProgress to implemented]
+    FT4 --> FT5[INFO: confirm what was implemented, the doc path, plus any hooks that ran]
     FT5 --> EndFast([End: fast-track completed])
+
+    classDef hook fill:#d9770e,color:#fff
+    class FTHookEntry,FTRunEntry,FTHookStart,FTRunStart,FTHookFinish,FTRunFinish hook
 ```
 
 Legend:
@@ -62,3 +78,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
+- Orange nodes — the project's own hook insertion points: `stuff/hooks/fix/10-before-entry.md` is this fast-track's own barrier, right after the entry is created and before any code is edited; `stuff/hooks/do/{10-before-implementation,20-after-implementation}.md` are shared with `pv-do`, since the fast-track branch implements code the same way. Optional; a hook with no steps is skipped silently.

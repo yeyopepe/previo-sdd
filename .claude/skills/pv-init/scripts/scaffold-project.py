@@ -9,11 +9,19 @@ from that file instead of receiving them as arguments.
 What it creates, only if nothing already exists at that path (never
 overwrites or touches existing content):
 - workFolder's fixed subfolders: changes/{inProgress,implemented,todo,closed},
-  versions/, stuff/ -- empty, with a .gitkeep so git tracks them. stuff/ also
-  gets custom-version-pipeline.md (the three fixed sections, zero steps) --
-  written only if absent, never overwritten, so a project that has already
-  added steps keeps them; same idea as docs/* starting with its INDEX.md /
-  001-overview.md rather than truly empty.
+  versions/, stuff/, stuff/hooks/ -- empty, with a .gitkeep so git tracks them.
+  stuff/hooks/ also gets one subdir per hook-exposing skill with its seed
+  hook files (see HOOK_SETS): stuff/hooks/version/ gets pv-version's four
+  (05-before-guardrail.md / 10-before-version.md / 20-after-build.md /
+  30-after-changelog.md), stuff/hooks/do/ gets pv-do's two
+  (10-before-implementation.md / 20-after-implementation.md), stuff/hooks/how/ gets
+  pv-how's two (10-before-analysis.md / 20-after-plan.md), stuff/hooks/new/
+  gets pv-new's one (20-after-entry.md), stuff/hooks/fix/ gets pv-fix's one
+  (10-before-entry.md).
+  Each is copied from the .template.md file under that skill's own hooks/
+  dir -- written only if absent, never overwritten, so a project that has
+  already added steps keeps them; same idea as docs/* starting with its
+  INDEX.md / 001-overview.md rather than truly empty.
 - docs.tech.architectureDocDir / styleBibleDocDir / docs.functional.featuresDocPathDir
   (each if configured): all three follow the same pv-internal-doc-files
   convention -- one {NNN}-{slug}.md file per topic plus a generated
@@ -47,7 +55,18 @@ Prints ONLY a JSON summary on stdout, e.g.:
 
   {
     "workFolderSubfolders": {"created": ["previo-sdd/changes/inProgress", ...], "skipped": []},
-    "customPipeline": {"path": "previo-sdd/stuff/custom-version-pipeline.md", "status": "created"},
+    "hooks": {
+      "version": {
+        "dir": "previo-sdd/stuff/hooks/version",
+        "created": ["previo-sdd/stuff/hooks/version/05-before-guardrail.md", ...],
+        "skipped": []
+      },
+      "do": {
+        "dir": "previo-sdd/stuff/hooks/do",
+        "created": ["previo-sdd/stuff/hooks/do/10-before-implementation.md", ...],
+        "skipped": []
+      }
+    },
     "docs": {
       "architecture": {"path": "previo-sdd/docs/architecture", "status": "created"},
       "style": {"path": "previo-sdd/docs/style", "status": "skipped"},
@@ -57,11 +76,12 @@ Prints ONLY a JSON summary on stdout, e.g.:
   }
 
 'status' is one of "created", "skipped" (something already existed at that
-path -- folder or, for docs, even a legacy single file -- left untouched;
-for customPipeline, the file already existed and was left untouched),
+path -- folder or, for docs, even a legacy single file -- left untouched),
 "namespace_seeded" (architecture folder already existed but was missing
 00-namespace.md, now added) or "not_configured" (the field isn't set in
-pv-context.json).
+pv-context.json). 'hooks' instead has one entry per hook set (version, do,
+how, new), each listing created/skipped paths (each hook file is seeded only
+if absent).
 
 Usage:
   python .claude/skills/pv-init/scripts/scaffold-project.py
@@ -80,6 +100,7 @@ WORKFOLDER_SUBFOLDERS = (
     "changes/closed",
     "versions",
     "stuff",
+    "stuff/hooks",
 )
 
 OVERVIEW_TEMPLATE = """# 001 — {title}
@@ -166,22 +187,39 @@ A `path.decision.<slug>` node records its rationale as a `[motivación]` line \
 """
 
 
-# Seed for {workFolder}/stuff/custom-version-pipeline.md -- pv-version's own
-# file. Created here from the start (just the three normative section headings,
-# no steps) so the mechanism is discoverable; pv-version fills in the steps.
-# Never overwritten once it has content (see ensure_custom_pipeline_file).
-# LITERAL copy of .claude/skills/pv-version/custom-version-pipeline.template.md
-# -- keep the two byte-identical (same as NAMESPACE_SEED <-> 00-namespace.md).
-# The `## Before starting` / `## In the middle` / `## At the end` headings are
-# normative: pv-version (step 0.6) locates them literally.
-CUSTOM_PIPELINE_SEED = """# Custom steps for this project's release pipeline
-
-## Before starting
-
-## In the middle
-
-## At the end
-"""
+# The pv-* skills that expose project hooks keep them at
+# {workFolder}/stuff/hooks/<skill>/<NN>-<slug>.md, one file per insertion
+# point. Each file's NAME is normative -- the owning skill matches by the
+# <NN> id and expects the exact <slug>; the file body holds "### Step N"
+# blocks (or none = hook skipped). The seed content is the LITERAL
+# .template.md under that skill's own hooks/ dir, copied here at runtime
+# (like assets/pv.py and rebuild-index.py, not inlined like NAMESPACE_SEED).
+# Created only if absent, never overwritten, so a project that has already
+# added steps keeps them.
+#
+# HOOK_SETS maps stuff/hooks/<subdir> -> (owning skill dir, hook file names).
+HOOK_SETS = {
+    "version": ("pv-version", (
+        "05-before-guardrail.md",
+        "10-before-version.md",
+        "20-after-build.md",
+        "30-after-changelog.md",
+    )),
+    "do": ("pv-do", (
+        "10-before-implementation.md",
+        "20-after-implementation.md",
+    )),
+    "how": ("pv-how", (
+        "10-before-analysis.md",
+        "20-after-plan.md",
+    )),
+    "new": ("pv-new", (
+        "20-after-entry.md",
+    )),
+    "fix": ("pv-fix", (
+        "10-before-entry.md",
+    )),
+}
 
 
 def repo_root() -> Path:
@@ -212,19 +250,39 @@ def ensure_workfolder_subfolders(root: Path, work_folder: str) -> dict:
     return {"created": created, "skipped": skipped}
 
 
-def ensure_custom_pipeline_file(root: Path, work_folder: str) -> dict:
-    """Writes {workFolder}/stuff/custom-version-pipeline.md from
-    CUSTOM_PIPELINE_SEED only if it doesn't exist -- never overwrites, so a
-    project that has already added steps keeps them. Assumes stuff/ already
-    exists (ensure_workfolder_subfolders ran first)."""
-    target = resolve_inside_repo(
-        root, f"{work_folder.rstrip('/')}/stuff/custom-version-pipeline.md"
+def ensure_hook_set(root: Path, work_folder: str, subdir: str,
+                    skill_dir: str, file_names) -> dict:
+    """Seeds {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md from the
+    .template.md files under .claude/skills/<skill_dir>/hooks/ -- one per
+    insertion point, only if absent, never overwritten (steps a project
+    added survive a re-run). Creates the hooks subdir if needed. Assumes
+    stuff/ exists (ensure_workfolder_subfolders ran first)."""
+    hooks_dir = resolve_inside_repo(
+        root, f"{work_folder.rstrip('/')}/stuff/hooks/{subdir}"
     )
-    rel = target.relative_to(root).as_posix()
-    if target.exists():
-        return {"path": rel, "status": "skipped"}
-    target.write_text(CUSTOM_PIPELINE_SEED, encoding="utf-8")
-    return {"path": rel, "status": "created"}
+    hooks_dir.mkdir(parents=True, exist_ok=True)
+    tpl_dir = root / ".claude/skills" / skill_dir / "hooks"
+    created, skipped = [], []
+    for name in file_names:
+        target = hooks_dir / name
+        rel = target.relative_to(root).as_posix()
+        if target.exists():
+            skipped.append(rel)
+            continue
+        tpl = tpl_dir / name.replace(".md", ".template.md")
+        target.write_text(tpl.read_text(encoding="utf-8"), encoding="utf-8")
+        created.append(rel)
+    return {"dir": hooks_dir.relative_to(root).as_posix(),
+            "created": created, "skipped": skipped}
+
+
+def ensure_hooks(root: Path, work_folder: str) -> dict:
+    """Seeds every hook set in HOOK_SETS (version, do, how, new). Returns one
+    entry per set keyed by its subdir name."""
+    return {
+        subdir: ensure_hook_set(root, work_folder, subdir, skill_dir, names)
+        for subdir, (skill_dir, names) in HOOK_SETS.items()
+    }
 
 
 def rebuild_index(root: Path, folder: Path) -> None:
@@ -298,7 +356,7 @@ def main() -> None:
 
     result = {
         "workFolderSubfolders": ensure_workfolder_subfolders(root, work_folder),
-        "customPipeline": ensure_custom_pipeline_file(root, work_folder),
+        "hooks": ensure_hooks(root, work_folder),
         "docs": {
             "architecture": ensure_overview_doc(
                 root, work_folder, tech.get("architectureDocDir"), "Architecture",
