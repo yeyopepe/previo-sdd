@@ -86,6 +86,9 @@ flowchart TD
 
     classDef hook fill:#d9770e,color:#fff
     class S30HookCheck,S30HookRun,S315HookCheck,S315HookRun hook
+
+    classDef progress fill:#0891b2,color:#fff
+    class S0Progress,S11Progress,S11Done,S3Progress,S3Done,S3PlanProgress,S3PlanDone,S31Risk,S31Done,S32Progress,S32Done1,S32Done2,EndClose0,EndClose1,EndClose1b progress
 ```
 
 Legend:
@@ -94,3 +97,4 @@ Legend:
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
 - Orange nodes — the project's own hook insertion points (`stuff/hooks/how/*.md`): the check for defined steps and the run of those steps. Optional; a hook with no steps is skipped silently.
+- Teal nodes — `[PROGRESS: ...]` nodes: invoke the skill configured in `framework.skills.progress`, if any. Optional; skipped silently when unconfigured.

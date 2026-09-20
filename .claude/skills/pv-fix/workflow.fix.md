@@ -90,6 +90,9 @@ flowchart TD
 
     classDef hook fill:#d9770e,color:#fff
     class FTHookEntry,FTRunEntry,FTHookStart,FTRunStart,FTHookFinish,FTRunFinish hook
+
+    classDef progress fill:#0891b2,color:#fff
+    class FTInit,S2NewClose,S3Init,S3DocProgress,S3DocDone,S4RepProgress,S4RepDone,S5Progress,S5Done,S6Progress,FTHooksProgress,FTHooksDone,FT2Progress,FT2Done,FT3Progress,FT3Done,FT4Progress,FT4Done,FTClose,EndClose0 progress
 ```
 
 Legend:
@@ -98,3 +101,4 @@ Legend:
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
 - Orange nodes — the project's own hook insertion points: `stuff/hooks/fix/10-before-entry.md` is this fast-track's own barrier, right after the entry is created and before any code is edited; `stuff/hooks/do/{10-before-implementation,20-after-implementation}.md` are shared with `pv-do`, since the fast-track branch implements code the same way. Optional; a hook with no steps is skipped silently.
+- Teal nodes — `[PROGRESS: ...]` nodes: invoke the skill configured in `framework.skills.progress`, if any. Optional; skipped silently when unconfigured.

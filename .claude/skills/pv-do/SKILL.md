@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b3
+  version: 0.9.8b4
   uses: [pv-internal-workflow, pv-internal-doc-features, pv-internal-doc-files, pv-internal-doc-technical, pv-internal-doc-style]
 ---
 
@@ -22,7 +22,7 @@ Takes an entry from `{changesDir}/inProgress/{xxxx}/` whose technical solution i
 
 **Before any other step**, read [`workflow.do.md`](workflow.do.md) — it's the source of truth for this flow's sequence and branches, including the two hook insertion points (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
-At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
+**Progress checklist.** At each `[PROGRESS: ...]` node in that diagram: invoke the skill configured in `framework.skills.progress` (by name, using the Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for — see the contract in that skill's SKILL.md. If `framework.skills.progress` is absent or empty in `pv-context.json`, skip the node silently.
 
 **Never use git destructively nor commit without permission.** This skill edits code/documentation files and moves the change's folder (step 3), but never goes further on its own:
 

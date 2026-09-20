@@ -49,6 +49,9 @@ flowchart TD
     S4Rerun --> S4Close[PROGRESS: close]
     S4Close --> S4Report[INFO: final report grouped by area]
     S4Report --> EndOK([End: audit completed])
+
+    classDef progress fill:#0891b2,color:#fff
+    class S15Init,S4Close progress
 ```
 
 Legend:
@@ -56,3 +59,4 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
+- Teal nodes — `[PROGRESS: ...]` nodes: invoke the skill configured in `framework.skills.progress`, if any. Optional; skipped silently when unconfigured.

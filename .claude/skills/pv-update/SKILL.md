@@ -5,7 +5,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b3
+  version: 0.9.8b4
   uses: []
 ---
 
@@ -21,7 +21,7 @@ Diagnoses and repairs the `pv-*` framework's configuration in the current projec
 
 **Before any other step**, read [`workflow.audit.md`](workflow.audit.md) — it's the source of truth for this flow's sequence and branches (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which script to run, what text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
-At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
+**Progress checklist.** At each `[PROGRESS: ...]` node in that diagram: invoke the skill configured in `framework.skills.progress` (by name, using the Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for — see the contract in that skill's SKILL.md. If `framework.skills.progress` is absent or empty in `pv-context.json`, skip the node silently.
 
 ## 1. Load context (best-effort)
 

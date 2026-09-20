@@ -1,4 +1,4 @@
-# Changelog de Previo v0.9.8b3 (desde v0.9.7)
+# Changelog de Previo v0.9.8b4 (desde v0.9.7)
 
 ## Índice
 
