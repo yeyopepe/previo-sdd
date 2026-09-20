@@ -4,7 +4,7 @@ description: Initializes the pv-* framework (change/fix/workflow) in the current
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.8b1
+  version: 0.9.8b2
   uses: [pv-update]
 ---
 
@@ -108,7 +108,7 @@ Fields to resolve — `framework` section:
 
     Keep the user's answer (minimal/full) in this conversation's memory only — never write it to `pv-context.json`, it's a one-off action for this run, not persistent configuration. This drives step 5.5 below.
 - `numberWidth` (optional, default `5`, no need to ask unless the user wants something different): always write it to `pv-context.json` — the default value if the user doesn't want something else, same as `skills.mockups`/`skills.diagrams` below — never leave the field absent. The scripts that consume it (`next-change-number.py`, `get-max-change-codes.py`) have no fallback of their own and fail if it's missing.
-- `skills.mockups` and `skills.diagrams`: always write their defaults (`pv-internal-mockups-html`, `pv-internal-tech-mermaid`) to the file silently, without asking about them or mentioning them anywhere in this init — not in the questions, not in the step 6 summary. If the user ever wants to swap the underlying skill/technology, they'll find that documented in `schema.json` themselves.
+- `skills.mockups`, `skills.diagrams` and `skills.progress`: always write their defaults (`pv-internal-mockups-html`, `pv-internal-tech-mermaid`, `pv-internal-progress-todowrite`) to the file silently, without asking about them or mentioning them anywhere in this init — not in the questions, not in the step 6 summary. If the user ever wants to swap the underlying skill/technology, they'll find that documented in `schema.json` themselves.
 
 `skillModels` section (optional in the schema, but **always written** by `pv-init`, even on a run where the user changes nothing) — compute the baseline deterministically and for free in tokens with:
 

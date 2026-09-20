@@ -72,6 +72,22 @@ Esto no existe hoy como documento único — es una convención implícita repar
 
 Regla general que resume todas: `pv-customize` solo escribe dentro de `{workFolder}/stuff/**` y dentro de los campos ya existentes de `pv-context.json`. Cualquier petición que implique tocar algo bajo `.claude/skills/` (fuera de leer) se rechaza y se explica por qué, ofreciendo como alternativa documentarlo como propuesta para una futura versión del framework.
 
+## Cambios en documentación
+
+`pv-customize` es una skill nueva del framework, no un cambio interno de una skill existente: además del `SKILL.md`, hay documentación de framework —con pares en/es— que la introduce o la referencia. Nada de esto se reescribe a mano en `INDEX.md` (regla ya cubierta en "Qué NO puede hacer nunca `pv-customize`"); esto es sobre los `.md` de doc del propio framework, no del proyecto usuario.
+
+- **`pv-doc/pv-guide.en.md` / `pv-guide.es.md`** (mantener ambos en paridad, no solo el inglés):
+  - Añadir `pv-customize` al árbol de skills (línea ~104, junto a `pv-init/`, con su comentario de una línea de qué hace).
+  - Nueva subsección en la guía de uso (junto a "2. Initialize the framework: `/pv-init`") explicando cuándo usar `/pv-customize` en vez de `/pv-init`/`/pv-update` — el criterio ya está en el plan ("Por qué no ampliar pv-init o pv-update"), aquí se traduce a guía de usuario.
+  - En ["More ways to customize Previo"](#more-ways-to-customize-previo) (secciones ~93, ~375, ~449 sobre `skillModels`, hooks, `sync-skill-models.py`): añadir una nota de que `/pv-customize` es ahora el punto de entrada conversacional para estos cambios, sin quitar la documentación de cómo editarlos a mano (sigue siendo válida, `pv-customize` no es obligatorio).
+- **`pv-doc/pv-design/pv-design.en.md` / `pv-design.es.md`**:
+  - La sección "The ten points" (líneas ~520-547) es la fuente canónica que `pv-customize` **lee, no duplica** (ya lo dice el plan) — no necesita cambios de contenido, pero si se documenta el árbol de skills del repo (patrón de las líneas ~569-634, un bloque `hooks/` comentado por skill) añadir `pv-customize/` a ese árbol como skill sin hooks propios (es enrutador, no dueño de ningún hook point).
+  - Confirmar que la nueva skill no necesita entrada en la tabla `Skill | Hook | Runs` — no define hooks propios, solo los edita cuando ya existen.
+- **`schema.json` de `pv-init`**: no requiere cambios de campos (ya lo dice el plan, `pv-customize` no añade propiedades nuevas), pero si el schema o `pv-guide` documentan alguna vez "qué skill toca cada campo" habría que sumar `pv-customize` como editor adicional de `skillModels`/`framework.skills.*` junto a `pv-init`.
+- **`README.md` raíz del framework** (si existe listado de skills disponibles fuera de `pv-doc/`): verificar si hay un listado plano de comandos `/pv-*` a actualizar con `/pv-customize`.
+
+Regla general: cualquier doc que hoy mencione "para cambiar `skillModels`/hooks/rutas, edita X a mano o corre `pv-init`/`pv-update`" gana una frase adicional "o pide a `/pv-customize` que lo haga por ti", sin eliminar la instrucción manual existente (sigue siendo el mecanismo subyacente).
+
 ## Siguiente paso
 
-Si esto encaja, redacto el `SKILL.md` de `pv-customize` siguiendo el patrón de las demás skills pv-* (frontmatter con `model`/`effort`/`metadata.uses`, sección de flujo con referencia a un `workflow.*.md` si la lógica de branching lo justifica — probablemente sí, dado que hay bifurcación real por tipo de petición), incluyendo la tabla determinista y la sección de límites de esta actualización del plan.
+Si esto encaja, redacto el `SKILL.md` de `pv-customize` siguiendo el patrón de las demás skills pv-* (frontmatter con `model`/`effort`/`metadata.uses`, sección de flujo con referencia a un `workflow.*.md` si la lógica de branching lo justifica — probablemente sí, dado que hay bifurcación real por tipo de petición), incluyendo la tabla determinista, la sección de límites, y los cambios de documentación de esta actualización del plan.

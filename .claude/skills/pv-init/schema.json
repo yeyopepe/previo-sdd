@@ -112,7 +112,8 @@
             },
             "progress": {
               "type": "string",
-              "description": "OPTIONAL. Name of the skill that pv-new/pv-fix/pv-how/pv-do invoke, at each major step of their own flow, to report progress on a visible checklist. Not asked by pv-init, no default: if absent, no checklist is shown and the flow behaves exactly as without this field. The skill named here must fulfill the same input/output contract documented in pv-internal-progress-todowrite/SKILL.md (init/update/close actions) so it can be swapped for another mechanism (e.g. on a non-Claude-Code host) without touching pv-new/pv-fix/pv-how/pv-do.",
+              "default": "pv-internal-progress-todowrite",
+              "description": "OPTIONAL (default 'pv-internal-progress-todowrite'). Name of the skill that pv-new/pv-fix/pv-how/pv-do invoke, at each major step of their own flow, to report progress on a visible checklist. Not asked by pv-init -- always written silently with the default, same as skills.mockups/skills.diagrams. Always present as a key even when empty (''): an empty string is a deliberate opt-out (no checklist shown) that pv-update must not silently overwrite, unlike an absent key, which pv-update treats as an unconfigured gap to ask the user about. The skill named here must fulfill the same input/output contract documented in pv-internal-progress-todowrite/SKILL.md (init/update/close actions) so it can be swapped for another mechanism (e.g. on a non-Claude-Code host) without touching pv-new/pv-fix/pv-how/pv-do.",
               "examples": ["pv-internal-progress-todowrite"]
             }
           }
@@ -261,14 +262,15 @@
         "sourcecodeDir": "/src",
         "skills": {
           "mockups": "pv-internal-mockups-html",
-          "diagrams": "pv-internal-tech-mermaid"
+          "diagrams": "pv-internal-tech-mermaid",
+          "progress": "pv-internal-progress-todowrite"
         },
         "_comments": {
           "interaction.language": "Chat with the user in English.",
           "changes.language": "The team documents each in-progress change/fix in Spanish.",
           "versions.language": "The published changelog is written in Spanish.",
           "docs.functional.language": "Feature documentation in Spanish.",
-          "skills.progress": "Optional. If set to a skill name (e.g. pv-internal-progress-todowrite), pv-new/pv-fix/pv-how/pv-do publish a progress checklist in the interface during their flow. Absent or empty: current behavior, no checklist."
+          "skills.progress": "Set to a skill name (default pv-internal-progress-todowrite) so pv-new/pv-fix/pv-how/pv-do publish a progress checklist in the interface during their flow. Set to '' to opt out deliberately -- an absent key instead is an unconfigured gap pv-update will ask about."
         }
       }
     },

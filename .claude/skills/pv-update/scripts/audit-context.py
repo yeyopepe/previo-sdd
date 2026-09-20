@@ -951,8 +951,8 @@ def main() -> None:
                 expected=source_dir, actual="missing")
 
     # --- skills.mockups / skills.diagrams / skills.progress (required if set: must
-    # resolve to a real skill -- progress has no default, so an absent/empty value
-    # is not itself a problem, same as mockups/diagrams when unset). ---
+    # resolve to a real skill; an empty string is a deliberate opt-out, only
+    # checked for progress, see skills-progress-unconfigured below). ---
     skills_cfg = framework.get("skills") or {}
     skills_dir = root / ".claude/skills"
     for key in ("mockups", "diagrams", "progress"):
@@ -964,6 +964,19 @@ def main() -> None:
             add(problems, f"skill-ref-missing:{key}", "required", f"framework.skills.{key}",
                 f"'{key}' points to skill '{name}', but '.claude/skills/{name}/SKILL.md' doesn't exist.",
                 expected=f".claude/skills/{name}/SKILL.md", actual="missing")
+
+    # --- skills.progress must always be a present key (possibly empty ''),
+    # unlike mockups/diagrams whose absence is silently fine -- pv-init always
+    # writes it now (default pv-internal-progress-todowrite), so a missing key
+    # means either a pre-upgrade project or a hand-deleted field. Not auto-filled
+    # here: pv-update asks the user instead of overwriting a possible deliberate
+    # gap silently (see SKILL.md's fix for this id). ---
+    if "progress" not in skills_cfg:
+        add(problems, "skills-progress-unconfigured", "optional", "framework.skills.progress",
+            "'framework.skills.progress' key is absent from pv-context.json. pv-init now always "
+            "writes this key (default 'pv-internal-progress-todowrite', or '' as a deliberate "
+            "opt-out) -- ask the user whether to enable the checklist or opt out explicitly.",
+            expected="key present ('pv-internal-progress-todowrite' or '')", actual="key absent")
 
     # --- docs.* (required: all three doc dirs are always configured by
     # pv-init; a missing one is a broken state, not a legitimately-skipped
