@@ -93,6 +93,12 @@ Campos por entrada:
   usado solo por la verificación de conflicto de la sección 6. Se escribe únicamente al
   entrar en `planning` (ver sección 3) y no se toca en el resto de fases — ver el detalle
   completo en 6.1.
+- `changeStartedAt` (opcional, `string | null`, timestamp ISO-8601 UTC): momento en que la
+  entrada quedó asociada al `changeCode` que tiene ahora. Solo alimenta el criterio de
+  ordenación "Tiempo de trabajo" de la sección 5.1 — no participa en el cálculo de
+  `stale` (eso solo lo hace `updatedAt`). Se recalcula cada vez que `changeCode` cambia de
+  valor (incluido pasar de `null` a un código, ver sección 3); si una escritura repite el
+  mismo `changeCode` que ya tenía la entrada, `changeStartedAt` no se toca.
 
 Riesgo de escritura concurrente (dos agentes actualizando a la vez): se acepta
 read-modify-write simple, igual que hace hoy `set-metadata.py` con `.metadata.json` — no
@@ -134,6 +140,12 @@ python3 set-agent-status.py --session-id <id> --phase implementing \
   `changeState` no forma parte del registro.
 - Sin `--notes`: pone `notes` a `null` — cada escritura de fase reemplaza la nota
   anterior entera, no la acumula (mismo criterio "última escritura gana" que `phase`).
+- `changeStartedAt`: el script compara el `--xxxx` recibido (o su ausencia) contra el
+  `changeCode` que la entrada ya tenía antes de esta escritura. Si difieren — incluido el
+  caso "no tenía ninguno y ahora sí" —, fija `changeStartedAt` al instante actual. Si
+  coincide (mismo `changeCode` que ya tenía, o ambos `null`), deja `changeStartedAt` tal
+  cual estaba. Al limpiar el vínculo con un change (sin `--xxxx`), `changeStartedAt` se
+  pone a `null` igual que `changeCode`.
 - Al escribir `--phase planning`, guarda además `refHash` (ver sección 6.1) calculado en
   ese instante — es el único caso en que el script guarda un campo aparte de los ya
   descritos en la sección 1; el resto de fases no lo tocan ni lo borran, así que
@@ -297,6 +309,10 @@ Nuevo campo en `.claude/pv-context.json`, mismo patrón que `framework.onescript
 - Aplica el timeout de la sección 4 y marca cada entrada `active` / `stale`.
 - En modo `--terminal`: listado agrupado por `changeCode` (o "Sin change asignado"),
   con el estado de carpeta resuelto, fase y tiempo transcurrido desde `updatedAt`.
+- Acepta `--sort {priority,updated,worktime}` (default `priority`, ver criterios y
+  desempate en la sección 5.1). El script ordena en memoria tras aplicar el timeout —
+  `stale` es un estado calculado, no un campo del fichero, así que el ordenamiento por
+  prioridad necesita que el timeout ya se haya evaluado antes de ordenar.
 
 **En `pv.py`**: reestructuración del menú raíz para dar hueco a "Agents status" sin
 mezclarlo con las opciones que ya operan sobre changes. El `MENU` raíz (pv.py L1197-1204)
@@ -330,7 +346,9 @@ a:
   cambios de contenido (`show_versions_menu()` sigue igual).
 - Nuevo submenú `show_framework_status_menu()`, marcado `.is_submenu = True` igual que
   `show_settings_menu`/`show_versions_menu` (pv.py L755/825), con dos entradas:
-  "Agents status" (`run_script(STATUS_SCRIPTS / "read-agents-status.py", "--terminal")`,
+  "Agents status" (pregunta primero el criterio de orden — Prioridad/Actualizados/Tiempo
+  de trabajo, default Prioridad — y llama a
+  `run_script(STATUS_SCRIPTS / "read-agents-status.py", "--terminal", "--sort", <valor>)`,
   mismo patrón que `show_general_status()` en L553) y "Configuration"
   (`show_settings_menu`, reutilizada tal cual, no duplicada).
 
@@ -349,8 +367,23 @@ nuevo, se reutiliza `terminal_output.py` tal cual.
 **El registro es por sesión, no por change** (sección 1: una entrada de
 `.agents-status.json` = una sesión), así que el listado es una lista de agentes primero
 — cada bloque es una sesión, y el change al que está asociada (si tiene alguno) es un
-dato dentro de ese bloque, no el encabezado que los agrupa. Se ordena por `updatedAt`
-descendente (el más reciente primero), no por `changeCode`.
+dato dentro de ese bloque, no el encabezado que los agrupa.
+
+**Tres criterios de ordenación** (`--sort`, sección 5), seleccionables tanto desde
+`--terminal` como desde el submenú de `pv.py` (un `{Text}` de selección antes de listar,
+mismo patrón que otros menús con opciones):
+
+| `--sort` | Criterio | Desempate |
+|---|---|---|
+| `priority` (default) | Dos grupos: **activos** (`waiting_user`, `implementing`, `documenting`, `analyzing`, `planning`) primero, **resto** (`done`, `waiting_external`, `blocked_conflict`, `stale`) después. | Dentro de cada grupo, `updatedAt` descendente (más reciente primero). |
+| `updated` | `updatedAt` ascendente — el que lleva más tiempo sin refrescar primero (los `stale` u olvidados suben arriba, útil para detectar agentes colgados de un vistazo). | — |
+| `worktime` | `changeStartedAt` descendente — el que lleva más tiempo trabajando sobre su `changeCode` actual primero. Entradas sin `changeCode` (`changeStartedAt` a `null`) van al final, ordenadas entre sí por `updatedAt` descendente. | — |
+
+`blocked_conflict` queda en el grupo "resto" de `priority` a propósito: no es que no
+importe, pero ya destaca visualmente por su propio bloque `BLOQUEADO POR CONFLICTO` en
+mayúsculas (ver mockup abajo) — agruparlo con los activos diluiría esa señal en vez de
+reforzarla. `waiting_external` igual: es "algo está pasando" pero no requiere acción de
+nadie ahora mismo, a diferencia de `waiting_user`.
 
 **Un emoji por fase** (no un semáforo genérico — cada valor del catálogo de la sección 2
 tiene su propio icono, más uno para `stale`, que no es una fase sino un estado
@@ -557,18 +590,22 @@ final, porque estas últimas dependen de que los scripts ya existan).
    validado en otro sitio del framework (comprobarlo antes de asumir que no).
 2. **Script de escritura**: `pv-internal-workflow/scripts/set-agent-status.py` —
    `--session-id`, `--phase`, `--xxxx` opcional, `--notes` opcional, `--work-folder`;
-   calcula y guarda `refHash` solo cuando `--phase planning`; read-modify-write de
-   `{workFolder}/.agents-status.json` (crear el fichero si no existe).
+   calcula y guarda `refHash` solo cuando `--phase planning`; recalcula `changeStartedAt`
+   cuando `--xxxx` difiere del `changeCode` previo de la entrada (sección 3);
+   read-modify-write de `{workFolder}/.agents-status.json` (crear el fichero si no
+   existe).
 3. **Script de verificación**: `pv-internal-workflow/scripts/check-agent-conflict.py` —
    `--session-id`, `--xxxx`, `--work-folder`; hace 6.1 (recalcular hash vs. `refHash`) y
    6.2 (buscar otra entrada activa con el mismo `changeCode`); exit 0/1 con motivo.
 4. **Script de lectura**: `pv-status/scripts/read-agents-status.py` — lee
    `.agents-status.json`, resuelve estado de carpeta por `changeCode`, aplica el timeout
-   de la sección 4, soporta `--terminal`/`--color`/`--no-color`/`--width`/`--work-folder`.
+   de la sección 4, soporta `--terminal`/`--color`/`--no-color`/`--width`/`--work-folder`/
+   `--sort {priority,updated,worktime}` (default `priority`, criterios en 5.1).
 5. **`pv.py`**: reestructurar el `MENU` raíz (sección 5) — nuevo submenú
-   `show_framework_status_menu()` con "Agents status" (delega en el script del punto 4)
-   y "Configuration" (reutiliza `show_settings_menu` existente); renombrar "Check Previo
-   versions" a "Check versions" y reordenar.
+   `show_framework_status_menu()` con "Agents status" (pregunta el criterio de orden,
+   delega en el script del punto 4 con `--sort`) y "Configuration" (reutiliza
+   `show_settings_menu` existente); renombrar "Check Previo versions" a "Check versions"
+   y reordenar.
 6. **Instrumentar `pv-how`** (`workflow.how.md`): nodos `[REPORT: analyzing]` /
    `[REPORT: planning]` en los puntos que correspondan de su diagrama.
 7. **Instrumentar `pv-new`** (`workflow.new.md`): nodo `[REPORT: planning]`.
