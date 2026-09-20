@@ -501,6 +501,8 @@ Four node types, in addition to `flowchart`'s usual shapes (`[Text]`/`{Decision}
 - **Informs and asks for confirmation (blocking)**: `ID[ASK: Text]` — the skill can't proceed until the user responds; if the question already has the options as branches, follow with a `{...}` node right after, connected by `-->`.
 - **Decision branch**: `ID{Text}` — each outgoing edge labeled (`-->|Yes|`, `-->|No|`, or the specific case), like any other decision in a Mermaid flowchart.
 
+**Progress nodes** (`[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]`) are a variant of the internal-step node above, not a fifth node type — the skill is still acting without talking to the user, just reporting its own progress instead of doing file/script work. `pv-new`/`pv-fix`/`pv-how`/`pv-do` add these around their own already-existing major steps, invoking the skill configured in `framework.skills.progress` (see `pv-internal-progress-todowrite/SKILL.md` for the contract). These nodes are only present in a `workflow.*.md` when the project has `framework.skills.progress` configured — absent, the file carries no `[PROGRESS: ...]` node at all and the flow behaves exactly as without it. They still count as `[Text]` for the legend below — the `PROGRESS:` prefix inside the text is enough to recognize them, no dedicated legend line.
+
 **Legend template** — a fixed block to copy **as-is**, without translating or rephrasing a single word, at the end of every new `workflow.*.md` file (it's the only text in this document meant to be pasted literally into another file):
 
 ```

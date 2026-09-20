@@ -15,59 +15,78 @@ flowchart TD
 
     S2Analysis[Invoke pv-internal-tech-analysis for context] --> S2Fast{Meets every fast criterion?}
 
-    S2Fast -->|Yes, fast: trivial, bug or not| FT1
+    S2Fast -->|Yes, fast: trivial, bug or not| FTInit[PROGRESS: init fast-track list]
+    FTInit --> FT1
 
-    S2Fast -->|No, and it's a bug| S3Doc
+    S2Fast -->|No, and it's a bug| S3Init
     S2Fast -->|No, and not a bug| S2Warn[INFO: doesn't qualify as fast nor a bug, unmet criterion]
-    S2Warn --> S2New[Invoke pv-new with the request as-is]
+    S2Warn --> S2NewClose[PROGRESS: close]
+    S2NewClose --> S2New[Invoke pv-new with the request as-is]
     S2New --> EndNew([End: continues in pv-new])
 
-    S3Doc[Invoke pv-internal-workflow: create description.md/history.md, type=fix] --> S3Flow{Flow, sequence or state interaction to represent?}
+    S3Init[PROGRESS: init non-trivial list] --> S3DocProgress[PROGRESS: document in_progress]
+    S3DocProgress --> S3Doc[Invoke pv-internal-workflow: create description.md/history.md, type=fix]
+    S3Doc --> S3Flow{Flow, sequence or state interaction to represent?}
     S3Flow -->|Yes| S3Diagram[Invoke diagrams skill for functional diagram, include in description.md]
-    S3Diagram --> S4Visual
-    S3Flow -->|No| S4Visual
+    S3Diagram --> S3DocDone
+    S3Flow -->|No| S3DocDone
+    S3DocDone[PROGRESS: document completed] --> S4RepProgress[PROGRESS: represent in_progress]
 
-    S4Visual{Has a visual component?} -->|Yes| S4Mockup[Invoke mockups skill: create design_*.html]
+    S4RepProgress --> S4Visual{Has a visual component?}
+    S4Visual -->|Yes| S4Mockup[Invoke mockups skill: create design_*.html]
     S4Mockup --> S41Data
     S4Visual -->|No| S41Data
 
     S41Data{Defines/uses structured data?} -->|Yes| S41Write[Write design_data_*.md tables directly]
-    S41Write --> S5Validate
-    S41Data -->|No| S5Validate
+    S41Write --> S4RepDone
+    S41Data -->|No| S4RepDone
+    S4RepDone[PROGRESS: represent completed] --> S5Progress[PROGRESS: validate in_progress]
 
-    S5Validate{Any diagram, design_*.html or design_data_*.md generated?}
-    S5Validate -->|No| S6Chain
+    S5Progress --> S5Validate{Any diagram, design_*.html or design_data_*.md generated?}
+    S5Validate -->|No| S5Done
     S5Validate -->|Yes| S5Ask[ASK: does the representation reflect expected behavior?]
     S5Ask --> S5Dec{User confirms?}
     S5Dec -->|Changes requested| S5Adjust[Adjust and present again]
     S5Adjust --> S5Ask
-    S5Dec -->|Confirmed| S6Chain
+    S5Dec -->|Confirmed| S5Done
+    S5Done[PROGRESS: validate completed] --> S6Progress[PROGRESS: plan in_progress]
 
-    S6Chain[Invoke pv-how on the same xxxx, scoped strictly to root cause] --> EndHow([End: continues in pv-how -> pv-do])
+    S6Progress --> S6Chain[Invoke pv-how on the same xxxx, scoped strictly to root cause]
+    S6Chain --> EndHow([End: continues in pv-how -> pv-do])
 
-    FT1[Invoke pv-internal-workflow: create description.md/history.md, type=fast] --> FTLoad[List stuff/hooks/fix/NN-slug.md and stuff/hooks/do/NN-slug.md files, match by NN id, parse each file's Step blocks]
+    FT1[Invoke pv-internal-workflow: create description.md/history.md, type=fast] --> FTHooksProgress[PROGRESS: hooks in_progress]
+    FTHooksProgress --> FTLoad[List stuff/hooks/fix/NN-slug.md and stuff/hooks/do/NN-slug.md files, match by NN id, parse each file's Step blocks]
     FTLoad --> FTHookEntry{fix/10-before-entry.md defines steps?}
     FTHookEntry -->|Yes| FTRunEntry[Run fix/10-before-entry steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
     FTRunEntry --> FTHookStart
     FTHookEntry -->|No| FTHookStart
     FTHookStart{do/10-before-implementation.md defines steps?}
     FTHookStart -->|Yes| FTRunStart[Run 10-before-implementation steps in order, workFolder and xxxx substituted; a failure stops before any code is edited]
-    FTRunStart --> FT2
-    FTHookStart -->|No| FT2
-    FT2[Apply the change directly in code]
+    FTRunStart --> FTHooksDone
+    FTHookStart -->|No| FTHooksDone
+    FTHooksDone[PROGRESS: hooks completed] --> FT2Progress[PROGRESS: apply in_progress]
+
+    FT2Progress --> FT2[Apply the change directly in code]
     FT2 --> FT2Check{Turns out not trivial while implementing? architecture/style touched, or scope grows}
     FT2Check -->|Yes| FT2Undo[Undo partial edits if any]
     FT2Undo --> FT2Route{Is it a bug?}
-    FT2Route -->|Yes| S3Doc
+    FT2Route -->|Yes| S3Init
     FT2Route -->|No| S2Warn
-    FT2Check -->|No| FT3[Document applied changes in description.md]
-    FT3 --> FTHookFinish{20-after-implementation.md defines steps?}
+    FT2Check -->|No| FT2Done[PROGRESS: apply completed]
+    FT2Done --> FT3Progress[PROGRESS: document-applied in_progress]
+    FT3Progress --> FT3[Document applied changes in description.md]
+    FT3 --> FT3Done[PROGRESS: document-applied completed]
+    FT3Done --> FTHookFinish{20-after-implementation.md defines steps?}
     FTHookFinish -->|Yes| FTRunFinish[Run 20-after-implementation steps in order, workFolder and xxxx substituted; a failure stops before the folder moves]
-    FTRunFinish --> FT4
-    FTHookFinish -->|No| FT4
-    FT4[Invoke pv-internal-workflow: move inProgress to implemented]
-    FT4 --> FT5[INFO: confirm what was implemented, the doc path, plus any hooks that ran]
+    FTRunFinish --> FT4Progress[PROGRESS: move in_progress]
+    FTHookFinish -->|No| FT4Progress
+    FT4Progress --> FT4[Invoke pv-internal-workflow: move inProgress to implemented]
+    FT4 --> FT4Done[PROGRESS: move completed]
+    FT4Done --> FTClose[PROGRESS: close]
+    FTClose --> FT5[INFO: confirm what was implemented, the doc path, plus any hooks that ran]
     FT5 --> EndFast([End: fast-track completed])
+
+    End0 --> EndClose0[PROGRESS: close]
 
     classDef hook fill:#d9770e,color:#fff
     class FTHookEntry,FTRunEntry,FTHookStart,FTRunStart,FTHookFinish,FTRunFinish hook

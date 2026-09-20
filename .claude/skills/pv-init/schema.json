@@ -109,6 +109,11 @@
               "default": "pv-internal-tech-mermaid",
               "description": "OPTIONAL (default 'pv-internal-tech-mermaid'). Name of the skill that pv-internal-workflow, pv-new, pv-fix and pv-how invoke to generate a change/fix's Mermaid diagrams (functional or technical -- flow, sequence), only once it's already known that at least one is needed. No need to ask about it or configure it unless the user wants to replace Mermaid diagram generation with another notation or tool: in that case, the skill named here must fulfill the same input/output contract documented in pv-internal-tech-mermaid/SKILL.md (list of diagrams to generate, with type and what each should represent, as input; each diagram's code as output) so it can be swapped in without touching pv-internal-workflow/pv-new/pv-fix/pv-how.",
               "examples": ["pv-internal-tech-mermaid"]
+            },
+            "progress": {
+              "type": "string",
+              "description": "OPTIONAL. Name of the skill that pv-new/pv-fix/pv-how/pv-do invoke, at each major step of their own flow, to report progress on a visible checklist. Not asked by pv-init, no default: if absent, no checklist is shown and the flow behaves exactly as without this field. The skill named here must fulfill the same input/output contract documented in pv-internal-progress-todowrite/SKILL.md (init/update/close actions) so it can be swapped for another mechanism (e.g. on a non-Claude-Code host) without touching pv-new/pv-fix/pv-how/pv-do.",
+              "examples": ["pv-internal-progress-todowrite"]
             }
           }
         },
@@ -262,7 +267,8 @@
           "interaction.language": "Chat with the user in English.",
           "changes.language": "The team documents each in-progress change/fix in Spanish.",
           "versions.language": "The published changelog is written in Spanish.",
-          "docs.functional.language": "Feature documentation in Spanish."
+          "docs.functional.language": "Feature documentation in Spanish.",
+          "skills.progress": "Optional. If set to a skill name (e.g. pv-internal-progress-todowrite), pv-new/pv-fix/pv-how/pv-do publish a progress checklist in the interface during their flow. Absent or empty: current behavior, no checklist."
         }
       }
     },

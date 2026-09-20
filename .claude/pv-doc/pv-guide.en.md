@@ -308,6 +308,7 @@ Some pieces of the framework can be swapped for your own without touching the re
 
 - **Visual mockups** (`mockups`): by default it generates HTML/CSS/SVG mockups that are navigable in the browser. If you prefer plain-text mockups (ASCII art), change it to `pv-internal-mockups-ascii`.
 - **Diagrams** (`diagrams`): by default it generates Mermaid diagrams to represent flows and use cases.
+- **Progress** (`progress`): optional, no default — absent, `pv-new`/`pv-fix`/`pv-how`/`pv-do` show no checklist and behave exactly as today. If you set it (e.g. to `pv-internal-progress-todowrite`), those skills show a progress checklist in the interface while they run their flow, so you can see where they are without asking in chat.
 
 Example, to use ASCII mockups instead of HTML:
 

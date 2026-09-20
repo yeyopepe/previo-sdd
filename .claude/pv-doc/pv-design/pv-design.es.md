@@ -501,6 +501,8 @@ Cuatro tipos de nodo, además de las formas habituales de `flowchart` (`[Texto]`
 - **Informa y pide confirmación (bloqueante)**: `ID[ASK: Texto]` — la skill no puede avanzar hasta que el usuario responda; si la pregunta ya tiene las opciones como ramas, seguir con un nodo `{...}` justo después, conectado por `-->`.
 - **Rama de decisión**: `ID{Texto}` — cada arista de salida etiquetada (`-->|Sí|`, `-->|No|`, o el caso concreto), igual que cualquier otra decisión en un flowchart de Mermaid.
 
+**Nodos de progreso** (`[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]`) son una variante del nodo de paso interno de arriba, no un quinto tipo de nodo — la skill sigue actuando sin hablar con el usuario, solo que reporta su propio avance en vez de trabajar con ficheros o scripts. `pv-new`/`pv-fix`/`pv-how`/`pv-do` añaden estos nodos alrededor de sus propios pasos mayores ya existentes, invocando la skill configurada en `framework.skills.progress` (ver el contrato en `pv-internal-progress-todowrite/SKILL.md`). Estos nodos solo están presentes en un `workflow.*.md` si el proyecto tiene `framework.skills.progress` configurado — ausente, el fichero no lleva ningún nodo `[PROGRESS: ...]` y el flujo se comporta exactamente igual que sin ellos. Siguen contando como `[Texto]` a efectos de la leyenda de abajo — el prefijo `PROGRESS:` dentro del propio texto basta para reconocerlos, sin línea de leyenda dedicada.
+
 **Plantilla de la leyenda** — bloque fijo a copiar **tal cual**, sin traducir ni reformular ni una palabra, al final de cada fichero `workflow.*.md` nuevo (es el único texto de este documento pensado para pegarse literalmente en otro fichero):
 
 ```

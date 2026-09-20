@@ -950,10 +950,12 @@ def main() -> None:
                 f"'sourcecodeDir' is configured as '{source_dir}' but that folder doesn't exist.",
                 expected=source_dir, actual="missing")
 
-    # --- skills.mockups / skills.diagrams (required: must resolve to a real skill) ---
+    # --- skills.mockups / skills.diagrams / skills.progress (required if set: must
+    # resolve to a real skill -- progress has no default, so an absent/empty value
+    # is not itself a problem, same as mockups/diagrams when unset). ---
     skills_cfg = framework.get("skills") or {}
     skills_dir = root / ".claude/skills"
-    for key in ("mockups", "diagrams"):
+    for key in ("mockups", "diagrams", "progress"):
         name = skills_cfg.get(key)
         if not name:
             continue
