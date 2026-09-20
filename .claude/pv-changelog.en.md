@@ -1,4 +1,4 @@
-# Previo v0.9.8b2 changelog (from v0.9.7)
+# Previo v0.9.8b3 changelog (from v0.9.7)
 
 ## Index
 

@@ -5,7 +5,8 @@ argument-hint: "[xxxx | todo <code>] <description of the change>"
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.8b2
+  author: Sergio José Martínez Primiani
+  version: 0.9.8b3
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-how]
 ---
 
@@ -32,6 +33,8 @@ Only skip all four when the change truly has no representable visual, flow, or s
 **This skill is installed framework, not editable from a consumer project.** If the user asks to change *how* the documentation flow works (register the entry somewhere, post it to a channel, open a tracker issue once it's documented), the right answer is **not** to edit this `SKILL.md` or any file under `.claude/skills/pv-*/`. The customization point is `{workFolder}/stuff/hooks/new/*.md` — the project's own steps at one point of the flow (end of step 5; see step 0.3). If what's asked doesn't fit that hook, say so and propose opening a change in the framework repo — never a local patch to the skill. The presence of `framework.frameworkStatus` in `pv-context.json` means these skills are managed via `pv-update`; editing them by hand leaves them inconsistent (step 0 already checks versions).
 
 **Before any other step**, read [`workflow.new.md`](workflow.new.md) — it's the source of truth for this flow's sequence and branches (its multiple entry points, the visual-representation cases, and the hook insertion point at the end of step 5; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+
+At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
 
 ## 0. Check that the framework is initialized
 

@@ -5,6 +5,7 @@ argument-hint: "[target version, e.g. 1.0.1b1]"
 model: claude-sonnet-5
 effort: medium
 metadata:
+  author: Sergio José Martínez Primiani
   version: 0.1.0
   uses: [dev-changelog]
 ---

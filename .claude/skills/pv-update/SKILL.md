@@ -4,7 +4,8 @@ description: Audits and repairs the pv-* framework's health in the current proje
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.8b2
+  author: Sergio José Martínez Primiani
+  version: 0.9.8b3
   uses: []
 ---
 
@@ -19,6 +20,8 @@ Diagnoses and repairs the `pv-*` framework's configuration in the current projec
 **Relationship with `pv-init`.** `pv-init` runs its own lightweight checks (`check-context.py`) as part of its normal flow. If those checks — or anything else during its run — reveal a problem beyond "this optional field was never configured" (invalid JSON, a referenced skill that doesn't exist, a configured path missing on disk, `pv.py` out of sync, a required field like one of the three `docs.*` dirs absent), `pv-init` stops its own flow and invokes this skill (`Skill` tool) instead of trying to fix things itself. Once `pv-update` finishes (fixes applied and reported, or stopped on the invalid-JSON case), control returns to whatever invoked it: if `pv-init` was the caller, it resumes its own flow only if there's still something left for it to do — otherwise the interaction ends here.
 
 **Before any other step**, read [`workflow.audit.md`](workflow.audit.md) — it's the source of truth for this flow's sequence and branches (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which script to run, what text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+
+At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
 
 ## 1. Load context (best-effort)
 

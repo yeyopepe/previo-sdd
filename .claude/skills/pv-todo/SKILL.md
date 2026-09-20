@@ -5,7 +5,8 @@ argument-hint: "[code | change <xxxx>] <idea to note or develop>"
 model: claude-haiku-4-5
 effort: medium
 metadata:
-  version: 0.9.8b2
+  author: Sergio José Martínez Primiani
+  version: 0.9.8b3
   uses: []
 ---
 

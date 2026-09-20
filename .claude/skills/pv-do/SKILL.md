@@ -5,7 +5,8 @@ argument-hint: <xxxx of the already-planned change/fix>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.8b2
+  author: Sergio José Martínez Primiani
+  version: 0.9.8b3
   uses: [pv-internal-workflow, pv-internal-doc-features, pv-internal-doc-files, pv-internal-doc-technical, pv-internal-doc-style]
 ---
 
@@ -20,6 +21,8 @@ Takes an entry from `{changesDir}/inProgress/{xxxx}/` whose technical solution i
 **This skill is installed framework, not editable from a consumer project.** If the user asks to change *how* the implementation flow works (add a step, run something before implementing, publish/verify something when it finishes), the right answer is **not** to edit this `SKILL.md` or any file under `.claude/skills/pv-*/`. The one customization point is `{workFolder}/stuff/hooks/do/*.md` — the project's own steps at two points of the flow (see step 1.5). If what's asked doesn't fit one of those two hooks, say so and propose opening a change in the framework repo — never a local patch to the skill. The presence of `framework.frameworkStatus` in `pv-context.json` means these skills are managed via `pv-update`; editing them by hand leaves them inconsistent (step 0 already checks versions).
 
 **Before any other step**, read [`workflow.do.md`](workflow.do.md) — it's the source of truth for this flow's sequence and branches, including the two hook insertion points (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+
+At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
 
 **Never use git destructively nor commit without permission.** This skill edits code/documentation files and moves the change's folder (step 3), but never goes further on its own:
 

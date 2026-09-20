@@ -6,7 +6,9 @@ flowchart TD
     S1Read --> S1Exists{Does the file exist?}
     S1Exists -->|No| S1Info[INFO: the framework is not initialized, run pv-init]
     S1Info --> End1([End: nothing to audit])
-    S1Exists -->|Yes| S2Run
+    S1Exists -->|Yes| S15Init
+
+    S15Init["PROGRESS: init (config shape, paths, stuff/, change codes/markers, metadata, namespace, pv.py, skillModels, version)"] --> S2Run
 
     S2Run[Run audit-context.py] --> S2Empty{problems comes back empty?}
     S2Empty -->|Yes, and lastVerifiedVersion already exists| S2Healthy[INFO: healthy configuration]
@@ -44,7 +46,8 @@ flowchart TD
     S3Next -->|No| S35Run
 
     S35Run[Run mark-verified.py --clear] --> S4Rerun[Rerun audit-context.py to confirm]
-    S4Rerun --> S4Report[INFO: final report grouped by area]
+    S4Rerun --> S4Close[PROGRESS: close]
+    S4Close --> S4Report[INFO: final report grouped by area]
     S4Report --> EndOK([End: audit completed])
 ```
 

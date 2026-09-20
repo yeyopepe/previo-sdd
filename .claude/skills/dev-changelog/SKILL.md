@@ -5,6 +5,7 @@ argument-hint: "[base commit, tag, or branch]"
 model: claude-sonnet-5
 effort: medium
 metadata:
+  author: Sergio José Martínez Primiani
   version: 0.4.0
   uses: [en-translate, es-translate]
 ---

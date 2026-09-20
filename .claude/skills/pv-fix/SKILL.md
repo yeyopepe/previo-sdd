@@ -5,7 +5,8 @@ argument-hint: <description of the bug or change to apply>
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.8b2
+  author: Sergio José Martínez Primiani
+  version: 0.9.8b3
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-new, pv-how]
 ---
 
@@ -35,6 +36,8 @@ For a non-trivial fix, this skill implements nothing itself: it documents the in
 **Source of truth.** To distinguish what the project actually does today from what the user believes it does, the only source of truth is the technical documentation and the real code — not assumptions or conversation memory. To gather that context, invoke the `pv-internal-tech-analysis` skill (Skill tool) passing it a summary of what's being analyzed, instead of reading `framework.docs.tech` yourself or exploring the code blindly: it resolves `docs.tech` via `resolve-path.py` and reads that documentation first, exploring code only if needed, returning the gathered context and any inconsistency between documentation and code (in that case the code rules). If it detects any inconsistency, note it in **Technical notes** when documenting (non-trivial fix, step 3) or take it as a reason not to qualify as trivial (step 2). The content of other changes/fixes under `{changesDir}/**` (their `description.md` or `plan.md`, whether in `inProgress`, `implemented` or `closed`) also doesn't count as a source of truth: they're another entry's intent or analysis, not the project's real state.
 
 **Before any other step**, read [`workflow.fix.md`](workflow.fix.md) — it's the source of truth for this flow's sequence and branches (both the fast-track and non-trivial sub-flows; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+
+At each `[PROGRESS: ...]` node in that diagram: if `framework.skills.progress` is set (non-empty) in `pv-context.json`, invoke that skill by name (Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for (contract in `pv-internal-progress-todowrite/SKILL.md`); if the field is absent or empty, skip the node silently.
 
 ## 0. Check that the framework is initialized
 
