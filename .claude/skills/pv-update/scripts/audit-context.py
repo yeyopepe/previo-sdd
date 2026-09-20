@@ -8,7 +8,9 @@ skillModels vs each SKILL.md's real frontmatter, the [[[...]]]-marked
 structural labels AND section headings (see pv-design.en.md's "Marker
 convention in templates") in every template-derived document under
 workFolder's changes/ subtree -- catching ones left translated by a
-document written under an older, still-localized framework version,
+document written under an older, still-localized framework version
+(marker-missing:*) or left with the raw '[[[...]]]' syntax instead of
+the unwrapped label (marker-literal:*),
 stuff/hooks/*/*.md files that carry project-authored '### Step' blocks
 (stuff-<subdir>-hook-language:*, flagged for pv-update itself to read and
 judge whether the content is in English -- hooks are technical
@@ -684,6 +686,19 @@ def marker_pattern(label: str) -> re.Pattern:
     return re.compile(rf"(\*\*{escaped}\*\*|^#{{1,6}}\s*{escaped}\s*$)", re.MULTILINE)
 
 
+def literal_marker_pattern(label: str) -> re.Pattern:
+    # The raw, still-bracketed form ("**[[[Label]]]**" or "## [[[Label]]]")
+    # surviving into a generated file -- the model copied the template's
+    # marker syntax verbatim instead of writing the unwrapped label. Distinct
+    # from marker_pattern (which looks for the unwrapped label) so the two
+    # cases -- missing vs. left-bracketed -- are never conflated.
+    escaped = re.escape(label)
+    return re.compile(
+        rf"(\*\*\[\[\[{escaped}\]\]\]\*\*|^#{{1,6}}\s*\[\[\[{escaped}\]\]\]\s*$)",
+        re.MULTILINE,
+    )
+
+
 def check_marked_documents(root: Path, work_folder: str, problems: list) -> None:
     wf_path = resolve_under(root, work_folder)
     for template_rel, file_globs in MARKED_TEMPLATES:
@@ -696,9 +711,9 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
         for file_glob in file_globs:
             for doc_path in sorted(wf_path.glob(file_glob)):
                 text = doc_path.read_text(encoding="utf-8")
+                rel = doc_path.relative_to(root).as_posix()
                 missing = [label for label in labels if not marker_pattern(label).search(text)]
                 if missing:
-                    rel = doc_path.relative_to(root).as_posix()
                     add(problems, f"marker-missing:{rel}", "optional", rel,
                         f"'{rel}' is missing the structural marker(s) {', '.join(missing)} "
                         f"expected from '{template_rel}' -- these are field labels AND section headings "
@@ -709,6 +724,17 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
                         f"never a legitimately-omitted optional section. Restore the English label in place "
                         f"without touching the section body.",
                         expected=", ".join(labels), actual=", ".join(l for l in labels if l not in missing) or "(none found)")
+                literal = [label for label in labels if literal_marker_pattern(label).search(text)]
+                if literal:
+                    add(problems, f"marker-literal:{rel}", "optional", rel,
+                        f"'{rel}' still has the raw '[[[...]]]' template syntax around "
+                        f"{', '.join(literal)} instead of the unwrapped label -- '[[[...]]]' is "
+                        f"template-only notation (see pv-design.en.md's \"Marker convention in "
+                        f"templates\") telling whoever fills the template what not to translate; it "
+                        f"must never survive into the generated file. The usual cause is the model "
+                        f"copying the template's marker syntax verbatim instead of writing just the "
+                        f"label it wraps.",
+                        expected=", ".join(labels), actual=", ".join(literal))
 
 
 # The three docs.* dirs are resolved relative to workFolder (NOT the repo
