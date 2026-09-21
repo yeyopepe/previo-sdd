@@ -14,9 +14,9 @@ metadata:
 
 A single, shared procedure to obtain reliable technical context before making any decision about a change/fix (designing a solution, assessing root cause, or judging whether a change is trivial enough for `pv-fix`'s `fast` shortcut). Only invoked by other `pv-*` framework skills — not meant for direct invocation by the user.
 
-**This skill writes or edits nothing.** It's purely analysis/reading: it gathers context and, if any, reports inconsistencies between documentation and code to the caller. What to do with those inconsistencies (update the document right away, note it for later, or use it as a reason to rule out a fast path) is always decided by the calling skill, per its own rules. The only exception to not interacting on its own is a specific one (see step 3): if a definition doubt remains that blocks having complete context, it confirms it directly with the user before returning the result.
-
 **Language.** This skill writes nothing and doesn't normally talk to the user, so `language` doesn't apply to most of it — except step 3's user confirmation, which follows `framework.interaction.language` (default English; the caller has already resolved it before invoking this skill).
+
+**This skill writes or edits nothing.** It's purely analysis/reading: it gathers context and, if any, reports inconsistencies between documentation and code to the caller. What to do with those inconsistencies (update the document right away, note it for later, or use it as a reason to rule out a fast path) is always decided by the calling skill, per its own rules. The only exception to not interacting on its own is a specific one (see step 3): if a definition doubt remains that blocks having complete context, it confirms it directly with the user before returning the result.
 
 ## Expected input from the caller
 

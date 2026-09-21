@@ -14,9 +14,9 @@ metadata:
 
 A single, shared procedure to organize any of the three documentation folders as one file per topic, instead of a single monolithic document — designed so that finding or updating one topic doesn't require reading the entire listing. Only invoked by `pv-internal-doc-features` (for `docs.functional.featuresDocPathDir`) and directly by `pv-do` (for `docs.tech.architectureDocDir`/`styleBibleDocDir`) — not meant for direct invocation by the user.
 
-**This skill doesn't decide what the documentation says, nor how to write it.** It doesn't draft content, decide topics, or apply any writing style — that's always the caller's job (`pv-internal-doc-features` for its own domain rules, or `pv-do` directly guided by `pv-internal-doc-technical`/`pv-internal-doc-style` for architecture/style). This skill only knows **where** and **how** that already-drafted content should live once handed to it: naming the file, keeping the numbering and index consistent, and returning the relevant file when it needs checking whether it already exists.
-
 **Language.** This skill doesn't talk to the user directly and doesn't decide any wording — it writes exactly the `title`/`area`/`body` strings the caller gives it, in whatever language the caller already chose. The only fixed-English parts are structural, not content: the `**Area**:` label and the `NNN` numeric prefix in the title, parsed literally by `rebuild-index.py`/`next-feature-number.py` regardless of `title`/`area`'s language.
+
+**This skill doesn't decide what the documentation says, nor how to write it.** It doesn't draft content, decide topics, or apply any writing style — that's always the caller's job (`pv-internal-doc-features` for its own domain rules, or `pv-do` directly guided by `pv-internal-doc-technical`/`pv-internal-doc-style` for architecture/style). This skill only knows **where** and **how** that already-drafted content should live once handed to it: naming the file, keeping the numbering and index consistent, and returning the relevant file when it needs checking whether it already exists.
 
 ## Folder convention
 

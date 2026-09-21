@@ -14,9 +14,9 @@ metadata:
 
 The `pv-*` framework's idea notebook, but **outside** its workflow: it doesn't document a change/fix to implement, it just keeps a record of an idea to develop later, at a different pace from `pv-new`/`pv-fix`. There's no planning (`pv-how`/`pv-do`), no states (`inProgress`/`implemented`/`closed`), and no version: an idea noted here stays here until, if ever, someone decides to turn it into a real change/fix with `pv-new`/`pv-fix` (outside this skill already).
 
-It also works the other way: an `inProgress` change/fix that's been deprioritized can be **demoted** here (`/pv-todo change <xxxx>`), keeping every file it had, so its analysis isn't lost while it waits — see [Demoting a change into a noted idea](#demoting-a-change-into-a-noted-idea).
-
 **Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation. `description.md` follows `framework.changes.language` (default `interaction.language`, English if neither is configured) — except the labels wrapped in `[[[...]]]` in `description.template.md` (the four markdown headings), which stay fixed in English always (see step 3, and the "Marker convention in templates" section of `pv-design.en.md`): write them without the brackets. If `language` is not configured anywhere, everything is English.
+
+It also works the other way: an `inProgress` change/fix that's been deprioritized can be **demoted** here (`/pv-todo change <xxxx>`), keeping every file it had, so its analysis isn't lost while it waits — see [Demoting a change into a noted idea](#demoting-a-change-into-a-noted-idea).
 
 Lives at `{changesDir}/todo/`, a sibling subfolder to `inProgress`/`implemented`/`closed` but **entirely separate** from the rest of the framework: no other `pv-*` skill reads it, writes it, or counts its folders when numbering or looking up changes/fixes. The codes this skill uses have no relation to change/fix's numeric `xxxx` — they're just unique identifiers within `{changesDir}/todo/`. (The one crossover is the demote operation above, and it's one-way: this skill reads and deletes an `inProgress/{xxxx}/` folder, but the resulting idea still gets its own `pv-todo` code and stops counting for the workflow.)
 
