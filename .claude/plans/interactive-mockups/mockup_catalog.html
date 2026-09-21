@@ -89,6 +89,12 @@
   .mnote-card__foot .del { margin-left: auto; color: #b3261e; border-color: #e0b4b4; background: #fff; }
   .mnote-card__foot .ok { background: var(--mnote-pin); border-color: var(--mnote-pin); color: #2b2b2b; font-weight: 600; }
 
+  /* Nota state:"closed" — solo pv-internal-mockups-html escribe este estado, nunca el navegador. */
+  .mnote-card--closed { border-left-color: #b8bdc2; opacity: .6; }
+  .mnote-card--closed .mnote-card__body { text-decoration: line-through; color: var(--ink-muted); }
+  .mnote-card--closed .mnote-card__head .badge { background: #b8bdc2; color: #fff; border-radius: 3px;
+    padding: .05rem .35rem; font-size: .65rem; font-weight: 700; }
+
   /* (3) Panel-lista de notas generales */
   .mnote-panel { width: 250px; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
   .mnote-panel__head { padding: .45rem .6rem; font-size: .74rem; font-weight: 700; color: var(--ink-muted);
@@ -99,6 +105,19 @@
   .mnote-panel__item .meta { font-size: .68rem; color: var(--ink-muted); margin-bottom: .15rem; }
   .mnote-panel__item .acts { margin-top: .35rem; display: flex; gap: .6rem; }
   .mnote-panel__item .acts button { border: 0; background: transparent; color: var(--ink-muted); font: inherit; font-size: .72rem; cursor: pointer; padding: 0; }
+
+  /* (4) Toast de guardado: barra fina fija abajo, autodesvanece ~6s o al clic. */
+  .mnote-toast { display: flex; align-items: center; gap: .6rem;
+    background: #2b2b2b; color: #f5f5f5; font-size: .8rem;
+    padding: .55rem .9rem; border-radius: 6px; box-shadow: 0 4px 14px rgba(0,0,0,.25); }
+  .mnote-toast .path { color: var(--mnote-pin); font-weight: 700; word-break: break-all; }
+  .mnote-toast.error { background: #5a1f1a; }
+  .mnote-toast.error strong { color: #ff8a80; }
+  .mnote-toast .copy { flex-shrink: 0; border: 0; background: transparent; color: #b8bdc2;
+    font: inherit; font-size: .9rem; line-height: 1; cursor: pointer; padding: 0 .1rem; }
+  .mnote-toast .copy:hover { color: #fff; }
+  .mnote-toast .close { margin-left: .2rem; flex-shrink: 0; border: 0; background: transparent; color: #b8bdc2;
+    font: inherit; font-size: .9rem; line-height: 1; cursor: pointer; padding: 0 .1rem; }
 </style>
 </head>
 <body>
@@ -234,6 +253,24 @@
       <code>‹ ›</code> las recorre.
     </p>
   </div>
+
+  <div class="card">
+    <p class="caption">Nota state:"closed" (solo la escribe pv-internal-mockups-html)</p>
+    <div class="mnote-card mnote-card--closed">
+      <div class="mnote-card__head">Nota 2 / 2 · <code>button.launcher__new-btn</code> <span class="badge">✓ resuelta</span></div>
+      <div class="mnote-card__body">Más grande, y quitar el contador "(3)".</div>
+      <div class="mnote-card__foot">
+        <button>‹ ›</button>
+        <button class="del">🗑</button>
+      </div>
+    </div>
+    <p class="hint">
+      Atenuada y tachada; ya no cuenta en el contador ámbar del elemento ni en el total de la
+      barra, pero sigue en <code>#mnote-data</code> hasta que el reviewer la borre con 🗑.
+      <strong>No hay botón "Editar"</strong> ni ningún control para cerrar/abrir manualmente —
+      cerrar es un juicio exclusivo de la skill al aplicar el cambio de verdad.
+    </p>
+  </div>
 </div>
 
 <!-- 4 -->
@@ -268,6 +305,45 @@
       <span class="demo-btn">Ayuda</span>
     </div>
     <p class="hint">Sin contadores, contornos, tarjetas ni panel: exactamente el mockup de la skill. El toggle se recuerda por archivo en <code>localStorage</code>.</p>
+  </div>
+</div>
+
+<!-- 5 -->
+<h2>5 · Notificación de guardado (nuevo)</h2>
+<div class="grid">
+  <div class="card" style="max-width:520px;">
+    <p class="caption">Tras pulsar 💾 · barra fija abajo del viewport</p>
+    <div class="mnote-toast">
+      <span>Guardado. Sustituye el original en:<br><span class="path">D:\repos\previo-sdd\sandbox-test1\previo-sdd\changes\inProgress\00196\design_bloc_notas_vista.html</span></span>
+      <button class="copy" title="Copiar ruta" aria-label="Copiar ruta">📋</button>
+      <button class="close" title="Cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <p class="hint">
+      La descarga desde <code>file://</code> nunca sobrescribe el mockup abierto: el navegador
+      siempre pide dónde guardar o cae en Descargas. La ruta mostrada sale de
+      <code>location.pathname</code> (decodificado) — coincide con la ruta real en disco porque
+      el mockup se abre siempre como archivo local, nunca servido por HTTP. El icono 📋 copia la
+      ruta completa al portapapeles (<code>navigator.clipboard.writeText</code>) para pegarla
+      directamente en el explorador de archivos. Este aviso es el único mensaje persistente del
+      framework — recuerda al usuario mover el archivo manualmente a esa ruta exacta. Se
+      autodesvanece a los
+      ~6s o al pulsar ✕/clic; no bloquea la interacción y no reaparece hasta el siguiente 💾.
+    </p>
+  </div>
+
+  <div class="card" style="max-width:520px;">
+    <p class="caption">Si la descarga falla (API bloqueada por el navegador)</p>
+    <div class="mnote-toast error">
+      <span><strong>No se han guardado tus cambios.</strong> La descarga falló — copia el HTML manualmente o inténtalo con otro navegador.</span>
+      <button class="close" title="Cerrar" aria-label="Cerrar">✕</button>
+    </div>
+    <p class="hint">
+      El intento de <code>💾</code> va envuelto en <code>try/catch</code>: si crear el Blob o
+      disparar la descarga lanza una excepción (política del navegador al abrir
+      <code>file://</code>, modo privado restrictivo, etc.), este toast de error <strong>no se
+      autodesvanece</strong> — el usuario debe cerrarlo explícitamente, para no perder el aviso
+      de que sus notas siguen solo en memoria y no han llegado a ningún archivo.
+    </p>
   </div>
 </div>
 
