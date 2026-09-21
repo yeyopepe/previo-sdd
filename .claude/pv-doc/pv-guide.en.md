@@ -17,6 +17,7 @@ All the skills live under `.claude/skills/pv-*` and share a single configuration
     - [2. `/pv-fix` — fix a bug (or apply a trivial change on the fly)](#2-pv-fix--fix-a-bug-or-apply-a-trivial-change-on-the-fly)
   - [Step 2 — Plan and implement: `pv-how` + `pv-do`](#step-2--plan-and-implement-pv-how--pv-do)
 - [Preparing a release: `/pv-version`](#preparing-a-release-pv-version)
+- [Keeping the technical documentation tidy: `/pv-review-doc-tech`](#keeping-the-technical-documentation-tidy-pv-review-doc-tech)
 - [A full-cycle example](#a-full-cycle-example)
 - [More ways to customize Previo](#more-ways-to-customize-previo)
 - [The `pv.py` script: inspect and close changes without Claude Code](#the-pvpy-script-inspect-and-close-changes-without-claude-code)
@@ -279,6 +280,20 @@ You can ask "how does `/pv-version` work?" in the middle of the invocation and i
 > ❗**NOTE ON LARGER PROJECTS**:
 > Obviously, in larger projects, the process of releasing a new version doesn't end here — it probably still has to go through many more states (deployment to several environments, updating configuration values per environment, automated-test validations, etc.).
 > `/pv-version` makes sure everything is prepared so you have a version of your app with everything it needs. From this point on, if the project requires it, we'll have our pipelines take the result of this process from the `versions/{XXXX}` folder (the generated files, the changelog, the collected documentation, etc.) and continue our delivery process. That's why it's important to design how and what a release includes and have Previo store it in `{workFolder}/stuff/how-to-compile.md`.
+
+## Keeping the technical documentation tidy: `/pv-review-doc-tech`
+
+Every time `pv-do` implements a change, it updates `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir` (see [Step 2](#step-2--plan-and-implement-pv-how--pv-do)) — but only for that change's specific topic, never by reviewing the whole folder. Over time that can leave the same fact repeated in two files, a fact filed under the wrong `**Area**`, or content sitting inside the right file but in the wrong spot within it. `/pv-review-doc-tech` is the periodic maintenance pass for that: it rereads every folder configured under `docs.tech` in full (today `architectureDocDir` and `styleBibleDocDir`) and **reorganizes without touching content** — moves, groups, or consolidates, but never deletes a fact, never rewrites a sentence, never adds anything new.
+
+```
+/pv-review-doc-tech
+```
+
+No arguments needed: it walks every folder configured under `docs.tech` (if a future third one is added, it's picked up the same way, no skill change required). For each one, it reads everything first — `INDEX.md`, every file, and `00-namespace.md` — before moving anything, so it catches a duplicate spread across two files or the same concept documented under two different namespace paths, something a file-by-file pass alone would miss. When done, it regenerates `INDEX.md` automatically (never hand-edited).
+
+Things it deliberately does **not** do: it doesn't judge a fact as redundant and delete it, doesn't change what a sentence says, doesn't fill in missing documentation, doesn't renumber or rename any `{NNN}-{slug}.md` file (other files and `00-namespace.md` may depend on that exact path), and doesn't edit `00-namespace.md` directly — if it spots a namespace change that would be needed, it flags it in the final summary for you to decide.
+
+When it finishes it summarizes, per folder, what was moved/consolidated and why, which folders were empty (nothing to reorganize yet), and anything it flagged for you to decide.
 
 ## A full-cycle example
 

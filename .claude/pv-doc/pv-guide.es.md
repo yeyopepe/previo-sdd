@@ -17,6 +17,7 @@ Todas las skills viven bajo `.claude/skills/pv-*` y comparten un único fichero 
     - [2. `/pv-fix` — corregir un bug (o aplicar un cambio trivial al vuelo)](#2-pv-fix--corregir-un-bug-o-aplicar-un-cambio-trivial-al-vuelo)
   - [Paso 2 — Planificar e implementar: `pv-how` + `pv-do`](#paso-2--planificar-e-implementar-pv-how--pv-do)
 - [Preparar una entrega: `/pv-version`](#preparar-una-entrega-pv-version)
+- [Mantener la documentación técnica ordenada: `/pv-review-doc-tech`](#mantener-la-documentación-técnica-ordenada-pv-review-doc-tech)
 - [Ejemplo de ciclo completo](#ejemplo-de-ciclo-completo)
 - [Más formas de personalizar Previo](#más-formas-de-personalizar-previo)
 - [El script `pv.py`: consultar y cerrar cambios sin Claude Code](#el-script-pvpy-consultar-y-cerrar-cambios-sin-claude-code)
@@ -279,6 +280,20 @@ Puedes preguntar "¿cómo funciona `/pv-version`?" en mitad de la invocación y 
 > ❗**NOTA SOBRE PROYECTOS MÁS GRANDES**:
 > Obviamente, en proyectos más grandes, el proceso de liberar una nueva versión no termina aquí, sino que probablemente tenga que pasar todavía por muchos más estados (despliegue en varios entornos, actualización valores de configuración según esos entornos, validaciones de pruebas automáticas, etc).
 > El `/pv-version` se asegura de preprarlo todo para disponer de una versión de nuestra app con todo lo necesario. A partir de este momento, si el proyecto lo requiere, haremos que nuestras pipelines tomen el resultado de este proceso de la carpeta versions/{XXXX} (los ficheros generados, el changelog, la documentación reunida, etc..) y continúen el nuestro proceso de entrega.  Por eso es importante diseñar cómo y qué incluye una entrega y que Previo lo guarde en `{workFolder}/stuff/how-to-compile.md`.
+
+## Mantener la documentación técnica ordenada: `/pv-review-doc-tech`
+
+Cada vez que `pv-do` implementa un cambio, actualiza `docs.tech.architectureDocDir`/`docs.tech.styleBibleDocDir` (ver [Paso 2](#paso-2--planificar-e-implementar-pv-how--pv-do)) — pero solo con el tema puntual de ese cambio, nunca revisando la carpeta entera. Con el tiempo eso puede dejar un hecho repetido en dos ficheros, un dato archivado bajo el `**Area**` que no le toca, o contenido dentro de un fichero pero en el sitio equivocado. `/pv-review-doc-tech` es el mantenimiento periódico para eso: relee cada carpeta configurada en `docs.tech` entera (hoy `architectureDocDir` y `styleBibleDocDir`) y **reorganiza sin tocar el contenido** — mueve, agrupa o consolida, pero nunca borra un hecho, nunca reescribe una frase, nunca añade nada nuevo.
+
+```
+/pv-review-doc-tech
+```
+
+No hace falta pasarle nada: recorre todas las carpetas que haya configuradas en `docs.tech` (si en el futuro hay más de las dos actuales, las recoge igual, sin que haga falta tocar la skill). Por cada una, primero lee todo — `INDEX.md`, cada fichero, y `00-namespace.md` — antes de mover nada, así detecta duplicados repartidos entre dos ficheros o un mismo concepto documentado con rutas de namespace distintas, cosa que revisar fichero a fichero por separado no vería. Al terminar, regenera `INDEX.md` automáticamente (nunca se edita a mano).
+
+Cosas que **no** hace, a propósito: no decide que un hecho es redundante y lo borra, no cambia lo que dice una frase, no rellena huecos de documentación que falte, no renumera ni renombra ningún fichero `{NNN}-{slug}.md` (otros ficheros y `00-namespace.md` pueden depender de ese path exacto), y no edita `00-namespace.md` directamente — si detecta que un cambio de namespace sería necesario, te lo señala en el resumen final para que decidas tú.
+
+Al terminar te resume, por carpeta, qué se movió/consolidó y por qué, qué carpetas estaban vacías (nada que reorganizar todavía) y cualquier cosa que haya dejado marcada para que decidas tú.
 
 ## Ejemplo de ciclo completo
 
