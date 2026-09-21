@@ -16,7 +16,6 @@ A map of the skills that make up the `pv-*` framework and how they invoke each o
 - [The `pv.py` launcher](#the-pvpy-launcher)
 - [Marker convention in templates](#marker-convention-in-templates)
 - [Workflow diagrams](#workflow-diagrams)
-- [Progress tracking (`framework.skills.progress`)](#progress-tracking-frameworkskillsprogress)
 - [Full folder and file structure](#full-folder-and-file-structure)
 
 ## Relationship diagram
@@ -113,7 +112,7 @@ Legend:
   **Customization points (the skill isn't edited).** `SKILL.md`, `workflow.do.md`, and the other files under `.claude/skills/pv-do/` are installed framework, managed via `pv-update`. The one customization point is `{workFolder}/stuff/hooks/do/`, one file per insertion point: `10-before-implementation.md` (step 2, before any code is edited) and `20-after-implementation.md` (end of step 2.1, after code + docs, before the folder moves to `implemented/`). Each holds 0..N `### Step N: {name}` blocks in the same shape as `how-to-compile.md`; `pv-do` matches a file by its `NN-` id prefix (the `slug` is fixed too). Both hooks substitute `{workFolder}` and `{xxxx}`. A file with no steps, or absent, is skipped silently; if a step fails, the flow stops and explains it, and the folder isn't moved. `scaffold-project.py` seeds the two files empty; `pv-do` reads them in step 1.5. `pv-fix`'s fast-track subflow reads and runs the same two files (its own step 2, then hook points at steps 3 and 6) — it edits code without going through `pv-do`, so the same before/after hooks apply; there is no separate `fix/` set.
 
   Assets and scripts:
-  - [`workflow.do.md`](skills/pv-do/workflow.do.md) — Mermaid diagram of this skill's full flow (see "Workflow diagrams" above); read before executing any step, the source of truth for the sequence and the branches. Includes the two hook points (`10-before-implementation` before implementing, `20-after-implementation` after code + docs and before the folder moves), drawn in orange, and its `[PROGRESS: ...]` nodes, drawn in teal.
+  - [`workflow.do.md`](skills/pv-do/workflow.do.md) — Mermaid diagram of this skill's full flow (see "Workflow diagrams" above); read before executing any step, the source of truth for the sequence and the branches. Includes the two hook points (`10-before-implementation` before implementing, `20-after-implementation` after code + docs and before the folder moves), drawn in orange.
   - [`hooks/*.template.md`](skills/pv-do/hooks/) — the seeds for `{workFolder}/stuff/hooks/do/<NN>-<slug>.md`, one per insertion point (`10-before-implementation`, `20-after-implementation`): a header explaining when the hook runs (both from `pv-do` and from `pv-fix`'s fast-track) and which variables are available, plus a commented-out `### Step N` skeleton, zero live steps. `pv-init`'s `scaffold-project.py` copies them (not `pv-do`), each only if absent; `pv-do` (step 1.5) and `pv-fix`'s fast-track (step 2) match a file by its `<NN>` id prefix and run whatever `### Step N` blocks it contains. Never overwritten once a file has content.
   - [`FEATURES.template.md`](skills/pv-do/FEATURES.template.md) — the entry template for `docs.functional.featuresDocPathDir` when that field is a single `.md` file (projects not yet migrated to a folder): functional area, name, description, optional functional Mermaid diagram, where it's used, and associated `xxxx` code(s).
 
@@ -243,10 +242,6 @@ Legend:
   Assets and scripts: none of its own.
 
 - **pv-internal-mockups-ascii** — The same function and the same input/output contract as `pv-internal-mockups-html` (including the same style-bible read as `pv-internal-mockups-html`, applied to layout and microcopy), but generating the mockups as plain-text ASCII art (`design_*.txt`) instead of HTML. It's only invoked when a project configures `framework.skills.mockups` to use this alternative instead of the default. *Uses:* no other skill.
-
-  Assets and scripts: none of its own.
-
-- **pv-internal-progress-todowrite** — Publishes and updates a visible checklist of an orchestrator's progress (`pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update`) at each `[PROGRESS: ...]` node of its `workflow.*.md`, translating `action=init`/`update`/`close` into `TodoWrite` calls from the harness. It doesn't decide which steps exist or when they change status — that's the caller's decision, same as `pv-internal-tech-mermaid` doesn't decide which diagrams are needed. State lives only in the conversation's memory, never on disk. It's the default progress skill for `framework.skills.progress`, which unlike `mockups`/`diagrams` has no default: see "Progress tracking" below. *Uses:* no other skill.
 
   Assets and scripts: none of its own.
 
@@ -411,7 +406,6 @@ Fixed-shape configuration that the `pv-*` skills use directly, split into four b
 - **`skills`** (`object`, optional): interchangeable skill names that the rest of the framework invokes by name rather than hard-coding them in whoever needs them — replacing the value is enough to switch technology without touching `pv-new`/`pv-fix`/`pv-how`/`pv-internal-workflow`, as long as the given skill meets the same input/output contract as the one it replaces:
   - **`mockups`** (`string`, default `"pv-internal-mockups-html"`): the skill that `pv-new`/`pv-fix` invoke for a change/fix's `design_*.html` mockups. Contract: destination folder + list of elements to create/edit as input; paths of the resulting files as output.
   - **`diagrams`** (`string`, default `"pv-internal-tech-mermaid"`): the skill that `pv-internal-workflow`/`pv-new`/`pv-fix`/`pv-how` invoke for the Mermaid diagrams. Contract: list of diagrams to generate (type + what each represents) as input; the code for each diagram as output.
-  - **`progress`** (`string`, optional, **no default** — unlike `mockups`/`diagrams`, see "Progress tracking" below): the skill that `pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update` invoke at each `[PROGRESS: ...]` node of their `workflow.*.md` to publish/update a visible checklist of the flow's progress. Contract: `action` (`init`/`update`/`close`) plus `items`/`itemId`/`status` depending on the case, documented in `pv-internal-progress-todowrite/SKILL.md`. Absent or empty (`""`): no checklist, behavior identical to the framework without this feature.
 
 #### Language configuration
 
@@ -507,8 +501,6 @@ Four node types, in addition to `flowchart`'s usual shapes (`[Text]`/`{Decision}
 - **Informs and asks for confirmation (blocking)**: `ID[ASK: Text]` — the skill can't proceed until the user responds; if the question already has the options as branches, follow with a `{...}` node right after, connected by `-->`.
 - **Decision branch**: `ID{Text}` — each outgoing edge labeled (`-->|Yes|`, `-->|No|`, or the specific case), like any other decision in a Mermaid flowchart.
 
-**Progress nodes** (`[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]`) are a variant of the internal-step node above, not a fifth node type — the skill is still acting without talking to the user, just reporting its own progress instead of doing file/script work. `pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update` add these around their own already-existing major steps, invoking the skill configured in `framework.skills.progress` (see "Progress tracking" below for the full picture, and `pv-internal-progress-todowrite/SKILL.md` for the contract). These nodes are only present in a `workflow.*.md` when the project has `framework.skills.progress` configured — absent, the file carries no `[PROGRESS: ...]` node at all and the flow behaves exactly as without it. They're highlighted the same way as hook nodes: `classDef progress fill:#0891b2,color:#fff` (teal) applied to every `[PROGRESS: ...]` node in the diagram, with its own legend line — same pattern as the orange `classDef hook` (see "Project hooks" below).
-
 **Legend template** — a fixed block to copy **as-is**, without translating or rephrasing a single word, at the end of every new `workflow.*.md` file (it's the only text in this document meant to be pasted literally into another file):
 
 ```
@@ -522,35 +514,6 @@ Leyenda:
 **Reading rule**: every skill that has a `workflow.*.md` must read it **before** executing any step of its flow (the first thing in its `SKILL.md`, even before its current "step 0"), and follow it node by node. If the file doesn't exist or can't be parsed as the diagram describing its own flow, it's a hard failure: the skill stops and reports it — it never improvises the flow from memory or follows only the `SKILL.md` prose as if the diagram didn't exist.
 
 **Relationship with the `SKILL.md`**: the diagram is authoritative for the sequence and the branches; the `SKILL.md`'s numbered prose provides the detail of each step. If they ever conflict, the prose is corrected to match the diagram — never the other way around.
-
-## Progress tracking (`framework.skills.progress`)
-
-A checklist visible in the interface (via `TodoWrite` or an equivalent mechanism) that orchestrator skills publish and update while running their own flow, so the user can see which step it's on without asking in chat. Same interchangeable-skill pattern as `framework.skills.mockups`/`skills.diagrams` (see "Skills configuration" above), applied to a third isolation problem: who knows how to publish a checklist in the concrete host's UI.
-
-**Unlike `mockups`/`diagrams`, this field has no default and is purely opt-in.** `mockups`/`diagrams` produce content the change actually needs — that's why `pv-init` always writes their default silently. `progress` produces nothing the flow depends on having: it's a cosmetic improvement. So the criterion is inverted:
-
-- **`framework.skills.progress` absent or empty (`""`)**: no `workflow.*.md` carries `[PROGRESS: ...]` nodes, no skill invokes anything — behavior identical to the framework without this feature, zero cost.
-- **`framework.skills.progress` set to a skill name**: that skill is invoked at every `[PROGRESS: ...]` node of the diagrams that carry them.
-
-**Where the instrumentation lives — the diagram, not the prose.** The `[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]` nodes are a variant of the internal-step node (`ID[Text]`), documented in the "Workflow diagrams" section above — that's where the full notation lives. Each orchestrator's `workflow.*.md` adds them around its own already-existing major steps, without creating new steps that weren't already there. Each orchestrator's `SKILL.md` carries only **one fixed line** pointing to this section and to the leaf skill's contract — never a list of items or the contract's detail repeated in prose: that would duplicate what the diagram and `pv-internal-progress-todowrite/SKILL.md` already say, and would drift out of sync the first time either one changes.
-
-**Invocation contract** (documented in full in `pv-internal-progress-todowrite/SKILL.md`, which any configured alternative must meet the same way):
-
-- `action=init` + `items` (the ordered list of major steps for that branch of the flow, in `interaction.language`) — at the start of the flow, or right after it's known which branch applies if the diagram forks early (e.g. `pv-fix`'s fast-track vs. non-trivial).
-- `action=update` + `itemId` + `status` (`in_progress`/`completed`) — at each intermediate node.
-- `action=close` — at every branch's end node, including an early stop (e.g. framework not initialized): a safe no-op if `init` was never called.
-
-**Instrumented skills** (orchestrators with their own `workflow.*.md`; the `pv-internal-*` skills they invoke aren't instrumented separately — they already fall under the major step of whoever calls them):
-
-| Skill | Diagram | `PROGRESS` nodes |
-|---|---|---|
-| `pv-new` | `workflow.new.md` | 13 |
-| `pv-fix` | `workflow.fix.md` | 15 (two separate lists: fast-track and non-trivial, depending on step 2's branch) |
-| `pv-how` | `workflow.how.md` | 15 |
-| `pv-do` | `workflow.do.md` | 17 |
-| `pv-update` | `workflow.audit.md` | 2 (`init`/`close` only — its step 3 is a generic loop over detected problems, not a fixed sequence of major steps) |
-
-**Default leaf skill: `pv-internal-progress-todowrite`.** Translates each call into a `TodoWrite` call from the harness, keeping the item list and each item's status only in the conversation's own memory — it writes nothing to disk and doesn't survive the session (if persistence across sessions or across agents is needed, that's a separate problem). Migrating to a host without `TodoWrite` (e.g. Copilot) means writing an alternative skill that meets the same contract and pointing `framework.skills.progress` at it — zero changes in the orchestrators, which already only talk to the configured skill, never to `TodoWrite` directly.
 
 ## Project hooks
 

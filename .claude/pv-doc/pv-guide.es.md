@@ -308,7 +308,6 @@ Algunas piezas del framework se pueden sustituir por otras propias sin tocar el 
 
 - **Maquetas visuales** (`mockups`): por defecto genera maquetas en HTML/CSS/SVG navegables en el navegador. Si prefieres maquetas en texto plano (arte ASCII), cámbialo a `pv-internal-mockups-ascii`.
 - **Diagramas** (`diagrams`): por defecto genera diagramas Mermaid para representar flujos y casos de uso.
-- **Progreso** (`progress`): opcional, sin valor por defecto — ausente, `pv-new`/`pv-fix`/`pv-how`/`pv-do` no muestran ninguna checklist y se comportan exactamente igual que hoy. Si lo configuras (p. ej. a `pv-internal-progress-todowrite`), esas skills muestran una checklist de avance en la interfaz mientras ejecutan su flujo, para que veas por dónde van sin tener que preguntar en el chat.
 
 Ejemplo, para usar maquetas en ASCII en vez de HTML:
 

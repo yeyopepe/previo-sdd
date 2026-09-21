@@ -37,8 +37,6 @@ For a non-trivial fix, this skill implements nothing itself: it documents the in
 
 **Before any other step**, read [`workflow.fix.md`](workflow.fix.md) — it's the source of truth for this flow's sequence and branches (both the fast-track and non-trivial sub-flows; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
-**Progress checklist.** At each `[PROGRESS: ...]` node in that diagram: invoke the skill configured in `framework.skills.progress` (by name, using the Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for — see the contract in that skill's SKILL.md. If `framework.skills.progress` is absent or empty in `pv-context.json`, skip the node silently.
-
 ## 0. Check that the framework is initialized
 
 If `.claude/pv-context.json` doesn't exist at the repo root, or is missing the `framework` section (or fields of it that are needed), don't continue: tell the user they must first run the `pv-init` skill to initialize/complete the framework in this project, and stop there.

@@ -6,9 +6,7 @@ flowchart TD
     S1Read --> S1Exists{Does the file exist?}
     S1Exists -->|No| S1Info[INFO: the framework is not initialized, run pv-init]
     S1Info --> End1([End: nothing to audit])
-    S1Exists -->|Yes| S15Init
-
-    S15Init["PROGRESS: init (config shape, paths, stuff/, change codes/markers, metadata, namespace, pv.py, skillModels, version)"] --> S2Run
+    S1Exists -->|Yes| S2Run
 
     S2Run[Run audit-context.py] --> S2Empty{problems comes back empty?}
     S2Empty -->|Yes, and lastVerifiedVersion already exists| S2Healthy[INFO: healthy configuration]
@@ -30,28 +28,14 @@ flowchart TD
     S3DowngradeDec -->|It was not intentional| S3DowngradeGuide[INFO: how to restore the correct files]
     S3DowngradeGuide --> End3Blocked2([End: blocked, blocked=true stays])
 
-    S3Kind -->|skills-progress-unconfigured| S3Progress[Check if pv-internal-progress-todowrite exists on disk]
-    S3Progress --> S3ProgressAsk[ASK: enable the checklist or opt out explicitly]
-    S3ProgressAsk --> S3ProgressDec{User's answer}
-    S3ProgressDec -->|Enable| S3ProgressEnable[Write skills.progress = pv-internal-progress-todowrite]
-    S3ProgressEnable --> S3Next
-    S3ProgressDec -->|Opt out| S3ProgressOptOut[Write skills.progress = '']
-    S3ProgressOptOut --> S3Next
-    S3ProgressDec -->|No answer yet| S3ProgressPending[Carry as pending item into step 4 report]
-    S3ProgressPending --> S3Next
-
     S3Kind -->|Any other problem id| S3Fix[Apply the corresponding deterministic fix]
     S3Fix --> S3Next{More problems left to process?}
     S3Next -->|Yes| S3Loop
     S3Next -->|No| S35Run
 
     S35Run[Run mark-verified.py --clear] --> S4Rerun[Rerun audit-context.py to confirm]
-    S4Rerun --> S4Close[PROGRESS: close]
-    S4Close --> S4Report[INFO: final report grouped by area]
+    S4Rerun --> S4Report[INFO: final report grouped by area]
     S4Report --> EndOK([End: audit completed])
-
-    classDef progress fill:#0891b2,color:#fff
-    class S15Init,S4Close progress
 ```
 
 Legend:
@@ -59,4 +43,3 @@ Legend:
 - `[INFO: Text]` — the skill informs the user; doesn't block, continues without waiting for a reply.
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
-- Teal nodes — `[PROGRESS: ...]` nodes: invoke the skill configured in `framework.skills.progress`, if any. Optional; skipped silently when unconfigured.

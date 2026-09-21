@@ -16,7 +16,6 @@ Mapa de las skills que componen el framework `pv-*` y cómo se invocan entre sí
 - [El lanzador `pv.py`](#el-lanzador-pvpy)
 - [Convención de marcadores en plantillas](#convención-de-marcadores-en-plantillas)
 - [Diagramas de flujo (workflow diagrams)](#diagramas-de-flujo-workflow-diagrams)
-- [Seguimiento de progreso (`framework.skills.progress`)](#seguimiento-de-progreso-frameworkskillsprogress)
 - [Estructura completa de carpetas y ficheros](#estructura-completa-de-carpetas-y-ficheros)
 
 ## Diagrama de relaciones
@@ -113,7 +112,7 @@ Leyenda:
   **Puntos de personalización (no se edita la skill).** El `SKILL.md`, `workflow.do.md` y demás ficheros bajo `.claude/skills/pv-do/` son framework instalado, gestionado vía `pv-update`. El único punto de personalización es `{workFolder}/stuff/hooks/do/`, un fichero por punto de inserción: `10-before-implementation.md` (paso 2, antes de editar código) y `20-after-implementation.md` (final del paso 2.1, tras código + docs, antes de mover la carpeta a `implemented/`). Cada uno con 0..N bloques `### Step N: {name}` de la misma forma que `how-to-compile.md`; `pv-do` casa un fichero por su prefijo de id `NN-` (el `slug` también es fijo). Ambos hooks sustituyen `{workFolder}` y `{xxxx}`. Un fichero sin pasos, o ausente, se salta en silencio; si un paso falla, el flujo se detiene y se explica, y la carpeta no se mueve. `scaffold-project.py` siembra los dos ficheros vacíos; `pv-do` los lee en el paso 1.5. El subflujo rápido de `pv-fix` lee y ejecuta esos mismos dos ficheros (su paso 2, luego puntos de hook en los pasos 3 y 6) — edita código sin pasar por `pv-do`, así que aplican los mismos hooks antes/después; no hay un conjunto `fix/` aparte.
 
   Assets y scripts:
-  - [`workflow.do.md`](skills/pv-do/workflow.do.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba); se lee antes de ejecutar cualquier paso, fuente de verdad de la secuencia y las ramas. Incluye los dos puntos de hook (`10-before-implementation` antes de implementar, `20-after-implementation` tras código + docs y antes de mover la carpeta), dibujados en naranja, y sus nodos `[PROGRESS: ...]`, dibujados en teal.
+  - [`workflow.do.md`](skills/pv-do/workflow.do.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba); se lee antes de ejecutar cualquier paso, fuente de verdad de la secuencia y las ramas. Incluye los dos puntos de hook (`10-before-implementation` antes de implementar, `20-after-implementation` tras código + docs y antes de mover la carpeta), dibujados en naranja.
   - [`hooks/*.template.md`](skills/pv-do/hooks/) — las semillas para `{workFolder}/stuff/hooks/do/<NN>-<slug>.md`, una por punto de inserción (`10-before-implementation`, `20-after-implementation`): un encabezado que explica cuándo se ejecuta el hook (tanto desde `pv-do` como desde la vía rápida de `pv-fix`) y qué variables hay disponibles, más un esqueleto `### Step N` comentado, cero pasos vivos. El `scaffold-project.py` de `pv-init` las copia (no `pv-do`), cada una solo si no existe; `pv-do` (paso 1.5) y la vía rápida de `pv-fix` (paso 2) casan un fichero por su prefijo de id `<NN>` y ejecutan los bloques `### Step N` que contenga. Nunca se sobrescriben una vez tienen contenido.
   - [`FEATURES.template.md`](skills/pv-do/FEATURES.template.md) — plantilla de entrada para `docs.functional.featuresDocPathDir` cuando ese campo es un único fichero `.md` (proyectos aún no migrados a carpeta): área funcional, nombre, descripción, diagrama Mermaid funcional opcional, dónde se usa y código(s) `xxxx` asociados.
 
@@ -243,10 +242,6 @@ Leyenda:
   Assets y scripts: ninguno propio.
 
 - **pv-internal-mockups-ascii** — Misma función y mismo contrato de entrada/salida que `pv-internal-mockups-html` (incluida la misma lectura del style bible que `pv-internal-mockups-html`, aplicada a layout y microcopy), pero generando las maquetas como arte ASCII en texto plano (`design_*.txt`) en vez de HTML. Solo se invoca cuando un proyecto configura `framework.skills.mockups` para usar esta alternativa en lugar de la de por defecto. *Usa:* ninguna otra skill.
-
-  Assets y scripts: ninguno propio.
-
-- **pv-internal-progress-todowrite** — Publica y actualiza una checklist visible del avance de una orquestadora (`pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update`) en cada nodo `[PROGRESS: ...]` de su `workflow.*.md`, traduciendo `action=init`/`update`/`close` a llamadas `TodoWrite` del harness. No decide qué pasos existen ni cuándo cambian de estado — eso lo decide quien invoca, igual que `pv-internal-tech-mermaid` no decide qué diagramas hacen falta. Estado solo en memoria de la conversación, nunca en disco. Es la skill de progreso por defecto de `framework.skills.progress`, que a diferencia de `mockups`/`diagrams` no tiene default: ver "Seguimiento de progreso" más abajo. *Usa:* ninguna otra skill.
 
   Assets y scripts: ninguno propio.
 
@@ -411,7 +406,6 @@ Configuración de forma fija que las skills `pv-*` usan directamente, dividida e
 - **`skills`** (`object`, opcional): nombres de skill intercambiables que el resto del framework invoca por nombre en vez de tenerlos fijos en el código de quien los necesita — sustituir el valor basta para cambiar de tecnología sin tocar `pv-new`/`pv-fix`/`pv-how`/`pv-internal-workflow`, siempre que la skill indicada cumpla el mismo contrato de entrada/salida que la que sustituye:
   - **`mockups`** (`string`, default `"pv-internal-mockups-html"`): skill que `pv-new`/`pv-fix` invocan para las maquetas `design_*.html` de un change/fix. Contrato: carpeta destino + lista de elementos a crear/editar como entrada; rutas de los ficheros resultantes como salida.
   - **`diagrams`** (`string`, default `"pv-internal-tech-mermaid"`): skill que `pv-internal-workflow`/`pv-new`/`pv-fix`/`pv-how` invocan para los diagramas Mermaid. Contrato: lista de diagramas a generar (tipo + qué representa cada uno) como entrada; código de cada diagrama como salida.
-  - **`progress`** (`string`, opcional, **sin default** — a diferencia de `mockups`/`diagrams`, ver "Seguimiento de progreso" más abajo): skill que `pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update` invocan en cada nodo `[PROGRESS: ...]` de su `workflow.*.md` para publicar/actualizar una checklist visible del avance del flujo. Contrato: `action` (`init`/`update`/`close`) + `items`/`itemId`/`status` según el caso, documentado en `pv-internal-progress-todowrite/SKILL.md`. Ausente o vacío (`""`): ninguna checklist, comportamiento idéntico al framework sin esta funcionalidad.
 
 #### Configuración de idioma
 
@@ -507,8 +501,6 @@ Cuatro tipos de nodo, además de las formas habituales de `flowchart` (`[Texto]`
 - **Informa y pide confirmación (bloqueante)**: `ID[ASK: Texto]` — la skill no puede avanzar hasta que el usuario responda; si la pregunta ya tiene las opciones como ramas, seguir con un nodo `{...}` justo después, conectado por `-->`.
 - **Rama de decisión**: `ID{Texto}` — cada arista de salida etiquetada (`-->|Sí|`, `-->|No|`, o el caso concreto), igual que cualquier otra decisión en un flowchart de Mermaid.
 
-**Nodos de progreso** (`[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]`) son una variante del nodo de paso interno de arriba, no un quinto tipo de nodo — la skill sigue actuando sin hablar con el usuario, solo que reporta su propio avance en vez de trabajar con ficheros o scripts. `pv-new`/`pv-fix`/`pv-how`/`pv-do`/`pv-update` añaden estos nodos alrededor de sus propios pasos mayores ya existentes, invocando la skill configurada en `framework.skills.progress` (ver el contrato en `pv-internal-progress-todowrite/SKILL.md`). Estos nodos solo están presentes en un `workflow.*.md` si el proyecto tiene `framework.skills.progress` configurado — ausente, el fichero no lleva ningún nodo `[PROGRESS: ...]` y el flujo se comporta exactamente igual que sin ellos. Se resaltan igual que los nodos de hook: `classDef progress fill:#0891b2,color:#fff` (color teal) aplicado a todos los nodos `[PROGRESS: ...]` del diagrama, con su propia línea de leyenda — mismo patrón que el `classDef hook` en naranja (ver "Hooks de proyecto" más abajo).
-
 **Plantilla de la leyenda** — bloque fijo a copiar **tal cual**, sin traducir ni reformular ni una palabra, al final de cada fichero `workflow.*.md` nuevo (es el único texto de este documento pensado para pegarse literalmente en otro fichero):
 
 ```
@@ -522,35 +514,6 @@ Leyenda:
 **Regla de lectura**: toda skill que tenga un `workflow.*.md` debe leerlo **antes** de ejecutar cualquier paso de su flujo (lo primero en su `SKILL.md`, incluso antes de su actual "paso 0"), y seguirlo nodo a nodo. Si el fichero no existe o no se puede parsear como el diagrama que describe su propio flujo, es un fallo duro: la skill se detiene y lo reporta — nunca improvisa el flujo de memoria ni sigue solo la prosa del `SKILL.md` como si el diagrama no existiera.
 
 **Relación con el `SKILL.md`**: el diagrama manda en secuencia y ramas; la prosa numerada del `SKILL.md` aporta el detalle de cada paso. Si alguna vez entran en conflicto, se corrige la prosa para que cuadre con el diagrama — nunca al revés.
-
-## Seguimiento de progreso (`framework.skills.progress`)
-
-Checklist visible en la interfaz (vía `TodoWrite` u otro mecanismo equivalente) que las skills orquestadoras publican y actualizan mientras ejecutan su propio flujo, para que el usuario vea en qué paso van sin tener que preguntar en el chat. Mismo patrón de skill-hoja intercambiable que `framework.skills.mockups`/`skills.diagrams` (ver "Configuración de skills" más abajo), aplicado a un tercer problema de aislamiento: quién sabe publicar una checklist en la UI del host concreto.
-
-**A diferencia de `mockups`/`diagrams`, este campo no tiene default y es puramente opt-in.** `mockups`/`diagrams` producen contenido que el change necesita — por eso `pv-init` siempre escribe su default en silencio. `progress` no produce nada que el flujo dependa de tener: es una mejora cosmética. Por eso el criterio se invierte:
-
-- **`framework.skills.progress` ausente o vacío (`""`)**: ningún `workflow.*.md` lleva nodos `[PROGRESS: ...]`, ninguna skill invoca nada — comportamiento idéntico al framework sin esta funcionalidad, coste cero.
-- **`framework.skills.progress` configurado con un nombre de skill**: esa skill se invoca en cada nodo `[PROGRESS: ...]` de los diagramas que los llevan.
-
-**Dónde vive la instrumentación — el diagrama, no la prosa.** Los nodos `[PROGRESS: init]` / `[PROGRESS: <id> in_progress|completed]` / `[PROGRESS: close]` son una variante del nodo de paso interno (`ID[Texto]`), documentada en la sección "Diagramas de flujo" de arriba — ahí está la notación completa. Cada `workflow.*.md` de una skill orquestadora los añade alrededor de sus propios pasos mayores ya existentes, sin crear pasos nuevos que no hubiera antes. El `SKILL.md` de cada orquestadora solo lleva **una línea fija** remitiendo a esta sección y al contrato de la skill-hoja — nunca una lista de items ni el detalle del contrato repetido en prosa: eso duplicaría lo que el diagrama y `pv-internal-progress-todowrite/SKILL.md` ya dicen, y quedaría desincronizado la primera vez que alguno de los dos cambie.
-
-**Contrato de invocación** (documentado en detalle en `pv-internal-progress-todowrite/SKILL.md`, que cualquier alternativa configurada debe cumplir igual):
-
-- `action=init` + `items` (lista ordenada de pasos mayores de esa rama del flujo, en `interaction.language`) — al empezar el flujo, o justo después de saber qué rama se sigue si el diagrama bifurca pronto (p. ej. `pv-fix` fast-track vs. no-trivial).
-- `action=update` + `itemId` + `status` (`in_progress`/`completed`) — en cada nodo intermedio.
-- `action=close` — en cada nodo final de rama, incluida una parada temprana (p. ej. framework no inicializado): es un no-op seguro si `init` nunca llegó a llamarse.
-
-**Skills instrumentadas** (orquestadoras con `workflow.*.md` propio; las `pv-internal-*` que invocan no se instrumentan aparte — ya caen bajo el paso mayor de quien las llama):
-
-| Skill | Diagrama | Nodos `PROGRESS` |
-|---|---|---|
-| `pv-new` | `workflow.new.md` | 13 |
-| `pv-fix` | `workflow.fix.md` | 15 (dos listas distintas: fast-track y no-trivial, según la rama del paso 2) |
-| `pv-how` | `workflow.how.md` | 15 |
-| `pv-do` | `workflow.do.md` | 17 |
-| `pv-update` | `workflow.audit.md` | 2 (`init`/`close` únicamente — su paso 3 es un bucle genérico sobre problemas detectados, no una secuencia fija de pasos mayores) |
-
-**Skill-hoja por defecto: `pv-internal-progress-todowrite`.** Traduce cada llamada a `TodoWrite` del harness, manteniendo la lista y el estado de cada item solo en memoria de la conversación — no escribe nada en disco, no sobrevive a la sesión (si se necesita persistencia entre sesiones o cruzada con otros agentes, ese es un problema distinto). Migrar a un host sin `TodoWrite` (p. ej. Copilot) es escribir una skill alternativa que cumpla el mismo contrato y apuntar `framework.skills.progress` a ella — cero cambios en las orquestadoras, que ya solo hablan con la skill configurada, nunca con `TodoWrite` directamente.
 
 ## Hooks de proyecto
 

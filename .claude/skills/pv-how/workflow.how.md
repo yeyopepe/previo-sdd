@@ -6,9 +6,7 @@ flowchart TD
     S0Check --> S0Ok{Initialized, verified, not blocked?}
     S0Ok -->|No| S0Info[INFO: run pv-init/pv-update first]
     S0Info --> End0([End: stopped])
-    S0Ok -->|Yes| S0Progress
-
-    S0Progress[PROGRESS: init] --> S01Codes
+    S0Ok -->|Yes| S01Codes
 
     S01Codes[Run get-max-change-codes.py] --> S01Behind{Current xxxx lower than another already implemented/closed?}
     S01Behind -->|Yes| S01Warn[INFO: this entry is older than one already further along]
@@ -24,15 +22,13 @@ flowchart TD
     S1Given -->|Yes| S1Found{Found under inProgress/?}
     S1Found -->|No| S1NotFound[INFO: already implemented, or not found]
     S1NotFound --> End1b([End: not found])
-    S1Found -->|Yes| S11Progress
+    S1Found -->|Yes| S11Validate
 
-    S11Progress[PROGRESS: validate in_progress] --> S11Validate
     S11Validate[Read description.md and design_* files for inconsistencies] --> S11Issue{Inconsistency or gap found?}
     S11Issue -->|Yes| S11Ask[ASK: how to resolve it?]
     S11Ask --> S11Fix[Update affected documents with the answer]
     S11Fix --> S11Validate
-    S11Issue -->|No| S11Done[PROGRESS: validate completed]
-    S11Done --> S12Load
+    S11Issue -->|No| S12Load
 
     S12Load[List stuff/hooks/how/NN-slug.md files, match by NN id, parse each file's Step blocks] --> S2PlanExists
 
@@ -45,50 +41,34 @@ flowchart TD
 
     S30HookCheck{10-before-analysis.md defines steps?}
     S30HookCheck -->|Yes| S30HookRun[Run 10-before-analysis steps in order, workFolder and xxxx substituted; a failure stops the analysis]
-    S30HookRun --> S3Progress
-    S30HookCheck -->|No| S3Progress
+    S30HookRun --> S3Write
+    S30HookCheck -->|No| S3Write
 
-    S3Progress[PROGRESS: analyze in_progress] --> S3Write
     S3Write[Read description.md Type: fix scopes strictly to root cause, change has full scope] --> S3Doubt{Technical doubts remain?}
     S3Doubt -->|Yes| S3Ask[ASK: resolve technical doubt]
     S3Ask --> S3Analysis
     S3Doubt -->|No| S3Analysis
-    S3Analysis[Invoke pv-internal-tech-analysis for context] --> S3Done[PROGRESS: analyze completed]
-    S3Done --> S3PlanProgress[PROGRESS: plan in_progress]
-    S3PlanProgress --> S3WritePlan[Write plan.md sections a-e]
-    S3WritePlan --> S3PlanDone[PROGRESS: plan completed]
-    S3PlanDone --> S31Risk
+    S3Analysis[Invoke pv-internal-tech-analysis for context] --> S3WritePlan[Write plan.md sections a-e]
+    S3WritePlan --> S31Risk
 
-    S31Risk[PROGRESS: risk in_progress] --> S31RiskInvoke[Invoke pv-internal-tech-risks on plan.md/description.md]
-    S31RiskInvoke --> S31Write[Write risk median to .metadata.json via set-metadata.py --set-risk]
-    S31Write --> S31Done[PROGRESS: risk completed]
-    S31Done --> S315HookCheck
+    S31Risk[Invoke pv-internal-tech-risks on plan.md/description.md] --> S31Write[Write risk median to .metadata.json via set-metadata.py --set-risk]
+    S31Write --> S315HookCheck
     S315HookCheck{20-after-plan.md defines steps?}
     S315HookCheck -->|Yes| S315HookRun[Run 20-after-plan steps in order, workFolder and xxxx substituted; a failure stops before asking to implement]
     S315HookRun --> S31Detail
     S315HookCheck -->|No| S31Detail
     S31Detail{User asks for the 9-factor detail, now or later?}
     S31Detail -->|Yes| S31AddSection[Show detail and add section f Risk analysis to plan.md]
-    S31AddSection --> S32Progress
-    S31Detail -->|No| S32Progress
+    S31AddSection --> S32Ask
+    S31Detail -->|No| S32Ask
 
-    S32Progress[PROGRESS: confirm in_progress] --> S32Ask
     S32Ask[ASK: implement now?] --> S32Dec{User confirms?}
-    S32Dec -->|Yes| S32Done1[PROGRESS: confirm completed]
-    S32Done1 --> S32Do[Invoke pv-do on the same xxxx]
+    S32Dec -->|Yes| S32Do[Invoke pv-do on the same xxxx]
     S32Do --> EndDo([End: continues in pv-do])
-    S32Dec -->|No| S32Done2[PROGRESS: close]
-    S32Done2 --> EndPending([End: stays planned, pending implementation])
-
-    End0 --> EndClose0[PROGRESS: close]
-    End1 --> EndClose1[PROGRESS: close]
-    End1b --> EndClose1b[PROGRESS: close]
+    S32Dec -->|No| EndPending([End: stays planned, pending implementation])
 
     classDef hook fill:#d9770e,color:#fff
     class S30HookCheck,S30HookRun,S315HookCheck,S315HookRun hook
-
-    classDef progress fill:#0891b2,color:#fff
-    class S0Progress,S11Progress,S11Done,S3Progress,S3Done,S3PlanProgress,S3PlanDone,S31Risk,S31Done,S32Progress,S32Done1,S32Done2,EndClose0,EndClose1,EndClose1b progress
 ```
 
 Legend:
@@ -97,4 +77,3 @@ Legend:
 - `[ASK: Text]` — the skill informs and asks for confirmation/input; blocking, doesn't proceed without the user's answer.
 - `{Text}` — decision branch; each outgoing edge carries its own label.
 - Orange nodes — the project's own hook insertion points (`stuff/hooks/how/*.md`): the check for defined steps and the run of those steps. Optional; a hook with no steps is skipped silently.
-- Teal nodes — `[PROGRESS: ...]` nodes: invoke the skill configured in `framework.skills.progress`, if any. Optional; skipped silently when unconfigured.

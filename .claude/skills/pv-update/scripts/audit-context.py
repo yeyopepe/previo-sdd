@@ -8,9 +8,7 @@ skillModels vs each SKILL.md's real frontmatter, the [[[...]]]-marked
 structural labels AND section headings (see pv-design.en.md's "Marker
 convention in templates") in every template-derived document under
 workFolder's changes/ subtree -- catching ones left translated by a
-document written under an older, still-localized framework version
-(marker-missing:*) or left with the raw '[[[...]]]' syntax instead of
-the unwrapped label (marker-literal:*),
+document written under an older, still-localized framework version,
 stuff/hooks/*/*.md files that carry project-authored '### Step' blocks
 (stuff-<subdir>-hook-language:*, flagged for pv-update itself to read and
 judge whether the content is in English -- hooks are technical
@@ -686,19 +684,6 @@ def marker_pattern(label: str) -> re.Pattern:
     return re.compile(rf"(\*\*{escaped}\*\*|^#{{1,6}}\s*{escaped}\s*$)", re.MULTILINE)
 
 
-def literal_marker_pattern(label: str) -> re.Pattern:
-    # The raw, still-bracketed form ("**[[[Label]]]**" or "## [[[Label]]]")
-    # surviving into a generated file -- the model copied the template's
-    # marker syntax verbatim instead of writing the unwrapped label. Distinct
-    # from marker_pattern (which looks for the unwrapped label) so the two
-    # cases -- missing vs. left-bracketed -- are never conflated.
-    escaped = re.escape(label)
-    return re.compile(
-        rf"(\*\*\[\[\[{escaped}\]\]\]\*\*|^#{{1,6}}\s*\[\[\[{escaped}\]\]\]\s*$)",
-        re.MULTILINE,
-    )
-
-
 def check_marked_documents(root: Path, work_folder: str, problems: list) -> None:
     wf_path = resolve_under(root, work_folder)
     for template_rel, file_globs in MARKED_TEMPLATES:
@@ -711,9 +696,9 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
         for file_glob in file_globs:
             for doc_path in sorted(wf_path.glob(file_glob)):
                 text = doc_path.read_text(encoding="utf-8")
-                rel = doc_path.relative_to(root).as_posix()
                 missing = [label for label in labels if not marker_pattern(label).search(text)]
                 if missing:
+                    rel = doc_path.relative_to(root).as_posix()
                     add(problems, f"marker-missing:{rel}", "optional", rel,
                         f"'{rel}' is missing the structural marker(s) {', '.join(missing)} "
                         f"expected from '{template_rel}' -- these are field labels AND section headings "
@@ -724,17 +709,6 @@ def check_marked_documents(root: Path, work_folder: str, problems: list) -> None
                         f"never a legitimately-omitted optional section. Restore the English label in place "
                         f"without touching the section body.",
                         expected=", ".join(labels), actual=", ".join(l for l in labels if l not in missing) or "(none found)")
-                literal = [label for label in labels if literal_marker_pattern(label).search(text)]
-                if literal:
-                    add(problems, f"marker-literal:{rel}", "optional", rel,
-                        f"'{rel}' still has the raw '[[[...]]]' template syntax around "
-                        f"{', '.join(literal)} instead of the unwrapped label -- '[[[...]]]' is "
-                        f"template-only notation (see pv-design.en.md's \"Marker convention in "
-                        f"templates\") telling whoever fills the template what not to translate; it "
-                        f"must never survive into the generated file. The usual cause is the model "
-                        f"copying the template's marker syntax verbatim instead of writing just the "
-                        f"label it wraps.",
-                        expected=", ".join(labels), actual=", ".join(literal))
 
 
 # The three docs.* dirs are resolved relative to workFolder (NOT the repo
@@ -950,12 +924,10 @@ def main() -> None:
                 f"'sourcecodeDir' is configured as '{source_dir}' but that folder doesn't exist.",
                 expected=source_dir, actual="missing")
 
-    # --- skills.mockups / skills.diagrams / skills.progress (required if set: must
-    # resolve to a real skill; an empty string is a deliberate opt-out, only
-    # checked for progress, see skills-progress-unconfigured below). ---
+    # --- skills.mockups / skills.diagrams (required: must resolve to a real skill) ---
     skills_cfg = framework.get("skills") or {}
     skills_dir = root / ".claude/skills"
-    for key in ("mockups", "diagrams", "progress"):
+    for key in ("mockups", "diagrams"):
         name = skills_cfg.get(key)
         if not name:
             continue
@@ -964,19 +936,6 @@ def main() -> None:
             add(problems, f"skill-ref-missing:{key}", "required", f"framework.skills.{key}",
                 f"'{key}' points to skill '{name}', but '.claude/skills/{name}/SKILL.md' doesn't exist.",
                 expected=f".claude/skills/{name}/SKILL.md", actual="missing")
-
-    # --- skills.progress must always be a present key (possibly empty ''),
-    # unlike mockups/diagrams whose absence is silently fine -- pv-init always
-    # writes it now (default pv-internal-progress-todowrite), so a missing key
-    # means either a pre-upgrade project or a hand-deleted field. Not auto-filled
-    # here: pv-update asks the user instead of overwriting a possible deliberate
-    # gap silently (see SKILL.md's fix for this id). ---
-    if "progress" not in skills_cfg:
-        add(problems, "skills-progress-unconfigured", "optional", "framework.skills.progress",
-            "'framework.skills.progress' key is absent from pv-context.json. pv-init now always "
-            "writes this key (default 'pv-internal-progress-todowrite', or '' as a deliberate "
-            "opt-out) -- ask the user whether to enable the checklist or opt out explicitly.",
-            expected="key present ('pv-internal-progress-todowrite' or '')", actual="key absent")
 
     # --- docs.* (required: all three doc dirs are always configured by
     # pv-init; a missing one is a broken state, not a legitimately-skipped

@@ -34,8 +34,6 @@ Only skip all four when the change truly has no representable visual, flow, or s
 
 **Before any other step**, read [`workflow.new.md`](workflow.new.md) — it's the source of truth for this flow's sequence and branches (its multiple entry points, the visual-representation cases, and the hook insertion point at the end of step 5; see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (which skill to invoke, what exact text to use) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
-**Progress checklist.** At each `[PROGRESS: ...]` node in that diagram: invoke the skill configured in `framework.skills.progress` (by name, using the Skill tool) with the `action`/`items`/`itemId`/`status` the node calls for — see the contract in that skill's SKILL.md. If `framework.skills.progress` is absent or empty in `pv-context.json`, skip the node silently.
-
 ## 0. Check that the framework is initialized
 
 If `.claude/pv-context.json` doesn't exist at the repo root, or is missing the

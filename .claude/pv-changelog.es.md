@@ -2,14 +2,8 @@
 
 ## Índice
 
-- ⭐[Novedades](#novedades)
-  - Checklist de progreso opcional durante un flujo
 - ✏️[Cambios](#cambios)
   - `pv-update` ahora detecta sintaxis de marcadores de plantilla sin resolver en los documentos generados
-
-## ⭐Novedades
-
-- **Checklist de progreso opcional durante un flujo** — si `framework.skills.progress` está configurado (por ejemplo, con el nuevo `pv-internal-progress-todowrite`), `pv-new`, `pv-fix`, `pv-how` y `pv-do` ahora publican en la interfaz un checklist visible de sus pasos principales mientras se ejecutan, para que puedas ver en qué punto está el flujo sin tener que preguntar en el chat. Está desactivado por defecto: si no configuras `skills.progress`, el comportamiento anterior se mantiene exactamente igual, sin mostrar ningún checklist.
 
 ## ✏️Cambios
 
