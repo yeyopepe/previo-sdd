@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b4
+  version: 0.9.8b5
   uses: [pv-internal-doc-files]
 ---
 
@@ -23,7 +23,7 @@ A single, shared procedure to organize `docs.functional.featuresDocPathDir` as a
 Every feature entry must record:
 
 - **Functional description** — one or more sentences/paragraphs describing the feature's current behavior: what it lets the user do and how it behaves. Never a changelog of what changed in this specific `xxxx` — always the full, faithful description of the resulting behavior, even on an in-place edit.
-- **Functional diagrams (optional)** — carry over a diagram (as-is, never rewritten) when this entry's `description.md` has a functional Mermaid diagram (the kind `pv-new`/`extend-entry.md` generates), or the entry's folder has one or more `design_navigation_*.md`, and it represents a flow of the feature being documented. If two or more of those diagrams reference each other (one says "see diagram 1", or names a state/node defined in another), carry them over together, all or none — never leave a broken reference. Never carry over technical diagrams (internal flow, sequence between components) — those belong in `docs.tech.architectureDocDir`. If the feature already had its own diagrams from a previous version, keep them unless this change makes them outdated, in which case replace them instead of accumulating both.
+- **Functional diagrams (optional)** — carry over a diagram (as-is, never rewritten) when this entry's `description.md` has a functional Mermaid diagram (the kind `pv-new`/`extend-entry.md` generates), or the entry's folder has one or more `navigation_*.md`, and it represents a flow of the feature being documented. If two or more of those diagrams reference each other (one says "see diagram 1", or names a state/node defined in another), carry them over together, all or none — never leave a broken reference. Never carry over technical diagrams (internal flow, sequence between components) — those belong in `docs.tech.architectureDocDir`. If the feature already had its own diagrams from a previous version, keep them unless this change makes them outdated, in which case replace them instead of accumulating both.
 - **`Available in`** — where it's seen/used (mode, screen, component...).
 - **`Code`** — the complete list of `xxxx` codes that created or modified this entry, not just the new one.
 - **`Since`** — date the entry was created (the first `xxxx`); never changes once assigned.
@@ -63,7 +63,7 @@ Parameters:
 - `summary` — brief description of what was implemented (the feature or behavior change) and where it's used/seen.
 - `area` — functional area name (exactly as it should appear in `**Area**:` and group by in the index).
 - `title` — feature name (exactly as it should appear as `# ...`); for an in-place edit, the existing title unless the change itself renames the feature.
-- `context` — what's already gathered: the touched code, `plan.md`, and, if this entry's `description.md` has a functional Mermaid diagram or the entry's folder has `design_navigation_*.md` file(s), their content.
+- `context` — what's already gathered: the touched code, `plan.md`, and, if this entry's `description.md` has a functional Mermaid diagram or the entry's folder has `navigation_*.md` file(s), their content.
 - `existing_file` — path returned by a previous call to `find`, if a matching entry was found; omitted if none was found.
 
 Steps:

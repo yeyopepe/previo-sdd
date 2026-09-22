@@ -34,17 +34,17 @@ flowchart TD
     S2Flow -->|No| S3Visual
 
     S3Visual{Which representation cases apply? not mutually exclusive}
-    S3Visual -->|Visual/style change| S3Mockup[Invoke mockups skill: create design_*.html]
+    S3Visual -->|Visual/style change| S3Mockup[Invoke mockups skill: create mockups/design_*.html]
     S3Visual -->|UI navigation/interaction| S3NavList[List distinct navigation use cases, publish as text]
-    S3NavList --> S3NavWrite[Create one design_navigation_*.md per use case]
-    S3Visual -->|Structured data| S31Data[Write design_data_*.md tables directly]
+    S3NavList --> S3NavWrite[Create one navigation_*.md per use case]
+    S3Visual -->|Structured data| S31Data[Write data_*.md tables directly]
     S3Visual -->|None apply| S4Validate
 
     S3Mockup --> S4Validate
     S3NavWrite --> S4Validate
     S31Data --> S4Validate
 
-    S4Validate{Any diagram, design_*.html, design_navigation_*.md or design_data_*.md generated?}
+    S4Validate{Any diagram, mockups/design_*.html, navigation_*.md or data_*.md generated?}
     S4Validate -->|No| S5HookCheck
     S4Validate -->|Yes| S4Ask[ASK: does the representation reflect what you had in mind?]
     S4Ask --> S4Dec{User confirms?}

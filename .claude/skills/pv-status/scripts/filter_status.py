@@ -28,12 +28,16 @@ For each entry in the state folder, five columns are computed:
     formatted as YYYY-MM-DD; if there's no description.md, the folder's own
     mtime.
   - extra_files: count of files directly inside the entry folder that
-    aren't the framework's own (description.md, plan.md, history.md) --
-    e.g. design_*.html/design_*.txt mockups, or anything else a change/fix
-    folder may accumulate. Only surfaces in --terminal mode's detail card
-    (see TERMINAL_FRAMEWORK_FILES below); 'todo/' entries never show it,
-    same reasoning as Risk/planned (todo/ folders only ever hold
-    description.md).
+    aren't the framework's own (description.md, plan.md, history.md) and
+    aren't the mockups/ subfolder -- e.g. navigation_*.md/data_*.md, or
+    anything else a change/fix folder may accumulate. Only surfaces in
+    --terminal mode's detail card (see TERMINAL_FRAMEWORK_FILES below);
+    'todo/' entries never show it, same reasoning as Risk/planned (todo/
+    folders only ever hold description.md).
+  - mockups_count: count of files inside the entry folder's mockups/
+    subfolder (design_*.html/design_*.txt mockups), not recursive; None if
+    that subfolder doesn't exist. Only surfaces in --terminal mode's detail
+    card, same as extra_files; 'todo/' entries never show it either.
 
 Two more fields, name (description.md's '**Name**' field) and planned_date
 (plan.md's '**Creation date**' field, same bold-inline format as
@@ -145,9 +149,11 @@ def load_changes_dir(root: Path, override: str | None) -> Path:
 DESCRIPTION_MAX_CHARS = 250
 
 # Files an entry folder always carries as part of the pv-new/pv-fix/pv-how
-# workflow -- everything else directly inside the folder (design_*.html,
-# design_*.txt, or anything else a change/fix accumulates) counts as
-# "extra" for the detail card's file count.
+# workflow -- everything else directly inside the folder (navigation_*.md,
+# data_*.md, or anything else a change/fix accumulates) counts as "extra"
+# for the detail card's file count. mockups/ is excluded separately (it's a
+# directory, not a file -- is_file() already filters it out) and counted on
+# its own via mockups_count instead.
 TERMINAL_FRAMEWORK_FILES = {"description.md", "plan.md", "history.md"}
 
 
@@ -201,6 +207,13 @@ def count_extra_files(entry_dir: Path) -> int:
     )
 
 
+def count_mockups_files(entry_dir: Path) -> int | None:
+    mockups_dir = entry_dir / "mockups"
+    if not mockups_dir.is_dir():
+        return None
+    return sum(1 for p in mockups_dir.iterdir() if p.is_file())
+
+
 def build_entry(state: str, entry_dir: Path) -> dict:
     description_path = entry_dir / "description.md"
     plan_path = entry_dir / "plan.md"
@@ -239,6 +252,7 @@ def build_entry(state: str, entry_dir: Path) -> dict:
     # missing the field) means "pending" to the caller, not "unknown yet".
     planned_date = extract_date(plan_text) if plan_text else None
     extra_files = None if state == "todo" else count_extra_files(entry_dir)
+    mockups_count = None if state == "todo" else count_mockups_files(entry_dir)
     # Status flags from .metadata.json (dotfile owned by pv-internal-workflow).
     # todo/ entries never carry flags or relatedIds.
     flags = [] if state == "todo" else read_flags(entry_dir)
@@ -254,6 +268,7 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         "planned_date": planned_date,
         "risk": risk,
         "extra_files": extra_files,
+        "mockups_count": mockups_count,
         "flags": flags,
         "relatedIds": related_ids,
     }
@@ -476,6 +491,9 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
         lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
         lines.append(term.wrap(description, indent="  ", width=width))
         lines.append(f"extra files: {extra_files}")
+        mockups_count = entry.get("mockups_count")
+        if mockups_count is not None:
+            lines.append(f"mockups: {mockups_count}")
         related_ids = entry.get("relatedIds") or []
         if related_ids:
             lines.append(f"Related: {', '.join(related_ids)}")

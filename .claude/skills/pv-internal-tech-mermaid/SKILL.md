@@ -6,13 +6,13 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b4
+  version: 0.9.8b5
   uses: []
 ---
 
 # pv-internal-tech-mermaid
 
-A single, shared procedure to generate Mermaid diagrams representing a change/fix's behavior — never its visual look (that's `design_*.html`, another skill) nor navigation between UI screens (that's `design_navigation_*.md`, which `pv-new` writes directly). Only invoked by other `pv-*` framework skills — not meant for direct invocation by the user.
+A single, shared procedure to generate Mermaid diagrams representing a change/fix's behavior — never its visual look (that's `design_*.html`, another skill) nor navigation between UI screens (that's `navigation_*.md`, which `pv-new` writes directly). Only invoked by other `pv-*` framework skills — not meant for direct invocation by the user.
 
 **Language.** This skill doesn't talk to the user. The diagram code itself (node/actor labels, message text) follows the target language the caller passes it as input (see "Expected input" below) — this skill doesn't read `.claude/pv-context.json` itself, since it doesn't know which final document each diagram will be inserted into; each caller (`pv-internal-workflow`, `pv-new`, `pv-fix`, `pv-how`) must resolve the right language before invoking this skill — `changes.language` for a diagram going into a change/fix document; for a diagram destined for `docs.tech` (architecture/style), the language is fixed technical English (there is no `docs.tech.language`).
 

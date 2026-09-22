@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b4
+  version: 0.9.8b5
   uses: []
 ---
 
@@ -22,7 +22,7 @@ This skill is specifically for **ASCII text** mockups. If a project configures a
 
 ## Expected input from the caller
 
-- **Destination folder**: the path where the files should live, normally `{changesDir}/inProgress/{xxxx}/`.
+- **Destination folder**: the path where the files should live, normally `{changesDir}/inProgress/{xxxx}/mockups/`. Every mockup file lives under `{destination folder}/mockups/`, never loose in the entry root — the caller is responsible for passing that subfolder, this skill just writes where it's told.
 - **List of visual elements**, one per mockup to create or edit. For each element:
   - **Brief description** of the element (used for the filename: `design_<element-description>.txt`, e.g. `design_deck-selection-modal.txt`, `design_progress-bar.txt`).
   - **What it should show**: look, layout, sample content relevant to illustrate the result (the caller doesn't need to give low-level detail — exact colors, measurements — if it doesn't have it yet).

@@ -27,15 +27,15 @@ flowchart TD
     S3Diagram --> S4Visual
     S3Flow -->|No| S4Visual
 
-    S4Visual{Has a visual component?} -->|Yes| S4Mockup[Invoke mockups skill: create design_*.html]
+    S4Visual{Has a visual component?} -->|Yes| S4Mockup[Invoke mockups skill: create mockups/design_*.html]
     S4Mockup --> S41Data
     S4Visual -->|No| S41Data
 
-    S41Data{Defines/uses structured data?} -->|Yes| S41Write[Write design_data_*.md tables directly]
+    S41Data{Defines/uses structured data?} -->|Yes| S41Write[Write data_*.md tables directly]
     S41Write --> S5Validate
     S41Data -->|No| S5Validate
 
-    S5Validate{Any diagram, design_*.html or design_data_*.md generated?}
+    S5Validate{Any diagram, mockups/design_*.html or data_*.md generated?}
     S5Validate -->|No| S6Chain
     S5Validate -->|Yes| S5Ask[ASK: does the representation reflect expected behavior?]
     S5Ask --> S5Dec{User confirms?}

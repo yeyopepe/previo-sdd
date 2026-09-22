@@ -278,6 +278,68 @@ def check_risk_in_plan_headers(root: Path, work_folder: str, problems: list) -> 
                 actual=f"**Risk**: {raw_tail} in plan.md header")
 
 
+def check_legacy_loose_mockups(root: Path, work_folder: str, problems: list) -> None:
+    """Detects design_*.html / design_*.txt files sitting loose in an
+    inProgress/{xxxx}/ or implemented/{xxxx}/ entry's own root, predating the
+    mockups/ subfolder convention. Fires only when the entry has no mockups/
+    subfolder yet -- once mockups/ exists (however it got there), the entry
+    is considered migrated regardless of what's still loose in its root.
+    Fixed by pv-update: create mockups/ and move every matching loose file
+    into it. closed/ is intentionally excluded -- frozen history."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    patterns = ("design_*.html", "design_*.txt")
+    for state in ("inProgress", "implemented"):
+        entries_dir = changes_dir / state
+        if not entries_dir.is_dir():
+            continue
+        for entry_dir in sorted(p for p in entries_dir.iterdir() if p.is_dir()):
+            if (entry_dir / "mockups").exists():
+                continue
+            loose = sorted(
+                f.name for pat in patterns for f in entry_dir.glob(pat)
+            )
+            if not loose:
+                continue
+            rel = entry_dir.relative_to(root).as_posix()
+            add(problems, f"legacy-loose-mockups:{entry_dir.name}", "optional", rel,
+                f"'{rel}' has mockup file(s) loose in its own root "
+                f"({', '.join(loose)}) predating the mockups/ subfolder "
+                f"convention. Migrate: create '{rel}/mockups/' and move "
+                f"every one of those files into it.",
+                expected="mockup files under mockups/",
+                actual=f"loose in entry root: {', '.join(loose)}")
+
+
+def check_legacy_design_prefix(root: Path, work_folder: str, problems: list) -> None:
+    """Detects design_navigation_*.md / design_data_*.md files still
+    carrying the retired design_ prefix, in inProgress/{xxxx}/ or
+    implemented/{xxxx}/ (closed/ excluded -- frozen history). These aren't
+    mockups and never move to mockups/ -- only their name changes. Fixed by
+    pv-update: rename each to navigation_*.md / data_*.md in place."""
+    wf_path = resolve_under(root, work_folder)
+    changes_dir = wf_path / "changes"
+    patterns = ("design_navigation_*.md", "design_data_*.md")
+    for state in ("inProgress", "implemented"):
+        entries_dir = changes_dir / state
+        if not entries_dir.is_dir():
+            continue
+        for entry_dir in sorted(p for p in entries_dir.iterdir() if p.is_dir()):
+            stale = sorted(
+                f.name for pat in patterns for f in entry_dir.glob(pat)
+            )
+            if not stale:
+                continue
+            rel = entry_dir.relative_to(root).as_posix()
+            add(problems, f"legacy-design-prefix:{entry_dir.name}", "optional", rel,
+                f"'{rel}' has file(s) with the retired 'design_' prefix "
+                f"({', '.join(stale)}). Migrate: rename each to drop the "
+                f"'design_navigation_'/'design_data_' prefix in favor of "
+                f"'navigation_'/'data_', in place.",
+                expected="navigation_*.md / data_*.md (no design_ prefix)",
+                actual=f"stale name in entry root: {', '.join(stale)}")
+
+
 # pv-* skills that expose project hooks keep them one file per insertion
 # point at {workFolder}/stuff/hooks/<subdir>/<NN>-<slug>.md. NN is the
 # normative id the skill matches on; the slug that follows is fixed too (the
@@ -914,6 +976,14 @@ def main() -> None:
     # --- retired plan.md '**Risk**' header field -> .metadata.json (optional) ---
     if isinstance(work_folder, str) and work_folder.strip():
         check_risk_in_plan_headers(root, work_folder, problems)
+
+    # --- mockup files loose in entry root, predating mockups/ (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_legacy_loose_mockups(root, work_folder, problems)
+
+    # --- retired design_navigation_*.md / design_data_*.md prefix (optional) ---
+    if isinstance(work_folder, str) and work_folder.strip():
+        check_legacy_design_prefix(root, work_folder, problems)
 
     # --- sourcecodeDir (required to exist if set, has a default) ---
     source_dir = framework.get("sourcecodeDir", "/src")

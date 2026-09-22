@@ -6,7 +6,7 @@ model: claude-haiku-4-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b4
+  version: 0.9.8b5
   uses: []
 ---
 
@@ -68,8 +68,6 @@ Without asking scope questions or proposing answers to functional gaps (that's w
 - **Creation date** — today's date (`YYYY-MM-DD` format) at the moment this `description.md` is created.
 - **Notes** — the idea's content, as the user raised it. Can be a loose sentence, a list of possibilities, open unresolved questions, or any other form the user wants to note it in — don't force `pv-new`/`pv-fix`'s `description.md` structure onto it (there's no separate "Original prompt" or "Full description").
 
-If the idea has a clear visual component and the user wants to record it, you can also create some `design_*.html`, same as `pv-new` does (self-contained mockup, no real functionality) — but it's not mandatory nor this skill's focus; only do it if the user asks or provides that material.
-
 ## 4. Confirm to the user
 
 Report the assigned code and the created file's path, and remind them that this idea stays noted at `{changesDir}/todo/` outside the workflow — if it's ever turned into a real change/fix, it needs to be documented again with `pv-new`/`pv-fix` (this skill doesn't do that conversion automatically).
@@ -90,7 +88,7 @@ Don't fall back to creating a new idea from a number that didn't resolve — a m
 
 ### D.2 Confirm with the user
 
-Show the change's **Name** and **Type** (read from `{changesDir}/inProgress/{xxxx}/description.md`) and list the files the folder contains (`description.md`, `plan.md`, `history.md`, any `design_*`, `design_data_*`, etc.). State plainly what will happen: **all** of that content is copied into a new `pv-todo` idea and then `{changesDir}/inProgress/{xxxx}/` is deleted (the change leaves the workflow — no version, no changelog entry, it's as if it had never been opened, but its material is kept).
+Show the change's **Name** and **Type** (read from `{changesDir}/inProgress/{xxxx}/description.md`) and list the files the folder contains: `description.md`, `plan.md`, `history.md`, the content of its `mockups/` subfolder if it exists, and any `navigation_*.md`/`data_*.md` loose in the root — two distinct groups, not one flat list. State plainly what will happen: **all** of that content is copied into a new `pv-todo` idea and then `{changesDir}/inProgress/{xxxx}/` is deleted (the change leaves the workflow — no version, no changelog entry, it's as if it had never been opened, but its material is kept).
 
 Ask for explicit confirmation. If the user doesn't confirm, stop and change nothing.
 
@@ -105,7 +103,9 @@ Create `{changesDir}/todo/{code}/` and copy into it **every file** from `{change
 - the change's `description.md` → `original-change-description.md`
 - the change's `history.md` (if present) → `original-change-history.md`
 
-Everything else (`plan.md`, all `design_*` / `design_data_*` files, anything else that was there) keeps its original name.
+Everything else (`plan.md`, `navigation_*.md`/`data_*.md`, anything else loose in the root) keeps its original name.
+
+If `mockups/` exists, copy it as a complete subtree to `{changesDir}/todo/{code}/mockups/`, preserving its structure (don't flatten it into loose files). Then write `{changesDir}/todo/{code}/mockups/important.md` with a fixed note stating these mockups were generated in the past (include today's date) and must be treated only as reference/example material, not the current design — this prevents a future re-promotion from confusing a frozen mockup with the live one. `navigation_*.md`/`data_*.md` copied above don't get this note: they're functional data/flow definitions, not a frozen visual design that could be mistaken for the current one.
 
 ### D.5 Write the idea's `description.md`
 
@@ -114,7 +114,7 @@ Create `{changesDir}/todo/{code}/description.md` following the [`description.tem
 - **Idea** — the change's **Name**, verbatim.
 - **Code** — the `{code}` from D.3.
 - **Creation date** — today's date (`YYYY-MM-DD`).
-- **Notes** — a short line stating this idea was demoted from change/fix `{xxxx}` (originally type `<type>`) on this date because it was deprioritized, then the **full functional description** copied verbatim from the change's `## Full description` section. After it, add a brief "Preserved material" list naming the other files now in this folder (`original-change-description.md` for the original entry with its Technical notes, `plan.md` for the technical plan if it was there, `original-change-history.md` for the prompt history, the `design_*` files, etc.) so whoever picks this up later knows the analysis wasn't thrown away.
+- **Notes** — a short line stating this idea was demoted from change/fix `{xxxx}` (originally type `<type>`) on this date because it was deprioritized, then the **full functional description** copied verbatim from the change's `## Full description` section. After it, add a brief "Preserved material" list naming the other files now in this folder (`original-change-description.md` for the original entry with its Technical notes, `plan.md` for the technical plan if it was there, `original-change-history.md` for the prompt history, the `mockups/` subfolder and any `navigation_*.md`/`data_*.md`, etc.) so whoever picks this up later knows the analysis wasn't thrown away.
 
 ### D.6 Delete the change
 

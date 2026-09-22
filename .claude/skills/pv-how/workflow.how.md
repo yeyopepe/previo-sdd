@@ -24,7 +24,7 @@ flowchart TD
     S1NotFound --> End1b([End: not found])
     S1Found -->|Yes| S11Validate
 
-    S11Validate[Read description.md and design_* files for inconsistencies] --> S11Issue{Inconsistency or gap found?}
+    S11Validate[Read description.md, mockups/ and navigation_*.md/data_*.md for inconsistencies] --> S11Issue{Inconsistency or gap found?}
     S11Issue -->|Yes| S11Ask[ASK: how to resolve it?]
     S11Ask --> S11Fix[Update affected documents with the answer]
     S11Fix --> S11Validate
