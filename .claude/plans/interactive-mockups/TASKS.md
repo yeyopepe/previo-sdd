@@ -1,7 +1,5 @@
-# TASKS — Annotation framework embedded into every HTML mockup
-
-Lista de implementación derivada de [`PLAN.md`](PLAN.md). Orden pensado para avanzar por
-fases; dentro de cada fase las tareas son mayormente secuenciales.
+Orden pensado para avanzar por fases; dentro de cada fase las tareas son mayormente
+secuenciales.
 
 ## Fase 1 — El asset (núcleo)
 
@@ -64,7 +62,8 @@ fases; dentro de cada fase las tareas son mayormente secuenciales.
   `design_*.html` al 100%. Nunca resuelve su propio contexto desde disco ni desde
   `pv-context.json`; todo lo que necesite lo pide como input, y su ausencia degrada a un
   comportamiento por defecto en vez de ir a buscarlo.
-- [ ] **T3.2.** Reescribir la regla del style bible: **eliminar** la llamada a
+- [ ] **T3.2.** Reescribir la regla del style bible (líneas 35-56 del `SKILL.md` real):
+  **eliminar** la llamada a
   `python .claude/skills/pv-init/scripts/resolve-path.py --what styleBibleDocDir` y la lectura
   directa de `INDEX.md`/ficheros de `styleBibleDocDir` — dependencia dura fuera de la propia
   carpeta de la skill. Nuevo input opcional `style_context` (texto plano, ya resuelto por el
@@ -74,7 +73,8 @@ fases; dentro de cada fase las tareas son mayormente secuenciales.
   (2→`/pv-init`, 3|4→`/pv-update`) deja de ser responsabilidad de esta skill.
 - [ ] **T4.** Añadir un inventario de ficheros (sección nueva o en el párrafo de intro —
   hoy no existe) mencionando `assets/mockup-annotations.html`.
-- [ ] **T5.** Enmendar la regla "no JavaScript" (`SKILL.md` línea 53): excepción explícita y
+- [ ] **T5.** Enmendar la regla "no JavaScript" (`SKILL.md` línea 65 real, no 52/53 — la
+  reescritura por subcarpetas desalineó de nuevo las referencias): excepción explícita y
   acotada — el único JS permitido es el framework de anotaciones copiado verbatim del asset;
   el mockup no contiene ningún otro JS.
 - [ ] **T6.** Nueva regla **"Embed the annotation framework"** en "Rules for each mockup":
@@ -94,8 +94,8 @@ fases; dentro de cada fase las tareas son mayormente secuenciales.
      `#mnote-data` verbatim.
 - [ ] **T7.1.** Nueva acción **`action: ensure-closed`** (sustituye por completo al diseño
   anterior de `read-annotations` + `edit`-por-nota): recibe una lista de rutas `design_*.html`
-  (las que el caller va a (re-)presentar, o — para `pv-how` — todas las de la entrada). Por
-  cada ruta con framework reconocible:
+  bajo `mockups/` (las que el caller va a (re-)presentar, o — para `pv-how` — todas las de la
+  entrada). Por cada ruta con framework reconocible:
   - parsea `#mnote-data` internamente;
   - si no hay ninguna nota `state: "open"` (o no hay notas), no hace nada en esa ruta;
   - por cada nota `open`: si puede aplicar el cambio pedido sin ambigüedad, lo aplica
@@ -112,12 +112,14 @@ fases; dentro de cada fase las tareas son mayormente secuenciales.
     que cualquier caller se entera de o resuelve anotaciones** — ningún otro skill abre
     `#mnote-data` ni conoce el estado `open`/`closed` de una nota.
 - [ ] **T7.2.** Nueva acción **`action: describe`** (solo lectura, nunca toca `#mnote-data` ni
-  el estado de ninguna nota): recibe una lista de rutas `design_*.html` y, opcionalmente, qué
-  elementos/áreas interesan; lee el markup propio (algo que solo esta skill hace directamente)
-  y devuelve una descripción en texto plano del layout/estilo/iconografía pedido — suficiente
-  para que un caller como `pv-how` la use como referencia visual, sin exponer HTML/CSS/SVG
-  crudo ni los bloques `mnote-*`. **Es la única vía por la que cualquier caller accede al
-  contenido visual de un mockup** — ningún caller hace `Read` sobre un `design_*.html`.
+  el estado de ninguna nota): recibe una lista de rutas `design_*.html` bajo `mockups/` y,
+  opcionalmente, qué elementos/áreas interesan; lee el markup propio (algo que solo esta skill
+  hace directamente) y devuelve una descripción en texto plano del layout/estilo/iconografía
+  pedido — suficiente para que un caller como `pv-how` la use como referencia visual, sin
+  exponer HTML/CSS/SVG crudo ni los bloques `mnote-*`. **Es la única vía por la que cualquier
+  caller accede al contenido visual de un `design_*.html`** — ningún caller hace `Read` sobre
+  uno de ellos. `navigation_*.md`/`data_*.md` quedan fuera de esta acción: viven fuera de
+  `mockups/`, no son responsabilidad de esta skill, y siguen leyéndose con `Read` directo.
 - [ ] **T7.3.** ID collision guard: el check "¿el archivo ya tiene el framework?" debe verificar
   que el contenido del `id="mnote-runtime"` (o `-styles`/`-data`) es reconocible como el asset
   (marcador/cabecera), no solo que el id exista. Si hay un id `mnote-*` con contenido distinto
@@ -160,13 +162,21 @@ costumbre."*
 - [ ] **T11.** `pv-fix/SKILL.md` step 5 (línea 106): mismo párrafo anteponer.
 - [ ] **T12.** `pv-fix/SKILL.md` nota final (línea 114): mismo tweak que T10.
 - [ ] **T13.** `pv-new/extend-entry.md` step 6 (línea 10): mismo párrafo, acotado a los
-  `design_*.html` tocados por la extensión + el resto de `design_*.html` ya en la carpeta de
+  `design_*.html` tocados por la extensión + el resto de `design_*.html` ya en `mockups/` de
   la entrada (una anotación pendiente en un archivo no tocado por esta vuelta debe seguir
   resolviéndose).
 - [ ] **T14.** Revisar `pv-new/workflow.new.md` y `pv-fix/workflow.fix.md`: añadir la rama
   `ensure-closed` al diagrama (Flujo B) redactada en términos de las acciones de la skill,
   nunca `#mnote-data`/estado, o dejar constancia explícita de que es demasiado fina para
   diagramar. Ambos `SKILL.md` declaran que el diagrama manda sobre la prosa.
+- [ ] **T14.5.** `pv-do/SKILL.md` línea 121 (paso de actualización de
+  `docs.tech.styleBibleDocDir`): hoy pasa "any `design_*` mockups this entry has" como parte
+  del contexto que entrega a `pv-internal-doc-style` — un tercer caller de mockups no cubierto
+  por el diseño original de este plan (hallazgo de `dev-analysis`, 2026-09-24). Sustituir esa
+  referencia por una invocación a `action: describe` de la skill de mockups configurada, pidiendo
+  la descripción de los elementos relevantes al área de estilo tocada, en vez de mencionar o
+  pasar los ficheros `design_*` directamente. `pv-do` no invoca `ensure-closed` (no valida
+  visualmente con el usuario ni presenta mockups) — solo `describe`, que es de solo lectura.
 
 ## Fase 3.5 — Gate de entrada de `pv-how`
 
@@ -176,22 +186,25 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
 
 - [ ] **T14.1.** `pv-how/SKILL.md` — nuevo **step 1.05**, entre step 1 ("Identify the
   change/fix", que resuelve `{xxxx}`) y step 1.1 ("Validate the change's documents before
-  analyzing"): *"Si la entrada tiene algún `design_*.html`, invocar `action: ensure-closed` de
-  la skill de mockups configurada sobre todos ellos. Esperar su OK antes de continuar — no
-  leer, describir ni usar de ningún modo ningún `design_*.html` de esta entrada (incluido el
-  propio chequeo de consistencia del step 1.1) hasta que devuelva OK."* La posición importa:
-  **step 1.1 ya hace hoy un `Read` directo sobre `design_*.html`** (para el chequeo de
-  consistencia contra `description.md`), antes incluso de llegar a step 2 — así que el gate
-  tiene que ir antes de 1.1, no solo antes de 2.
-- [ ] **T14.2.** Reescribir `pv-how/SKILL.md` step 1.1 (el chequeo de consistencia que hoy lee
-  `design_*.html`/`design_data_*.md` directamente): sustituir la lectura de `design_*.html` por
-  una invocación a `action: describe` de la skill de mockups para los elementos/áreas relevantes
-  al chequeo — la lógica del chequeo (comparar contra `description.md` y `design_data_*.md`) no
-  cambia, solo la fuente de los hechos visuales.
+  analyzing"): *"Si la entrada tiene algún `design_*.html` bajo `mockups/`, invocar
+  `action: ensure-closed` de la skill de mockups configurada sobre todos ellos. Esperar su OK
+  antes de continuar — no leer, describir ni usar de ningún modo ningún `design_*.html` de esta
+  entrada (incluido el propio chequeo de consistencia del step 1.1) hasta que devuelva OK."* La
+  posición importa: **step 1.1 ya hace hoy `Read` directo sobre `mockups/` y sobre
+  `navigation_*.md`/`data_*.md`** (para el chequeo de consistencia contra `description.md`),
+  antes incluso de llegar a step 2 — así que el gate tiene que ir antes de 1.1, no solo antes
+  de 2. El gate solo cubre `mockups/`: `navigation_*.md`/`data_*.md` no pasan por
+  `ensure-closed` ni `describe`, siguen con `Read` directo como hoy.
+- [ ] **T14.2.** Reescribir `pv-how/SKILL.md` step 1.1 (el chequeo de consistencia, línea 80
+  real): sustituir la lectura de `design_*.html` bajo `mockups/` por una invocación a
+  `action: describe` de la skill de mockups para los elementos/áreas relevantes al chequeo —
+  la lectura de `navigation_*.md`/`data_*.md` sueltos en la raíz de la entrada no cambia, sigue
+  siendo `Read` directo; la lógica del chequeo (comparar contra `description.md`) tampoco
+  cambia, solo la fuente de los hechos visuales de `mockups/`.
 - [ ] **T14.3.** Reescribir `pv-how/SKILL.md` step 2 (hoy: *"open them, but treat them only as
-  visual reference"*, `Read` directo): invocar `action: describe` para los elementos que
-  necesita como referencia visual, y construir su entendimiento a partir de esa descripción en
-  vez de abrir el archivo.
+  visual reference"*, `Read` directo sobre `mockups/`): invocar `action: describe` para los
+  elementos que necesita como referencia visual, y construir su entendimiento a partir de esa
+  descripción en vez de abrir el archivo.
 - [ ] **T14.4.** Revisar `pv-how/workflow.how.md`: añadir el nuevo nodo de gate (`ensure-closed`
   antes de 1.1) al diagrama (Flujo C), redactado en términos de la acción de la skill, nunca
   `#mnote-data`/estado, o dejar constancia explícita de que es demasiado fino para diagramar.
@@ -200,7 +213,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
 ## Fase 4 — Verificación integral
 
 - [ ] **T15.** Embebido en mockup real ([`PLAN.md`](PLAN.md) Verification §2): splice de los 2
-  bloques en `sandbox-test1\previo-sdd\changes\inProgress\00196\design_bloc_notas_vista.html`
+  bloques en `sandbox-test1\previo-sdd\changes\inProgress\00196\mockups\design_bloc_notas_vista.html`
   y recorrer todos los sub-puntos: clic → contorno azul + barra al cursor, `➕` mini-menú,
   nota general directa, contador ámbar, tarjeta compartiendo contorno, `‹ ›`, toggle `👁` +
   recarga (localStorage), CSS del mockup intacto con anotaciones ocultas, Save + reabrir →
@@ -241,20 +254,28 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
 - [ ] **T18.1.** Gate de `pv-how` (§5.1): sobre esa misma entrada ya cerrada, invocar `pv-how`;
   confirmar que llama a `ensure-closed` de nuevo como su propio step 1.05 antes de 1.1 (no
   asume que la llamada anterior de `pv-new` siga siendo válida), recibe OK inmediato, y que ni
-  el step 1.1 ni el step 2 hacen `Read` sobre ningún `design_*.html` — ambos pasan por
-  `describe`. Después añadir una nota `open` nueva directamente a `#mnote-data` (simulando que
-  el usuario volvió a anotar entre que `pv-new` terminó y `pv-how` corrió) y reinvocar `pv-how`;
-  confirmar que se bloquea en 1.05 hasta que `ensure-closed` la resuelve, y nunca llega a
-  step 1.1/2/3 antes de eso.
+  el step 1.1 ni el step 2 hacen `Read` sobre ningún `design_*.html` de `mockups/` — ambos pasan
+  por `describe`. Después añadir una nota `open` nueva directamente a `#mnote-data` (simulando
+  que el usuario volvió a anotar entre que `pv-new` terminó y `pv-how` corrió) y reinvocar
+  `pv-how`; confirmar que se bloquea en 1.05 hasta que `ensure-closed` la resuelve, y nunca
+  llega a step 1.1/2/3 antes de eso.
+- [ ] **T18.2.** `pv-do` no referencia `design_*` directamente (hallazgo `dev-analysis`
+  2026-09-24, resuelto en T14.5): confirmar que `pv-do/SKILL.md` línea 121 invoca
+  `action: describe` de la skill de mockups en vez de mencionar/pasar ficheros `design_*`
+  como contexto a `pv-internal-doc-style`; correr el paso de actualización de
+  `docs.tech.styleBibleDocDir` de `pv-do` sobre una entrada con mockups y grepear la respuesta
+  del turno por `design_*`/`mnote-`/`#mnote-data` para confirmar que `pv-do` nunca los
+  menciona directamente.
 - [ ] **T19.** Propagación en instalación (§6): correr `install.sh` / `install.ps1` a un dir
   scratch (o inspeccionar el bucle de copia, `install.ps1` ~línea 50) y confirmar que
   `.claude/skills/pv-internal-mockups-html/assets/mockup-annotations.html` aterriza en
   destino. Confirmar que `pv-update` no necesita cambios.
 - [ ] **T20.** Consistencia prosa↔diagrama (§7): diff de `pv-new`/`pv-fix`/`extend-entry.md`/
-  `pv-how` contra `workflow.new.md` / `workflow.fix.md` / `workflow.how.md`; las ramas
-  `ensure-closed`/`describe` (redactadas en términos de las acciones de la skill, nunca
-  `#mnote-data`/estado) deben estar en cada diagrama o marcadas como demasiado finas, sin
-  desacuerdo silencioso.
+  `pv-how` contra `workflow.new.md` / `workflow.fix.md` / `workflow.how.md` (los tres ya
+  reflejan la convención `mockups/design_*.html` — partir de ese estado real, no de una versión
+  sin subcarpeta); las ramas `ensure-closed`/`describe` (redactadas en términos de las acciones
+  de la skill, nunca `#mnote-data`/estado) deben estar en cada diagrama o marcadas como
+  demasiado finas, sin desacuerdo silencioso.
 
 ## Fase 5 — Cierre
 
