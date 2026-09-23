@@ -1,6 +1,6 @@
 ```mermaid
 flowchart TD
-    Start([Invocation of pv-review-code])
+    Start([Invocation of pv-review-architecture])
 
     Start --> S0Check[Check framework initialized and version verified]
     S0Check --> S0Ok{Initialized, verified, not blocked?}

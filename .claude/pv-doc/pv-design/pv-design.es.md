@@ -133,10 +133,10 @@ Leyenda:
 
   Assets y scripts: ninguno propio — ejecuta el [`scripts/rebuild-index.py`](skills/pv-internal-doc-files/scripts/rebuild-index.py) de `pv-internal-doc-files` y el [`scripts/resolve-path.py`](skills/pv-init/scripts/resolve-path.py) de `pv-init`, ambos propiedad de sus respectivas skills.
 
-- **pv-review-code** — Revisa el código real de `framework.sourcecodeDir` contra un checklist fijo e independiente del lenguaje (separación de responsabilidades/cohesión, SRP, tamaño de ficheros/clases, el resto de SOLID, DRY, KISS, acoplamiento/capas, estructura de carpetas frente a responsabilidad, el naming como señal estructural, peso estructural muerto) y produce una lista numerada de propuestas de reorganización — mover/dividir/fusionar/renombrar código ya existente, cada una indicando qué/por qué/destino. Nunca propone añadir o quitar código funcional ni cambiar comportamiento; una mejora que necesitaría código nuevo se señala aparte como fuera de alcance en vez de listarse como propuesta. No escribe nada en `sourcecodeDir` por sí misma: una vez el usuario decide qué propuestas (si alguna) llevar adelante, pregunta **por propuesta** si se convierte en una idea anotada (invoca `pv-todo`) o en un cambio documentado (invoca `pv-new`) — nunca se asume, siempre se confirma individualmente. *Usa:* `pv-todo`, `pv-new`.
+- **pv-review-architecture** — Revisa el código real de `framework.sourcecodeDir` contra un checklist fijo e independiente del lenguaje (separación de responsabilidades/cohesión, SRP, tamaño de ficheros/clases, el resto de SOLID, DRY, KISS, acoplamiento/capas, estructura de carpetas frente a responsabilidad, el naming como señal estructural, peso estructural muerto) y produce una lista numerada de propuestas de reorganización — mover/dividir/fusionar/renombrar código ya existente, cada una indicando qué/por qué/destino. Nunca propone añadir o quitar código funcional ni cambiar comportamiento; una mejora que necesitaría código nuevo se señala aparte como fuera de alcance en vez de listarse como propuesta. No escribe nada en `sourcecodeDir` por sí misma: una vez el usuario decide qué propuestas (si alguna) llevar adelante, pregunta **por propuesta** si se convierte en una idea anotada (invoca `pv-todo`) o en un cambio documentado (invoca `pv-new`) — nunca se asume, siempre se confirma individualmente. *Usa:* `pv-todo`, `pv-new`.
 
   Assets y scripts:
-  - [`workflow.review-code.md`](skills/pv-review-code/workflow.review-code.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba), desde resolver `sourcecodeDir` hasta el bucle de enrutado por propuesta a `pv-todo`/`pv-new`; se lee antes de ejecutar cualquier paso, es la fuente de verdad de la secuencia y las ramas. Sin puntos de hook, así que sin nodos naranjas.
+  - [`workflow.review-architecture.md`](skills/pv-review-architecture/workflow.review-architecture.md) — diagrama Mermaid del flujo completo de esta skill (ver "Diagramas de flujo" más arriba), desde resolver `sourcecodeDir` hasta el bucle de enrutado por propuesta a `pv-todo`/`pv-new`; se lee antes de ejecutar cualquier paso, es la fuente de verdad de la secuencia y las ramas. Sin puntos de hook, así que sin nodos naranjas.
 
 - **pv-todo** — Cuaderno de ideas sueltas, deliberadamente fuera del flujo de trabajo del framework: vive en `{changesDir}/todo/`, con numeración e identificadores propios que ninguna otra skill `pv-*` lee ni cuenta. Sirve para anotar ideas incompletas sin forzar el análisis de alcance de `pv-new`/`pv-fix`. *Usa:* ninguna otra skill.
 
@@ -590,7 +590,7 @@ Vista completa de qué crea el framework y dónde, con la configuración por def
 │       │   └── hooks/                        # semillas NN-slug.template.md copiadas a stuff/hooks/do/
 │       │       ├── 10-before-implementation.template.md
 │       │       └── 20-after-implementation.template.md
-│       ├── pv-review-code/            # propone reorganizaciones de código, solo estructura
+│       ├── pv-review-architecture/     # propone reorganizaciones de código, solo estructura
 │       ├── pv-review-doc-tech/        # reorganiza carpetas docs.tech, solo estructura
 │       ├── pv-status/                 # vista de solo lectura del estado
 │       ├── pv-todo/                   # ideas sueltas, fuera del flujo

@@ -1,6 +1,6 @@
 ---
-name: pv-review-code
-description: Analyzes the project's real source code architecture (`framework.sourcecodeDir`) against a fixed checklist of language-agnostic software design principles (separation of concerns, file/class size, SOLID, KISS, DRY, coupling/cohesion, naming, layering) and produces a numbered list of reorganization proposals — pure structural moves (splitting/merging/relocating/renaming files or classes), never adding or removing functional code. For each proposal the user confirms, asks whether to turn it into a noted idea (`pv-todo`) or directly into a documented change (`pv-new`) and creates it accordingly. Trigger: /pv-review-code, or when the user asks to review/audit the project's architecture or code organization.
+name: pv-review-architecture
+description: Analyzes the project's real source code architecture (`framework.sourcecodeDir`) against a fixed checklist of language-agnostic software design principles (separation of concerns, file/class size, SOLID, KISS, DRY, coupling/cohesion, naming, layering) and produces a numbered list of reorganization proposals — pure structural moves (splitting/merging/relocating/renaming files or classes), never adding or removing functional code. For each proposal the user confirms, asks whether to turn it into a noted idea (`pv-todo`) or directly into a documented change (`pv-new`) and creates it accordingly. Trigger: /pv-review-architecture, or when the user asks to review/audit the project's architecture or code organization.
 model: claude-sonnet-5
 effort: high
 metadata:
@@ -9,7 +9,7 @@ metadata:
   uses: [pv-todo, pv-new]
 ---
 
-# pv-review-code
+# pv-review-architecture
 
 Reviews the project's **code architecture** — how responsibilities are split across files/classes/modules, not the functional behavior of the code and not `docs.tech` (that's `pv-review-doc-tech`'s job). Produces a numbered list of concrete, scoped **reorganization proposals**: moving/splitting/merging/renaming/relocating code so responsibilities land where they belong. It never proposes (and, downstream, `pv-todo`/`pv-new` must never be asked to implement) adding new functionality, removing functionality, or changing behavior — every proposal must be achievable by moving existing code around, unchanged in what it does.
 
@@ -17,7 +17,7 @@ Reviews the project's **code architecture** — how responsibilities are split a
 
 **This skill edits nothing itself.** It only reads code and writes nothing to `{sourcecodeDir}`. Its only writes, if the user asks for them, are through `pv-todo`/`pv-new` (steps 4-5) — never a direct code edit, never a direct `changes/**` write of its own.
 
-**Before any other step**, read [`workflow.review-code.md`](workflow.review-code.md) — it's the source of truth for this flow's sequence and branches (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (what exact text to use, which checklist to apply) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
+**Before any other step**, read [`workflow.review-architecture.md`](workflow.review-architecture.md) — it's the source of truth for this flow's sequence and branches (see `pv-design.en.md`'s "Workflow diagrams" section for the notation). If it doesn't exist or can't be followed, stop and report that instead of improvising the flow from the prose below. The numbered steps that follow are each node's detail (what exact text to use, which checklist to apply) — the diagram governs sequence and branching; if the two ever disagree, the diagram wins and this prose gets corrected to match.
 
 ## 0. Check that the framework is initialized
 

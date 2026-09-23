@@ -17,9 +17,9 @@ All the skills live under `.claude/skills/pv-*` and share a single configuration
     - [2. `/pv-fix` — fix a bug (or apply a trivial change on the fly)](#2-pv-fix--fix-a-bug-or-apply-a-trivial-change-on-the-fly)
   - [Step 2 — Plan and implement: `pv-how` + `pv-do`](#step-2--plan-and-implement-pv-how--pv-do)
 - [Preparing a release: `/pv-version`](#preparing-a-release-pv-version)
-- [Maintenance skills: `/pv-review-doc-tech` and `/pv-review-code`](#maintenance-skills-pv-review-doc-tech-and-pv-review-code)
+- [Maintenance skills: `/pv-review-doc-tech` and `/pv-review-architecture`](#maintenance-skills-pv-review-doc-tech-and-pv-review-architecture)
   - [Keeping the technical documentation tidy: `/pv-review-doc-tech`](#keeping-the-technical-documentation-tidy-pv-review-doc-tech)
-  - [Reviewing the code's architecture: `/pv-review-code`](#reviewing-the-codes-architecture-pv-review-code)
+  - [Reviewing the code's architecture: `/pv-review-architecture`](#reviewing-the-codes-architecture-pv-review-architecture)
 - [A full-cycle example](#a-full-cycle-example)
 - [More ways to customize Previo](#more-ways-to-customize-previo)
 - [The `pv.py` script: inspect and close changes without Claude Code](#the-pvpy-script-inspect-and-close-changes-without-claude-code)
@@ -283,7 +283,7 @@ You can ask "how does `/pv-version` work?" in the middle of the invocation and i
 > Obviously, in larger projects, the process of releasing a new version doesn't end here — it probably still has to go through many more states (deployment to several environments, updating configuration values per environment, automated-test validations, etc.).
 > `/pv-version` makes sure everything is prepared so you have a version of your app with everything it needs. From this point on, if the project requires it, we'll have our pipelines take the result of this process from the `versions/{XXXX}` folder (the generated files, the changelog, the collected documentation, etc.) and continue our delivery process. That's why it's important to design how and what a release includes and have Previo store it in `{workFolder}/stuff/how-to-compile.md`.
 
-## Maintenance skills: `/pv-review-doc-tech` and `/pv-review-code`
+## Maintenance skills: `/pv-review-doc-tech` and `/pv-review-architecture`
 
 Two periodic, opt-in passes that don't belong to the document → plan → implement cycle: they don't create or advance any `changes/**` entry by themselves, they only reread what already exists (documentation or code) and propose/apply reorganization.
 
@@ -301,17 +301,17 @@ Things it deliberately does **not** do: it doesn't judge a fact as redundant and
 
 When it finishes it summarizes, per folder, what was moved/consolidated and why, which folders were empty (nothing to reorganize yet), and anything it flagged for you to decide.
 
-### Reviewing the code's architecture: `/pv-review-code`
+### Reviewing the code's architecture: `/pv-review-architecture`
 
-`pv-review-doc-tech` above keeps the *documentation* tidy; `/pv-review-code` does the equivalent pass over the *real source code* (`sourcecodeDir`). It checks the codebase against a fixed, language-agnostic checklist — separation of concerns, file/class size, SOLID, DRY, KISS, coupling/layering, folder structure, naming as a structural signal — and produces a numbered list of **reorganization proposals**: concrete moves/splits/merges/renames of existing code. Like `pv-review-doc-tech`, it never adds or removes functional code and never changes behavior; unlike it, this pass doesn't write anything to disk by itself — it only proposes.
+`pv-review-doc-tech` above keeps the *documentation* tidy; `/pv-review-architecture` does the equivalent pass over the *real source code* (`sourcecodeDir`). It checks the codebase against a fixed, language-agnostic checklist — separation of concerns, file/class size, SOLID, DRY, KISS, coupling/layering, folder structure, naming as a structural signal — and produces a numbered list of **reorganization proposals**: concrete moves/splits/merges/renames of existing code. Like `pv-review-doc-tech`, it never adds or removes functional code and never changes behavior; unlike it, this pass doesn't write anything to disk by itself — it only proposes.
 
 ```
-/pv-review-code
+/pv-review-architecture
 ```
 
 No arguments needed: it resolves `sourcecodeDir`, reads the whole tree, and applies the checklist. The output is a numbered list, each item stating what moves, why (which principle it resolves), and where it ends up. Anything that would genuinely help but requires writing new code (a missing abstraction, a new interface) isn't proposed here — it's called out separately as out of scope, so you can raise it as a real change through `/pv-new` if you want it.
 
-You then decide what to do with the list: none of it, some items, or all of them. For **every** proposal you pick, `/pv-review-code` asks individually whether it should become a noted idea (`/pv-todo`, if you want it recorded but not committed to the active workflow yet) or a documented change (`/pv-new`, ready to plan with `/pv-how` right away) — it never assumes one or the other, and it never edits code directly; it only hands the proposal off to whichever skill you choose.
+You then decide what to do with the list: none of it, some items, or all of them. For **every** proposal you pick, `/pv-review-architecture` asks individually whether it should become a noted idea (`/pv-todo`, if you want it recorded but not committed to the active workflow yet) or a documented change (`/pv-new`, ready to plan with `/pv-how` right away) — it never assumes one or the other, and it never edits code directly; it only hands the proposal off to whichever skill you choose.
 
 ## A full-cycle example
 

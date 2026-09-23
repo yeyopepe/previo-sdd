@@ -17,9 +17,9 @@ Todas las skills viven bajo `.claude/skills/pv-*` y comparten un único fichero 
     - [2. `/pv-fix` — corregir un bug (o aplicar un cambio trivial al vuelo)](#2-pv-fix--corregir-un-bug-o-aplicar-un-cambio-trivial-al-vuelo)
   - [Paso 2 — Planificar e implementar: `pv-how` + `pv-do`](#paso-2--planificar-e-implementar-pv-how--pv-do)
 - [Preparar una entrega: `/pv-version`](#preparar-una-entrega-pv-version)
-- [Skills de mantenimiento: `/pv-review-doc-tech` y `/pv-review-code`](#skills-de-mantenimiento-pv-review-doc-tech-y-pv-review-code)
+- [Skills de mantenimiento: `/pv-review-doc-tech` y `/pv-review-architecture`](#skills-de-mantenimiento-pv-review-doc-tech-y-pv-review-architecture)
   - [Mantener la documentación técnica ordenada: `/pv-review-doc-tech`](#mantener-la-documentación-técnica-ordenada-pv-review-doc-tech)
-  - [Revisar la arquitectura del código: `/pv-review-code`](#revisar-la-arquitectura-del-código-pv-review-code)
+  - [Revisar la arquitectura del código: `/pv-review-architecture`](#revisar-la-arquitectura-del-código-pv-review-architecture)
 - [Ejemplo de ciclo completo](#ejemplo-de-ciclo-completo)
 - [Más formas de personalizar Previo](#más-formas-de-personalizar-previo)
 - [El script `pv.py`: consultar y cerrar cambios sin Claude Code](#el-script-pvpy-consultar-y-cerrar-cambios-sin-claude-code)
@@ -283,7 +283,7 @@ Puedes preguntar "¿cómo funciona `/pv-version`?" en mitad de la invocación y 
 > Obviamente, en proyectos más grandes, el proceso de liberar una nueva versión no termina aquí, sino que probablemente tenga que pasar todavía por muchos más estados (despliegue en varios entornos, actualización valores de configuración según esos entornos, validaciones de pruebas automáticas, etc).
 > El `/pv-version` se asegura de preprarlo todo para disponer de una versión de nuestra app con todo lo necesario. A partir de este momento, si el proyecto lo requiere, haremos que nuestras pipelines tomen el resultado de este proceso de la carpeta versions/{XXXX} (los ficheros generados, el changelog, la documentación reunida, etc..) y continúen el nuestro proceso de entrega.  Por eso es importante diseñar cómo y qué incluye una entrega y que Previo lo guarde en `{workFolder}/stuff/how-to-compile.md`.
 
-## Skills de mantenimiento: `/pv-review-doc-tech` y `/pv-review-code`
+## Skills de mantenimiento: `/pv-review-doc-tech` y `/pv-review-architecture`
 
 Dos pases periódicos y opcionales que no pertenecen al ciclo documentar → planificar → implementar: no crean ni avanzan por sí mismos ninguna entrada en `changes/**`, solo releen lo que ya existe (documentación o código) y proponen/aplican una reorganización.
 
@@ -301,17 +301,17 @@ Cosas que **no** hace, a propósito: no decide que un hecho es redundante y lo b
 
 Al terminar te resume, por carpeta, qué se movió/consolidó y por qué, qué carpetas estaban vacías (nada que reorganizar todavía) y cualquier cosa que haya dejado marcada para que decidas tú.
 
-### Revisar la arquitectura del código: `/pv-review-code`
+### Revisar la arquitectura del código: `/pv-review-architecture`
 
-`pv-review-doc-tech` (arriba) mantiene ordenada la *documentación*; `/pv-review-code` hace el pase equivalente sobre el *código fuente real* (`sourcecodeDir`). Revisa el código contra una checklist fija e independiente del lenguaje — separación de responsabilidades, tamaño de ficheros/clases, SOLID, DRY, KISS, acoplamiento/capas, estructura de carpetas, el naming como señal estructural — y produce una lista numerada de **propuestas de reorganización**: mover/dividir/fusionar/renombrar código ya existente. Igual que `pv-review-doc-tech`, nunca añade ni quita código funcional ni cambia comportamiento; a diferencia de ella, este pase no escribe nada por sí solo — solo propone.
+`pv-review-doc-tech` (arriba) mantiene ordenada la *documentación*; `/pv-review-architecture` hace el pase equivalente sobre el *código fuente real* (`sourcecodeDir`). Revisa el código contra una checklist fija e independiente del lenguaje — separación de responsabilidades, tamaño de ficheros/clases, SOLID, DRY, KISS, acoplamiento/capas, estructura de carpetas, el naming como señal estructural — y produce una lista numerada de **propuestas de reorganización**: mover/dividir/fusionar/renombrar código ya existente. Igual que `pv-review-doc-tech`, nunca añade ni quita código funcional ni cambia comportamiento; a diferencia de ella, este pase no escribe nada por sí solo — solo propone.
 
 ```
-/pv-review-code
+/pv-review-architecture
 ```
 
 No hace falta pasarle nada: resuelve `sourcecodeDir`, lee todo el árbol y aplica la checklist. El resultado es una lista numerada, cada punto indicando qué se mueve, por qué (qué principio resuelve) y dónde acaba. Lo que de verdad ayudaría pero exigiría escribir código nuevo (una abstracción que falta, una interfaz nueva) no se propone aquí — se marca aparte como fuera de alcance, para que lo plantees como un cambio real con `/pv-new` si quieres.
 
-Después decides qué hacer con la lista: ninguna propuesta, algunas, o todas. Para **cada** propuesta que elijas, `/pv-review-code` pregunta individualmente si debe convertirse en una idea anotada (`/pv-todo`, si quieres dejarla constancia pero sin comprometerla al flujo activo todavía) o en un cambio documentado (`/pv-new`, listo para planificar con `/pv-how` directamente) — nunca asume una u otra, y nunca edita código directamente; solo pasa la propuesta a la skill que elijas.
+Después decides qué hacer con la lista: ninguna propuesta, algunas, o todas. Para **cada** propuesta que elijas, `/pv-review-architecture` pregunta individualmente si debe convertirse en una idea anotada (`/pv-todo`, si quieres dejarla constancia pero sin comprometerla al flujo activo todavía) o en un cambio documentado (`/pv-new`, listo para planificar con `/pv-how` directamente) — nunca asume una u otra, y nunca edita código directamente; solo pasa la propuesta a la skill que elijas.
 
 ## Ejemplo de ciclo completo
 
