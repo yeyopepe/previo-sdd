@@ -1,12 +1,12 @@
 ---
 name: dev-changelog
-description: Compares the framework's distributed content (.claude/skills/pv-* and .claude/pv-doc/pv-guide*) between a base ref (commit, tag, or branch — e.g. a specific released tag) and the current state, and writes .claude/pv-changelog.en.md and .claude/pv-changelog.es.md with New/Changed/Deleted sections. Trigger: /dev-changelog, or when the user asks to generate/update the framework's changelog.
+description: Compares the framework's distributed content (.claude/skills/pv-* and .claude/pv-doc/pv-guide*) between a base ref (commit, tag, or branch — e.g. a specific released tag) and the current state, and writes .claude/pv-changelog.en.md and .claude/pv-changelog.es.md with New/Changed/Fixed/Deleted sections. Trigger: /dev-changelog, or when the user asks to generate/update the framework's changelog.
 argument-hint: "[base commit, tag, or branch]"
 model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.4.0
+  version: 0.5.0
   uses: [en-translate, es-translate]
 ---
 
@@ -60,6 +60,7 @@ Base every entry on what the diff shows — not on commit messages (commit histo
 
 - **New** — a new `pv-*` skill directory appears, or a new capability/step is added inside an existing skill that didn't exist at the base ref.
 - **Changed** — an existing skill's behavior, flow, or documented capability is modified (including `pv-guide*` content describing existing functionality differently).
+- **Fixed** — the diff corrects a bug or incorrect behavior in existing functionality, rather than changing how it's meant to work.
 - **Deleted** — a `pv-*` skill directory is removed, or a capability/step present at the base ref is removed.
 
 **Informational focus: functional changes only, by default.** Write from a functional perspective (what the framework now does differently for someone using/interacting with it), not a technical one — no file paths, function names, script internals, or line-level detail. One or two sentences per entry, changelog tone, past tense.
@@ -75,11 +76,11 @@ For these, state plainly what changed structurally and what action the user must
 
 **Each entry needs a title describing the change itself, not the skill that contains it.** The bold lead-in of every bullet (see the template) must be a short title summarizing *what changed*, e.g. "Working folder is no longer configurable" or "Trivial-fix risk threshold relaxed" — not the skill's name (`pv-init`, `pv-fix`...) used as if it were the title. Name the skill(s) involved in the summary sentence that follows, in backticks, not in the title itself. If a single skill has two clearly separable changes, give each its own entry with its own title rather than combining them under one.
 
-**Group entries by theme within each section.** Once every entry for a section (New/Changed/Deleted) is drafted, look for entries that share the same underlying topic (e.g. several entries all about documentation generation, several all about risk assessment, several all about a specific skill's workflow) and group them under a theme instead of leaving them as a flat list. In the detail section, a theme is a bold, unlinked bullet naming the topic followed by a colon, prefixed with 📂 to mark it as a group (`- 📂**{Theme}**:`), with its member entries nested as indented sub-bullets directly beneath it — not a heading, since it doesn't need its own anchor. A theme needs at least two entries to justify grouping — a single entry, even if loosely related to a theme, stays ungrouped, listed as a normal top-level bullet with no theme line of its own, rather than being forced into a nearby group it doesn't squarely belong to. Double-check each grouped entry actually belongs to its theme (same specific topic, not just the same skill or vaguely related area) before finalizing — a misplaced entry is worse than an ungrouped one. Order themes and any ungrouped entries by whichever reads most naturally (e.g. most impactful first); this doesn't need to match arrival order in the diff. Skip grouping entirely for a section with too few entries overall (roughly three or fewer) or where no real thematic overlap exists — don't force groups where entries are unrelated.
+**Group entries by theme within each section.** Once every entry for a section (New/Changed/Fixed/Deleted) is drafted, look for entries that share the same underlying topic (e.g. several entries all about documentation generation, several all about risk assessment, several all about a specific skill's workflow) and group them under a theme instead of leaving them as a flat list. In the detail section, a theme is a bold, unlinked bullet naming the topic followed by a colon, prefixed with 📂 to mark it as a group (`- 📂**{Theme}**:`), with its member entries nested as indented sub-bullets directly beneath it — not a heading, since it doesn't need its own anchor. A theme needs at least two entries to justify grouping — a single entry, even if loosely related to a theme, stays ungrouped, listed as a normal top-level bullet with no theme line of its own, rather than being forced into a nearby group it doesn't squarely belong to. Double-check each grouped entry actually belongs to its theme (same specific topic, not just the same skill or vaguely related area) before finalizing — a misplaced entry is worse than an ungrouped one. Order themes and any ungrouped entries by whichever reads most naturally (e.g. most impactful first); this doesn't need to match arrival order in the diff. Skip grouping entirely for a section with too few entries overall (roughly three or fewer) or where no real thematic overlap exists — don't force groups where entries are unrelated.
 
 ## 5. Write the files
 
-Draft the entries in whichever language comes naturally while classifying the diff in step 4. Write `.claude/pv-changelog.en.md` following [`dev-changelog.template.md`](dev-changelog.template.md) **exactly** — title line, heading text, emoji, and the Index-before-detail structure all come from that template verbatim; don't reproduce or paraphrase its literal formatting here, since the template is the single source of truth and this file must never drift out of sync with it. Fill in `{XXX}`/`{YYY}` and every entry (Index titles matching the detail titles, grouped and ordered the same way New/Changed/Deleted).
+Draft the entries in whichever language comes naturally while classifying the diff in step 4. Write `.claude/pv-changelog.en.md` following [`dev-changelog.template.md`](dev-changelog.template.md) **exactly** — title line, heading text, emoji, and the Index-before-detail structure all come from that template verbatim; don't reproduce or paraphrase its literal formatting here, since the template is the single source of truth and this file must never drift out of sync with it. Fill in `{XXX}`/`{YYY}` and every entry (Index titles matching the detail titles, grouped and ordered the same way New/Changed/Fixed/Deleted).
 
 Carry any thematic grouping from step 4 into the detail section as described above (`- 📂**{Theme}**:` bullet with nested children). **In the Index, a theme collapses to a single plain (non-bold) line, still prefixed with 📂 — the icon, then the theme name, then its entry count in parentheses, e.g. `📂Theme name (3 changes)` — with its member entries not listed at all.** Don't bold the theme name in the Index and don't link it to anything (only the 📂 icon is shared with the detail section's formatting). An ungrouped (ordinary) entry keeps its own plain top-level Index line as before (just its title, no icon, no count). So a section mixing grouped and ungrouped entries produces an Index with some plain title-only lines (ungrouped entries) and some plain `📂Name (N changes)` lines (one per theme, count matching its nested-entry total in the detail section), never a nested sub-list under a theme in the Index.
 
@@ -89,4 +90,4 @@ Then produce `.claude/pv-changelog.es.md` as its exact Spanish translation — s
 
 ## 6. Confirm to the user
 
-State both paths written (`.claude/pv-changelog.en.md` and `.claude/pv-changelog.es.md`), the base ref used, and how many entries landed in each section (New/Changed/Deleted).
+State both paths written (`.claude/pv-changelog.en.md` and `.claude/pv-changelog.es.md`), the base ref used, and how many entries landed in each section (New/Changed/Fixed/Deleted).
