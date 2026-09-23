@@ -43,9 +43,20 @@ Every `design_*.txt` file is only a visual mockup, not a functional prototype:
      (selected / highlighted / inactive states) and content & microcopy. Reuse the real
      microcopy and conventions found there (button labels, status text, CLI flag naming)
      instead of inventing them.
-  3. If that folder holds only its `INDEX.md`, or doesn't cover what's needed, use a
-     neutral placeholder layout for the gap and note it:
+  3. If that folder holds only its `INDEX.md`, or doesn't cover what's needed, don't fall
+     straight back to a neutral placeholder: resolve `sourcecodeDir` the same way
+     (`resolve-path.py --what sourcecodeDir`) and look for the real conventions already in
+     the app for that gap — actual button/label strings, CLI flag names, status text, the
+     closest existing screen/command with a similar layout. Reuse what's actually there
+     (read-only — this skill never edits source code either) instead of inventing it.
+  4. Only if neither the style bible nor the code has anything for that gap, use a neutral
+     placeholder layout and note it:
      `-- No documented style conventions for <element>; neutral placeholder. --`
+- **Anything reused from step 3 above (found in code, not in the style bible) is a
+  documentation gap, not a silent fix.** Track it as it happens; don't just apply it and
+  move on. This skill still never edits `styleBibleDocDir` itself — that's the caller's
+  call on how/whether to route it (e.g. into a change's Technical notes, or straight to
+  `pv-review-doc-tech`).
 - It's pure plain text: only ASCII characters (lines, corners and fills with `-`, `|`, `+`, `_`, `/`, `\`, `*`, `#`, `.`, spaces, etc.). No HTML, Markdown, emoji, or Unicode box-drawing characters (`─│┌┐└┘`) — the goal is that it looks equally good in any monospace text editor.
 - Assumes a monospace font implicitly: align columns and borders with spaces, taking care that every line in a block has a consistent width so the boxes line up visually.
 - It must show only the look (element layout, hierarchy, grouping, relative sizes) that element would have — no need for real data, static sample content illustrating the result is enough (button text, labels, example values).
@@ -61,4 +72,4 @@ Every `design_*.txt` file is only a visual mockup, not a functional prototype:
 ## Steps
 
 1. For each element in the received list, create (if the action is `create`) or edit (if `edit`) the corresponding `design_<element-description>.txt` file in the destination folder, following the rules above. When editing, preserve the rest of the file unrelated to the requested change.
-2. Return to the caller, in the same turn, the list of created/edited file paths (one per element). Don't present anything to the user or ask for confirmation — that's the caller's job.
+2. Return to the caller, in the same turn: the list of created/edited file paths (one per element), and, if step 3 of the rules above was used for any element, a **style gaps found** list — one entry per gap, naming the element, what was reused from code, and where in the code it was found. Empty if every element was fully covered by the style bible. Don't present anything to the user or ask for confirmation — that's the caller's job.

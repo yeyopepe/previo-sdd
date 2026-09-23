@@ -44,11 +44,23 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
      reusable components, iconography, microcopy). Reuse the concrete values found there
      (hex codes, `rem`/`px` values, token names) — don't approximate them from memory.
   3. If that folder holds only its `INDEX.md` (nothing documented yet) or doesn't cover
-     what this mockup needs, use sober neutral styling for the gap and note it at the top
-     of the file: `<!-- No documented visual identity for <element>; neutral placeholder styling. -->`
+     what this mockup needs, don't fall straight back to a neutral placeholder: resolve
+     `sourcecodeDir` the same way (`resolve-path.py --what sourcecodeDir`) and look for the
+     real styling already in the app for that gap — theme/token files, global stylesheets,
+     the closest existing component that already renders something visually similar. Reuse
+     what's actually there (read-only — this skill never edits source code either) instead
+     of inventing it.
+  4. Only if neither the style bible nor the code has anything for that gap, use sober
+     neutral styling and note it at the top of the file:
+     `<!-- No documented visual identity for <element>; neutral placeholder styling. -->`
 
   The mockup stays self-contained (existing rule): copy the styling inline replicating the
   documented appearance — never link the real stylesheet or a CDN.
+- **Anything reused from step 3 above (found in code, not in the style bible) is a
+  documentation gap, not a silent fix.** Track it as it happens; don't just apply it and
+  move on. This skill still never edits `styleBibleDocDir` itself — that's the caller's
+  call on how/whether to route it (e.g. into a change's Technical notes, or straight to
+  `pv-review-doc-tech`).
 - It must show only the look (layout, styles, iconography) that element would have — no need for real data or logic, static sample content illustrating the result is enough.
 - It must have no real functionality: no JavaScript reacting to events, no network calls, no state — at most, purely decorative JS if needed for the visual look.
 - It must be self-contained: only HTML, CSS and SVG, all embedded in the file itself (no external files, no CDNs, no imports).
@@ -57,4 +69,4 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
 ## Steps
 
 1. For each element in the received list, create (if the action is `create`) or edit (if `edit`) the corresponding `design_<element-description>.html` file in the destination folder, following the rules above. When editing, preserve the rest of the file unrelated to the requested change.
-2. Return to the caller, in the same turn, the list of created/edited file paths (one per element). Don't present anything to the user or ask for confirmation — that's the caller's job.
+2. Return to the caller, in the same turn: the list of created/edited file paths (one per element), and, if step 3 of the rules above was used for any element, a **style gaps found** list — one entry per gap, naming the element, what was reused from code, and where in the code it was found. Empty if every element was fully covered by the style bible. Don't present anything to the user or ask for confirmation — that's the caller's job.
