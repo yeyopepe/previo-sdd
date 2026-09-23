@@ -133,6 +133,11 @@ Legend:
 
   Assets and scripts: none of its own — it runs `pv-internal-doc-files`' [`scripts/rebuild-index.py`](skills/pv-internal-doc-files/scripts/rebuild-index.py) and `pv-init`'s [`scripts/resolve-path.py`](skills/pv-init/scripts/resolve-path.py), both owned by their respective skills.
 
+- **pv-review-code** — Reviews `framework.sourcecodeDir`'s real code against a fixed, language-agnostic checklist (separation of concerns/cohesion, SRP, file/class size, the rest of SOLID, DRY, KISS, coupling/layering, folder structure vs. responsibility, naming as a structural signal, dead structural weight) and produces a numbered list of reorganization proposals — concrete moves/splits/merges/renames of existing code, each stating what/why/destination. It never proposes adding or removing functional code or changing behavior; an improvement that would need new code is flagged separately as out of scope instead of listed as a proposal. It writes nothing to `sourcecodeDir` itself: once the user decides which proposals (if any) to act on, it asks **per proposal** whether it becomes a noted idea (invokes `pv-todo`) or a documented change (invokes `pv-new`) — never assumed, always confirmed individually. *Uses:* `pv-todo`, `pv-new`.
+
+  Assets and scripts:
+  - [`workflow.review-code.md`](skills/pv-review-code/workflow.review-code.md) — Mermaid diagram of this skill's full flow (see "Workflow diagrams" above), from resolving `sourcecodeDir` through the per-proposal `pv-todo`/`pv-new` routing loop; read before executing any step, the source of truth for the sequence and the branches. No hook points, so no orange nodes.
+
 - **pv-todo** — A notebook for loose ideas, deliberately outside the framework's workflow: it lives in `{changesDir}/todo/`, with its own numbering and identifiers that no other `pv-*` skill reads or counts. It serves to note incomplete ideas without forcing the scope analysis of `pv-new`/`pv-fix`. *Uses:* no other skill.
 
   Assets and scripts:
@@ -586,6 +591,7 @@ A complete view of what the framework creates and where, with the default config
 │       ├── pv-new/                     # documents an intentional change
 │       │   └── hooks/                        # NN-slug.template.md seed copied to stuff/hooks/new/
 │       │       └── 20-after-entry.template.md
+│       ├── pv-review-code/            # proposes code reorganizations, structure only
 │       ├── pv-review-doc-tech/        # reorganizes docs.tech folders, structure only
 │       ├── pv-status/                 # read-only view of the state
 │       ├── pv-todo/                   # loose ideas, outside the flow
