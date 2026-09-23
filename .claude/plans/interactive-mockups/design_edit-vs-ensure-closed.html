@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>edit (Flujo A) vs. ensure-closed (Flujo A') — secuencias separadas</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-border: #262b36;
+    --text: #e6e8ee;
+    --muted: #8b93a7;
+    --caller: #2c7dd8;
+    --caller-bg: rgba(44,125,216,.12);
+    --skill: #f5a623;
+    --skill-bg: rgba(245,166,35,.10);
+    --ok: #3ecf8e;
+    --lane-w: 220px;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    padding: 32px 24px 64px;
+  }
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0 0 4px;
+  }
+  .subtitle {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 32px;
+    max-width: 760px;
+    line-height: 1.5;
+  }
+  .rule {
+    display: inline-block;
+    background: rgba(62,207,142,.12);
+    border: 1px solid rgba(62,207,142,.35);
+    color: var(--ok);
+    font-size: 12.5px;
+    padding: 6px 12px;
+    border-radius: 6px;
+    margin-bottom: 36px;
+  }
+  .scenes {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    align-items: start;
+  }
+  @media (max-width: 860px) {
+    .scenes { grid-template-columns: 1fr; }
+  }
+  .scene {
+    background: var(--panel);
+    border: 1px solid var(--panel-border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .scene__head {
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--panel-border);
+  }
+  .scene__head.caller { background: var(--caller-bg); }
+  .scene__head.skill { background: var(--skill-bg); }
+  .scene__label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    font-weight: 700;
+  }
+  .scene__head.caller .scene__label { color: var(--caller); }
+  .scene__head.skill .scene__label { color: var(--skill); }
+  .scene__title {
+    font-size: 15px;
+    font-weight: 600;
+    margin-top: 4px;
+  }
+  .scene__body { padding: 20px 18px 24px; }
+
+  .steps {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    position: relative;
+  }
+  .steps::before {
+    content: "";
+    position: absolute;
+    left: 13px;
+    top: 6px;
+    bottom: 6px;
+    width: 2px;
+    background: var(--panel-border);
+  }
+  .step {
+    position: relative;
+    padding: 0 0 18px 38px;
+  }
+  .step:last-child { padding-bottom: 0; }
+  .step__dot {
+    position: absolute;
+    left: 6px;
+    top: 2px;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: var(--panel);
+    border: 2px solid var(--caller);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 700;
+    color: var(--caller);
+  }
+  .scene--skill .step__dot { border-color: var(--skill); color: var(--skill); }
+  .step__text {
+    font-size: 13.5px;
+    line-height: 1.5;
+  }
+  .step__text b { color: var(--text); }
+  .tag {
+    display: inline-block;
+    font-size: 10.5px;
+    font-weight: 700;
+    padding: 1px 7px;
+    border-radius: 999px;
+    margin-left: 6px;
+    vertical-align: 1px;
+  }
+  .tag--never {
+    background: rgba(240,90,90,.15);
+    color: #f06a6a;
+    border: 1px solid rgba(240,90,90,.4);
+  }
+  .tag--ok {
+    background: rgba(62,207,142,.15);
+    color: var(--ok);
+    border: 1px solid rgba(62,207,142,.4);
+  }
+
+  .note {
+    margin-top: 16px;
+    background: rgba(255,255,255,.03);
+    border: 1px dashed var(--panel-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    color: var(--muted);
+    line-height: 1.5;
+  }
+
+  .divider {
+    text-align: center;
+    color: var(--muted);
+    font-size: 12px;
+    margin: 40px 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .divider::before, .divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--panel-border);
+  }
+
+  .mnote-mini {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: #1c2029;
+    border: 1px solid var(--panel-border);
+    border-left: 4px solid var(--skill);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-size: 12px;
+    margin-top: 14px;
+  }
+  .mnote-mini .state {
+    font-size: 10px;
+    font-weight: 700;
+    padding: 1px 8px;
+    border-radius: 999px;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+  }
+  .state--open { background: rgba(245,166,35,.18); color: var(--skill); }
+  .state--closed { background: rgba(139,147,167,.18); color: var(--muted); text-decoration: line-through; }
+
+  .arrow-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 6px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<h1>Dos secuencias, separadas a propósito</h1>
+<p class="subtitle">
+  <code>edit</code> (Flujo A, disparado por el caller) y <code>ensure-closed</code>
+  (Flujo A', disparado también por el caller pero resuelto internamente por la skill)
+  usan el mismo mecanismo de edición del markup por debajo, pero solo una de las dos
+  puede tocar el estado de una nota.
+</p>
+<div class="rule">✓ Regla: solo <code>ensure-closed</code> lee, resuelve y cierra notas. <code>edit</code> nunca las toca.</div>
+
+<div class="scenes">
+
+  <!-- ESCENA 1: edit plano -->
+  <div class="scene scene--caller">
+    <div class="scene__head caller">
+      <div class="scene__label">Caller → skill · Flujo A</div>
+      <div class="scene__title">action: edit</div>
+    </div>
+    <div class="scene__body">
+      <ul class="steps">
+        <li class="step">
+          <span class="step__dot">1</span>
+          <div class="step__text"><b>pv-new</b> quiere agrandar un botón del mockup — pide <b>action: edit</b> a la skill de mockups.</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">2</span>
+          <div class="step__text">La skill localiza el archivo, comprueba si ya tiene el framework de anotaciones embebido.</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">3</span>
+          <div class="step__text">Edita <b>solo el markup propio</b> del mockup (el botón). <span class="tag tag--never">nunca toca #mnote-data</span></div>
+        </li>
+        <li class="step">
+          <span class="step__dot">4</span>
+          <div class="step__text">Devuelve la ruta del archivo editado. Fin.</div>
+        </li>
+      </ul>
+
+      <div class="mnote-mini">
+        <span class="state state--open">open</span>
+        <span>"hacer este botón más grande" — <b>sigue open</b>, el edit no la vio</span>
+      </div>
+      <div class="note">
+        Aunque el edit casualmente resuelve lo que la nota pedía, la nota <b>no se cierra aquí</b>.
+        El caller tendría que invocar <code>ensure-closed</code> aparte para que quede reflejado.
+      </div>
+    </div>
+  </div>
+
+  <!-- ESCENA 2: ensure-closed -->
+  <div class="scene scene--skill">
+    <div class="scene__head skill">
+      <div class="scene__label">Caller → skill · Flujo A'</div>
+      <div class="scene__title">action: ensure-closed</div>
+    </div>
+    <div class="scene__body">
+      <ul class="steps">
+        <li class="step">
+          <span class="step__dot">1</span>
+          <div class="step__text"><b>pv-new</b>, antes de volver a presentar el mockup, pide <b>action: ensure-closed</b> sobre ese <code>design_*.html</code>.</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">2</span>
+          <div class="step__text">La skill lee <b>#mnote-data</b> internamente — el caller nunca la ve.</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">3</span>
+          <div class="step__text">Encuentra la nota <b>open</b> "hacer este botón más grande". La aplica ella misma al markup (mismo mecanismo que un edit interno).</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">4</span>
+          <div class="step__text">Marca la nota <b>closed</b>. <span class="tag tag--ok">nunca se borra</span> — queda como registro.</div>
+        </li>
+        <li class="step">
+          <span class="step__dot">5</span>
+          <div class="step__text">Devuelve <b>OK</b> + resumen en texto plano ("agrandé el botón X"). Sin selectores, sin JSON.</div>
+        </li>
+      </ul>
+
+      <div class="mnote-mini">
+        <span class="state state--closed">closed</span>
+        <span>"hacer este botón más grande" — resuelta por la skill</span>
+      </div>
+      <div class="note">
+        Si la nota fuera ambigua (p. ej. "arregla esto"), la skill pregunta <b>directamente al
+        usuario</b> en este mismo paso, antes de aplicar nada — excepción única en todo el
+        framework <code>pv-internal-*</code>.
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="divider">por qué importa la separación</div>
+
+<div class="scene" style="max-width: 760px; margin: 0 auto;">
+  <div class="scene__body">
+    <div class="arrow-row">
+      <span style="color:var(--caller)">●</span> caller invoca <code>edit</code> por su cuenta, cuando quiera →
+      <span style="color:var(--muted)">nunca resuelve ni cierra notas</span>
+    </div>
+    <div class="arrow-row">
+      <span style="color:var(--skill)">●</span> caller invoca <code>ensure-closed</code> antes de (re)presentar →
+      <span style="color:var(--muted)">única vía para leer, resolver y cerrar notas</span>
+    </div>
+    <p style="font-size:12.5px;color:var(--muted);line-height:1.6;margin:16px 0 0;">
+      Si un <code>edit</code> plano pudiera también cerrar notas "de paso", cualquier llamada normal
+      de <b>pv-new</b>/<b>pv-fix</b> podría alterar <code>#mnote-data</code> sin que el caller lo supiera
+      ni lo pidiera — rompiendo la regla de encapsulación que todo el plan defiende
+      ("ningún caller lee, parsea o escribe <code>#mnote-data</code>").
+    </p>
+  </div>
+</div>
+
+</body>
+</html>

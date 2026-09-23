@@ -123,8 +123,12 @@ proposed.
 El paso **"copiar la plantilla del framework"** es lo único que se añade al contrato de
 `action: create`/`edit`; todo lo demás ya existe **salvo la resolución del style bible**, que
 deja de hacerla la skill (ver "Ampliación de alcance" arriba) — ahora es un input opcional que
-trae el caller. El modo `action: read-annotations` (Flujo A') es completamente nuevo — ver más
-abajo.
+trae el caller. El modo `action: ensure-closed` (Flujo A') es completamente nuevo — ver más
+abajo. **Este Flujo A describe únicamente el `edit`/`create` que invoca el caller directamente
+— nunca toca `#mnote-data` ni el estado de ninguna nota**, sea cual sea el motivo del edit. La
+resolución de anotaciones (aplicar el cambio pedido por una nota y cerrarla) es responsabilidad
+exclusiva de `ensure-closed` (Flujo A'), que internamente usa este mismo mecanismo de edición
+del markup pero como un paso propio suyo, no como parte de este flujo.
 
 ```mermaid
 flowchart TD
@@ -135,16 +139,13 @@ flowchart TD
     ACT -- create --> NEWFILE["Escribir el markup propio del mockup\nen design_&lt;desc&gt;.html\n(HTML + CSS + SVG inline, sin JS propio).\nUsar style_context si lo dio el caller;\nsi no, estilo neutro + comentario\n'No documented visual identity...'"]
     NEWFILE --> EMBED
 
-    ACT -- edit --> PENDING{"**¿hay anotación pendiente que\nresuelve este edit?**"}
-    PENDING -- sí --> HAS
-    PENDING -- no --> HAS
-    HAS{"¿el archivo ya tiene un elemento\ncon id=mnote-runtime **cuyo contenido\nes reconocible como el framework**\n(marcador/cabecera del asset)?"}
+    ACT -- edit --> HAS{"¿el archivo ya tiene un elemento\ncon id=mnote-runtime **cuyo contenido\nes reconocible como el framework**\n(marcador/cabecera del asset)?"}
     HAS -- no --> COLLIDE{"**¿existe id=mnote-styles/-runtime/-data\ncon OTRO contenido (colisión)?**"}
     COLLIDE -- "sí" --> RET_CONFLICT["Detener: devolver al caller el conflicto\n(qué id, contenido no reconocido)\nsin escribir nada"]
     COLLIDE -- no --> EDITFILE["Editar el markup propio\n(preservar lo no relacionado;\nmismo criterio style_context/neutro que create)"] --> EMBED
     HAS -- "sí" --> VER{"¿el marcador vN del asset\nes más nuevo que el del archivo?"}
-    VER -- no --> EDITKEEP["Editar el markup propio.\n**Si el edit resuelve una anotación pedida\npor el caller, borrar esa nota de #mnote-data\naquí mismo** (borrar el bloque si queda vacío).\nNunca tocar mnote-* ni el resto de #mnote-data."] --> NEXT
-    VER -- "sí" --> REFRESH["Reemplazar solo &lt;style id=mnote-styles&gt;\ny &lt;script id=mnote-runtime&gt; por los del asset\n(conservar #mnote-data verbatim salvo la nota resuelta,\nmismo criterio que EDITKEEP)"] --> NEXT
+    VER -- no --> EDITKEEP["Editar el markup propio.\n**Nunca tocar mnote-* ni #mnote-data**\n(ni el estado ni el contenido de ninguna nota) —\neso es solo cosa de ensure-closed (Flujo A')."] --> NEXT
+    VER -- "sí" --> REFRESH["Reemplazar solo &lt;style id=mnote-styles&gt;\ny &lt;script id=mnote-runtime&gt; por los del asset\n(conservar #mnote-data verbatim, sin excepciones)"] --> NEXT
 
     EMBED["**PASO NUEVO — copiar la plantilla**\nDe assets/mockup-annotations.html, copiar VERBATIM:\n• &lt;!-- mnote-framework vN --&gt; + &lt;style id=mnote-styles&gt; → antes de &lt;/head&gt;\n• &lt;script id=mnote-runtime&gt; → antes de &lt;/body&gt;\n• &lt;script type=application/json id=mnote-data&gt;[]&lt;/script&gt; si no existe\nNunca reescribir ni resumir estos bloques."] --> NEXT
 
@@ -701,34 +702,4 @@ See [TASKS.md](TASKS.md) for the ordered, checkable task breakdown.
 
 - **2026-09-22**: primera revisión completa (contrato `style_context`, alcance incompleto del `Read` en `pv-how` step 1.1, versión `vN` del asset, referencias de línea desalineadas, mecanismo de guardado del asset, ID collision guard, caso `pv-do`, asimetría `extend-entry.md`, ampliación de alcance a plugin autocontenido). Todos los hallazgos se resolvieron directamente en el cuerpo del plan durante esa misma pasada, salvo el del alcance de `pv-how` step 1.1, que quedó marcado como dependiente de un cambio transversal de convención de subcarpetas a implementar antes que este plan.
 - **2026-09-24**: segunda revisión — actualización de conocimiento del estado del framework, ya que el cambio de convención de subcarpetas (`mockups/`) se implementó directamente en el código, sin el plan hermano que la revisión anterior esperaba. Hallazgos: estructura del documento incompleta (faltaban Índice, Objective, Implementation plan y Reviews en el formato exigido, y las revisiones no eran la última sección); la dependencia declarada hacia `mockups-subfolder/PLAN.md` era obsoleta; `navigation_*.md`/`data_*.md` quedaron fuera de `mockups/` de forma explícita, con nombre distinto al asumido antes; ninguna pieza propia de este plan (`style_context`, `ensure-closed`, `describe`, el asset) estaba todavía implementada en `pv-internal-mockups-html/SKILL.md`, y sus referencias a línea habían vuelto a desalinearse por la reescritura de subcarpetas; los tres `workflow.*.md` ya reflejaban la convención de subcarpetas sin rama de anotaciones (esperado, aún no implementada). Resuelto en un walkthrough punto por punto en la misma fecha: se eliminó el bloque de dependencia obsoleto, se fusionó `TASKS.md` como sección `## Implementation plan` de este documento (fichero borrado), se añadió `## Objective`, se corrigieron todas las rutas y referencias a línea del cuerpo normativo (`mockups/design_*.html` vs. `navigation_*.md`/`data_*.md` sueltos en la raíz; regla de estilo del `SKILL.md` de `pv-internal-mockups-html` en líneas 35-56, "no JavaScript" en línea 65), y se recortaron ambas secciones de revisión a este historial.
-
-## Análisis crítico — 2026-09-24 (dev-analysis)
-
-Verificado contra el estado real del repo (no contra lo que el plan afirma). Todas las referencias a línea de `SKILL.md`/`workflow.*.md` citadas por el plan se confirmaron exactas al leer los ficheros reales; ninguna pieza propia de este plan (`style_context`, `ensure-closed`, `describe`, `assets/mockup-annotations.html`, plugin-isolation) existe todavía en `pv-internal-mockups-html/SKILL.md` (72 líneas, sin carpeta `assets/`), y los tres `workflow.*.md` no tienen ninguna rama de anotaciones — consistente con lo que el plan ya declara.
-
-### Flujos / Approach — contenido técnico
-
-| Finding | Explanation | Proposed improvement |
-|---|---|---|
-| Flujo A contradice la regla de encapsulación de `ensure-closed` | El diagrama del Flujo A (nodo `EDITKEEP`, líneas 138-147) especifica que un `action: edit` normal, si "resuelve una anotación pedida por el caller", **borra esa nota de `#mnote-data` directamente** ahí mismo. Esto contradice: (1) Approach §2 "`edit` action behavior" (líneas 400-409), que dice explícitamente "a plain `action: edit` from a caller never changes any note's state or content; only `ensure-closed` does that"; (2) Confirmed decisions §3, que dice "Only `pv-internal-mockups-html` **may set a note to `closed`**" (vía `ensure-closed`, nunca vía `edit`); (3) Approach §1 "Estado de la nota" (línea 311-312), que dice que una nota cerrada "sigue en `#mnote-data` como registro (no se borra) hasta que el reviewer la elimine explícitamente con 🗑" — el nodo `EDITKEEP` ni siquiera la cierra, la **borra**, saltándose también esa regla. El plan declara en varios `SKILL.md` que "si el diagrama y la prosa difieren, el diagrama manda" — seguido literalmente aquí, produciría el comportamiento equivocado (un `edit` plano resolviendo y borrando anotaciones por su cuenta, sin pasar por `ensure-closed`, ni preguntar al usuario en casos ambiguos). El nodo `REFRESH` (línea 147) hereda el mismo problema ("conservar `#mnote-data` verbatim salvo la nota resuelta, mismo criterio que `EDITKEEP`"). | — |
-| Referencia residual a `action: read-annotations` en Flujo A | Línea 126: "El modo `action: read-annotations` (Flujo A') es completamente nuevo" — pero la sección A' (línea 155) se titula "Nuevo modo `action: ensure-closed`", no `read-annotations`. `read-annotations` es el nombre del diseño **anterior**, ya retirado (Confirmed decisions §3 lo menciona explícitamente en pasado: "This replaces the earlier `read-annotations` + `edit`-per-note dance"). Es un residuo textual de una reescritura previa que no se actualizó junto con el resto del Flujo A. | — |
-
-### Estructura
-
-| Finding | Explanation | Proposed improvement |
-|---|---|---|
-| No hay `TASKS.md` hermano | El skill `dev-analysis` exige que la carpeta del plan tenga `PLAN.md` + `TASKS.md` como fichero hermano; aquí `TASKS.md` fue fusionado dentro de `PLAN.md` como sección `## Implementation plan` y borrado (confirmado en git status: `D .claude/plans/interactive-mockups/TASKS.md`), decisión tomada y documentada explícitamente en la review 2026-09-24 de este mismo documento. Estructuralmente sigue siendo el caso "fichero plano en vez de la forma de carpeta exigida", que el propio skill pide reportar como hallazgo incluso cuando la fusión fue deliberada. | **Resuelto** (2026-09-24): se recreó `TASKS.md` como fichero hermano con el mismo desglose de tareas, y `PLAN.md`'s `## Implementation plan` quedó como puntero a él (`See [TASKS.md](TASKS.md)`), tanto en el índice como en el cuerpo — vuelve a seguir la convención carpeta+`TASKS.md` estándar. |
-
-### Approach / Critical files — cobertura de callers
-
-| Finding | Explanation | Proposed improvement |
-|---|---|---|
-| `pv-do` es un caller de `design_*` no contemplado por el plan | `pv-do/SKILL.md` línea 121 (paso de actualización de `docs.tech.styleBibleDocDir`) pasa explícitamente "any `design_*` mockups this entry has" como parte del contexto que entrega a `pv-internal-doc-style`. Es un tercer acceso a los mockups de una entrada, fuera de `pv-new`/`pv-fix`/`pv-how`, que el plan no menciona en ningún punto: no está en el Approach §2 (`ensure-closed`/`describe`), no está en "Critical files", no está en los Flujos B/C, y `pv-do/SKILL.md` no aparece en la lista de ficheros a tocar. Si el plan se implementa tal cual, `pv-do` seguiría teniendo esta referencia a `design_*` sin pasar por `describe`, violando la propia regla de encapsulación que el plan declara como su objetivo central ("no caller ever `Read`s a `design_*.html` file itself" / "no caller ever opens `#mnote-data`"). | **Resuelto**: `pv-do/SKILL.md` añadido a "Critical files" (línea 121, sustituir la mención de `design_*` por `action: describe`); nueva nota "Other callers — `pv-do`" al final de Approach §3; Approach §2's descripción de `describe` ahora cita a `pv-do` junto a `pv-how` como consumidor. `pv-do` nunca invoca `ensure-closed` (no valida visualmente ni presenta mockups). Tarea T14.5 añadida a `TASKS.md`. |
-
-### Verificación
-
-| Finding | Explanation | Proposed improvement |
-|---|---|---|
-| Ningún punto de verificación cubre `pv-do` | Como consecuencia del hallazgo anterior, ni la sección Verification (§1-§7) ni el Implementation plan (Fase 4, T15-T20) incluyen ningún paso que confirme que `pv-do` no abre `design_*.html` directamente ni que — si el plan decide que `pv-do` debe invocar `describe`/`ensure-closed` — lo haga correctamente. | **Resuelto**: nuevo punto **§8** en `## Verification` (grep de `pv-do/SKILL.md` por `design_*`, más una ejecución real del paso de estilo sobre una entrada con mockups). Tarea de verificación **T18.2** añadida a `TASKS.md` (Fase 4). |
-
-Ningún otro hallazgo adicional surgió en el resto de secciones (Objective, Context, Flujos A/A'/B/C, Approach §1/§3/§3.1/§4/§5) — las referencias a fichero/línea, los callers listados y las afirmaciones sobre el estado actual del código se verificaron exactas contra el repo real.
+- **2026-09-24 (segunda pasada)**: tercera revisión (dev-analysis) — se detectó que la sección de análisis crítico de la pasada anterior había quedado colocada después de `## Reviews` (violando la regla de que debe ser siempre la última sección) y que 2 de sus 4 hallazgos seguían genuinamente sin resolver. Hallazgos: (1) el nodo `EDITKEEP`/`REFRESH` del Flujo A dejaba que un `action: edit` plano borrara una nota de `#mnote-data` si "resolvía" lo que pedía, contradiciendo Approach §2 ("a plain `action: edit` ... never changes any note's state or content; only `ensure-closed` does that"), Confirmed decisions §3 y la propia regla de que una nota cerrada nunca se borra, solo se marca `closed`; (2) la frase introductoria del Flujo A todavía nombraba el modo retirado `action: read-annotations` en vez de `ensure-closed`. Recreado también `TASKS.md` como fichero hermano y `pv-do` como caller cubierto (ya resueltos en el cuerpo del documento por la pasada anterior, sin cambios en esta). Resuelto en walkthrough punto por punto el mismo día: Flujo A reescrito para que `edit`/`create` nunca toquen `#mnote-data` bajo ningún caso (se eliminó el nodo `PENDING` y se limpiaron `EDITKEEP`/`REFRESH`), con una nota explícita de que la resolución de anotaciones es responsabilidad exclusiva de `ensure-closed` (Flujo A'); referencia introductoria corregida a `ensure-closed`; se creó `design_edit-vs-ensure-closed.html` como mockup de apoyo mostrando las dos secuencias separadas (`edit` del caller vs. `ensure-closed` resolviendo y cerrando notas). La sección de análisis crítico, ya sin hallazgos abiertos, se eliminó y su historial se recogió aquí.
