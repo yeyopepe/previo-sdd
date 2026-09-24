@@ -22,9 +22,14 @@ flowchart TD
     S1Given -->|Yes| S1Found{Found under inProgress/?}
     S1Found -->|No| S1NotFound[INFO: already implemented, or not found]
     S1NotFound --> End1b([End: not found])
-    S1Found -->|Yes| S11Validate
+    S1Found -->|Yes| S105Check
 
-    S11Validate[Read description.md, mockups/ and navigation_*.md/data_*.md for inconsistencies] --> S11Issue{Inconsistency or gap found?}
+    S105Check{mockups/ has any design_*.html?}
+    S105Check -->|Yes| S105Ensure[Invoke mockups skill: ensure-closed on every design_*.html in mockups/; wait for OK]
+    S105Ensure --> S11Validate
+    S105Check -->|No| S11Validate
+
+    S11Validate[Read description.md and navigation_*.md/data_*.md directly; get mockups/ visual facts via mockups skill's describe action; look for inconsistencies] --> S11Issue{Inconsistency or gap found?}
     S11Issue -->|Yes| S11Ask[ASK: how to resolve it?]
     S11Ask --> S11Fix[Update affected documents with the answer]
     S11Fix --> S11Validate

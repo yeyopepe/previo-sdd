@@ -46,7 +46,11 @@ flowchart TD
 
     S4Validate{Any diagram, mockups/design_*.html, navigation_*.md or data_*.md generated?}
     S4Validate -->|No| S5HookCheck
-    S4Validate -->|Yes| S4Ask[ASK: does the representation reflect what you had in mind?]
+    S4Validate -->|Yes| S4EnsureCheck{Any mockups/design_*.html generated?}
+    S4EnsureCheck -->|Yes| S4EnsureClosed[Invoke mockups skill: ensure-closed on the design_*.html about to be presented; summarize what it changed]
+    S4EnsureClosed --> S4Ask
+    S4EnsureCheck -->|No| S4Ask
+    S4Ask[ASK: does the representation reflect what you had in mind?]
     S4Ask --> S4Dec{User confirms?}
     S4Dec -->|Changes requested| S4Adjust[Adjust file s or diagram and present again]
     S4Adjust --> S4Ask

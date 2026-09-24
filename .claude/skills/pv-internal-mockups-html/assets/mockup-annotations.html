@@ -84,6 +84,12 @@
     border: 1px solid var(--mnoteqz7k-border); border-radius: 6px; overflow: hidden; background: #fff;
     z-index: 2147483000; color: var(--mnoteqz7k-ink);
     font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+
+  #mnoteqz7k-save-corner { position: fixed; top: 12px; right: 12px; z-index: 2147483001;
+    width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center;
+    border: 1px solid var(--mnoteqz7k-border); border-radius: 6px; background: #e9edf0;
+    font-size: 1rem; cursor: pointer; box-shadow: 0 3px 10px rgba(0,0,0,.18); }
+  #mnoteqz7k-save-corner:hover { background: var(--mnoteqz7k-pin); }
   .mnoteqz7k-panel__head { padding: .45rem .6rem; font-size: .74rem; font-weight: 700;
     color: var(--mnoteqz7k-ink-muted); background: #f4f6f8; display: flex; align-items: center;
     gap: .4rem; cursor: pointer; user-select: none; }
@@ -154,7 +160,7 @@
 (function () {
   "use strict";
 
-  var IGNORE_SELECTOR = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-panel, .mnoteqz7k-card, #mnoteqz7k-data, #mnoteqz7k-toast, #mnoteqz7k-watermark";
+  var IGNORE_SELECTOR = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-panel, .mnoteqz7k-card, #mnoteqz7k-data, #mnoteqz7k-toast, #mnoteqz7k-watermark, #mnoteqz7k-save-corner";
 
   var state = {
     notes: [],           // [{id, kind:"linked"|"general", selector, text, createdAt, state:"open"|"closed"}]
@@ -407,6 +413,15 @@
     render();
   }
 
+  /* Reopening is the one closed->open transition the browser runtime is allowed to make —
+     ensure-closed still owns every open->closed transition; this never conflicts with that,
+     it only lets the reviewer flag "this wasn't fixed right, I want to say more" again. */
+  function reopenNote(id) {
+    var note = state.notes.find(function (n) { return n.id === id; });
+    if (note) note.state = "open";
+    render();
+  }
+
   /* ---------- card ---------- */
 
   function noteAnchorEl(note) {
@@ -504,6 +519,11 @@
     foot.innerHTML = "";
 
     if (note.state === "closed") {
+      var reopen0 = document.createElement("button");
+      reopen0.textContent = "↺ Reopen";
+      reopen0.addEventListener("click", function () { reopenNote(note.id); });
+      foot.appendChild(reopen0);
+
       var del0 = document.createElement("button");
       del0.className = "mnoteqz7k-del";
       del0.textContent = "🗑 Delete";
@@ -627,6 +647,14 @@
         renderPanelItemEditing(item, n);
       });
       acts.appendChild(editBtn);
+    } else {
+      var reopenBtn = document.createElement("button");
+      reopenBtn.textContent = "↺ Reopen";
+      reopenBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        reopenNote(n.id);
+      });
+      acts.appendChild(reopenBtn);
     }
     var delBtn = document.createElement("button");
     delBtn.textContent = "🗑 Delete";
@@ -684,7 +712,7 @@
     generalPanel = document.createElement("div");
     generalPanel.className = "mnoteqz7k-panel" + (state.generalPanelCollapsed ? " mnoteqz7k-panel--collapsed" : "");
     generalPanel.id = "mnoteqz7k-panel-general";
-    generalPanel.style.top = "56px";
+    generalPanel.style.top = "58px";
     generalPanel.appendChild(buildPanelHead("General notes", items.length, state.generalPanelCollapsed, function () {
       state.generalPanelCollapsed = !state.generalPanelCollapsed;
       render();
@@ -786,7 +814,7 @@
   function serializeClean() {
     var clone = document.documentElement.cloneNode(true);
     clone.classList.remove("mnoteqz7k-hidden");
-    var junkSelectors = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-card, .mnoteqz7k-panel, #mnoteqz7k-toast, .mnoteqz7k-count, #mnoteqz7k-watermark";
+    var junkSelectors = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-card, .mnoteqz7k-panel, #mnoteqz7k-toast, .mnoteqz7k-count, #mnoteqz7k-watermark, #mnoteqz7k-save-corner";
     clone.querySelectorAll(junkSelectors).forEach(function (el) { el.remove(); });
     clone.querySelectorAll(".mnoteqz7k-sel").forEach(function (el) { el.classList.remove("mnoteqz7k-sel"); });
     clone.querySelectorAll(".mnoteqz7k-linked").forEach(function (el) { el.classList.remove("mnoteqz7k-linked"); });
@@ -918,6 +946,16 @@
 
   /* ---------- init ---------- */
 
+  function buildSaveCorner() {
+    var btn = document.createElement("button");
+    btn.id = "mnoteqz7k-save-corner";
+    btn.title = "Save annotations";
+    btn.setAttribute("aria-label", "Save annotations");
+    btn.textContent = "💾";
+    btn.addEventListener("click", onSaveClick);
+    document.body.appendChild(btn);
+  }
+
   function buildWatermark() {
     var wm = document.createElement("a");
     wm.id = "mnoteqz7k-watermark";
@@ -932,6 +970,7 @@
     state.notes = loadData();
     loadHidden();
     buildBar();
+    buildSaveCorner();
     buildWatermark();
     render();
     document.addEventListener("click", onDocumentClick, true);

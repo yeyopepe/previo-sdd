@@ -94,12 +94,20 @@ durante la verificación manual en el sandbox — ver notas en T1-T3:
 
 ## Fase 2 — `pv-internal-mockups-html/SKILL.md`
 
-- [ ] **T3.1.** Regla **plugin-isolation** (nueva, al principio de `SKILL.md`): la skill es un
+**Estado: completada** (2026-09-24). `SKILL.md` reescrito: regla plugin-isolation (T3.1),
+inputs `style_context`/`language` sustituyendo la resolución propia del style bible (T3.2),
+inventario de ficheros (T4), excepción a "no JavaScript" para el framework embebido (T5),
+regla "Embed the annotation framework" (T6), los tres sub-casos de `create`/`edit` con el ID
+collision guard (T7/T7.3), las nuevas acciones `ensure-closed` (T7.1) y `describe` (T7.2), la
+excepción de interacción directa con el usuario (T7.4), y la nota de versionado (T8).
+`description` del frontmatter actualizada para reflejar las 4 acciones.
+
+- [x] **T3.1.** Regla **plugin-isolation** (nueva, al principio de `SKILL.md`): la skill es un
   plugin autocontenido — copiar solo su carpeta a otro repo debe permitir crear/editar/gestionar
   `design_*.html` al 100%. Nunca resuelve su propio contexto desde disco ni desde
   `pv-context.json`; todo lo que necesite lo pide como input, y su ausencia degrada a un
   comportamiento por defecto en vez de ir a buscarlo.
-- [ ] **T3.2.** Reescribir la regla del style bible (líneas 35-56 del `SKILL.md` real):
+- [x] **T3.2.** Reescribir la regla del style bible (líneas 35-56 del `SKILL.md` real):
   **eliminar** la llamada a
   `python .claude/skills/pv-init/scripts/resolve-path.py --what styleBibleDocDir` y la lectura
   directa de `INDEX.md`/ficheros de `styleBibleDocDir` — dependencia dura fuera de la propia
@@ -108,19 +116,19 @@ durante la verificación manual en el sandbox — ver notas en T1-T3:
   comentario `<!-- No documented visual identity for <element>; neutral placeholder styling. -->`
   como ya hace hoy para el caso "nada documentado". El manejo de exit codes de `resolve-path.py`
   (2→`/pv-init`, 3|4→`/pv-update`) deja de ser responsabilidad de esta skill.
-- [ ] **T4.** Añadir un inventario de ficheros (sección nueva o en el párrafo de intro —
+- [x] **T4.** Añadir un inventario de ficheros (sección nueva o en el párrafo de intro —
   hoy no existe) mencionando `assets/mockup-annotations.html`.
-- [ ] **T5.** Enmendar la regla "no JavaScript" (`SKILL.md` línea 65 real, no 52/53 — la
+- [x] **T5.** Enmendar la regla "no JavaScript" (`SKILL.md` línea 65 real, no 52/53 — la
   reescritura por subcarpetas desalineó de nuevo las referencias): excepción explícita y
   acotada — el único JS permitido es el framework de anotaciones copiado verbatim del asset;
   el mockup no contiene ningún otro JS.
-- [ ] **T6.** Nueva regla **"Embed the annotation framework"** en "Rules for each mockup":
+- [x] **T6.** Nueva regla **"Embed the annotation framework"** en "Rules for each mockup":
   tras escribir/editar el markup propio, copiar **verbatim** marcador +
   `<style id="mnoteqz7k-styles">` antes de `</head>` y `<script id="mnoteqz7k-runtime">` antes de
   `</body>`; añadir `#mnoteqz7k-data` vacío si no existe. Redacción espejo de `pv-init/SKILL.md`
   línea 142 ("copied as-is without modifying a single line of it"). Nunca
   reescribir/resumir/"mejorar".
-- [ ] **T7.** Especificar el comportamiento de `action: edit` (step 1 de "Steps", hoy solo
+- [x] **T7.** Especificar el comportamiento de `action: edit` (step 1 de "Steps", hoy solo
   "preserve the rest of the file") con los 3 sub-casos de Flujo A:
   1. sin bloques framework → añadirlos, igual que `create`;
   2. con bloques (contenido reconocible, ver T7.3) y `vN` del asset **no más nuevo** que el del
@@ -129,7 +137,7 @@ durante la verificación manual en el sandbox — ver notas en T1-T3:
      `ensure-closed` (T7.1);
   3. `vN` del asset **más nuevo** → reemplazar solo los 2 bloques framework, conservando
      `#mnoteqz7k-data` verbatim.
-- [ ] **T7.1.** Nueva acción **`action: ensure-closed`** (sustituye por completo al diseño
+- [x] **T7.1.** Nueva acción **`action: ensure-closed`** (sustituye por completo al diseño
   anterior de `read-annotations` + `edit`-por-nota): recibe una lista de rutas `design_*.html`
   bajo `mockups/` (las que el caller va a (re-)presentar, o — para `pv-how` — todas las de la
   entrada). Por cada ruta con framework reconocible:
@@ -148,7 +156,7 @@ durante la verificación manual en el sandbox — ver notas en T1-T3:
     crudo) solo cuando cada ruta dada queda sin ninguna nota `open`. **Es la única vía por la
     que cualquier caller se entera de o resuelve anotaciones** — ningún otro skill abre
     `#mnoteqz7k-data` ni conoce el estado `open`/`closed` de una nota.
-- [ ] **T7.2.** Nueva acción **`action: describe`** (solo lectura, nunca toca `#mnoteqz7k-data` ni
+- [x] **T7.2.** Nueva acción **`action: describe`** (solo lectura, nunca toca `#mnoteqz7k-data` ni
   el estado de ninguna nota): recibe una lista de rutas `design_*.html` bajo `mockups/` y,
   opcionalmente, qué elementos/áreas interesan; lee el markup propio (algo que solo esta skill
   hace directamente) y devuelve una descripción en texto plano del layout/estilo/iconografía
@@ -157,20 +165,28 @@ durante la verificación manual en el sandbox — ver notas en T1-T3:
   caller accede al contenido visual de un `design_*.html`** — ningún caller hace `Read` sobre
   uno de ellos. `navigation_*.md`/`data_*.md` quedan fuera de esta acción: viven fuera de
   `mockups/`, no son responsabilidad de esta skill, y siguen leyéndose con `Read` directo.
-- [ ] **T7.3.** ID collision guard: el check "¿el archivo ya tiene el framework?" debe verificar
+- [x] **T7.3.** ID collision guard: el check "¿el archivo ya tiene el framework?" debe verificar
   que el contenido del `id="mnoteqz7k-runtime"` (o `-styles`/`-data`) es reconocible como el asset
   (marcador/cabecera), no solo que el id exista. Si hay un id `mnoteqz7k-*` con contenido distinto
   (mockup viejo previo a este plan que coincide por casualidad), **detener y devolver el
   conflicto al caller sin escribir nada** — nunca pisarlo ni tratarlo como "sin framework".
-- [ ] **T7.4.** Capacidad de interacción directa con el usuario (excepción única en todo el
+- [x] **T7.4.** Capacidad de interacción directa con el usuario (excepción única en todo el
   framework `pv-internal-*`, que hoy son todos mudos): documentar explícitamente en `SKILL.md`
   que `ensure-closed` puede preguntar al usuario en el mismo turno cuando una nota es ambigua,
   justificado por el objetivo de plugin-isolation (delegar la pregunta al caller rompería la
   encapsulación que motiva todo este rediseño).
-- [ ] **T8.** Nota: el marcador `vN` es independiente de `metadata.version`; los bumps de
+- [x] **T8.** Nota: el marcador `vN` es independiente de `metadata.version`; los bumps de
   versión del framework los gestiona `/dev-generate-version`.
 
 ## Fase 3 — Cierre de ciclo en `pv-new` / `pv-fix` / `extend-entry.md`
+
+**Estado: completada** (2026-09-24). `pv-new/SKILL.md` (step 3 pasa `style_context`, step 4
+invoca `ensure-closed` antes de presentar, nota final actualizada), `pv-fix/SKILL.md` (mismos
+tres puntos), `pv-new/extend-entry.md` (step 4 pasa `style_context`, step 6 invoca
+`ensure-closed` sobre lo tocado por la extensión + el resto de `mockups/` de la entrada),
+`workflow.new.md`/`workflow.fix.md` (rama `ensure-closed` añadida a ambos diagramas), y
+`pv-do/SKILL.md` (tercer caller, sustituida la mención directa de `design_*` por `action:
+describe`).
 
 **Regla de encapsulación**: ningún caller lee, parsea o escribe `#mnoteqz7k-data`, ni menciona
 `mnoteqz7k-*`/selectores/JSON/estado `open`/`closed` en su propia prosa o lógica — eso es concern
@@ -185,28 +201,28 @@ no queda ninguna anotación `open` en esos archivos. Resumir en la respuesta lo 
 reporta haber cambiado, si algo. Después presentar los mockups actualizados como de
 costumbre."*
 
-- [ ] **T8.1.** `pv-new/SKILL.md` step 3 (invocación de la skill de mockups): pasar
+- [x] **T8.1.** `pv-new/SKILL.md` step 3 (invocación de la skill de mockups): pasar
   `style_context` extraído del contexto que step 1 ya obtuvo de `pv-internal-tech-analysis` —
   si no hay nada de estilo relevante, no pasar nada (la skill ya asume neutro por su cuenta).
-- [ ] **T8.2.** `pv-fix/SKILL.md` step 4 (invocación de la skill de mockups): mismo tweak que
+- [x] **T8.2.** `pv-fix/SKILL.md` step 4 (invocación de la skill de mockups): mismo tweak que
   T8.1.
-- [ ] **T8.3.** `pv-new/extend-entry.md` step 4 (invocación de la skill de mockups): mismo
+- [x] **T8.3.** `pv-new/extend-entry.md` step 4 (invocación de la skill de mockups): mismo
   tweak que T8.1.
-- [ ] **T9.** `pv-new/SKILL.md` step 4 (línea 112): anteponer el párrafo antes de "present
+- [x] **T9.** `pv-new/SKILL.md` step 4 (línea 112): anteponer el párrafo antes de "present
   them to the user".
-- [ ] **T10.** `pv-new/SKILL.md` nota final "who writes what" (línea 125): resolver anotaciones
+- [x] **T10.** `pv-new/SKILL.md` nota final "who writes what" (línea 125): resolver anotaciones
   pendientes se hace exclusivamente vía `action: ensure-closed` de la skill de mockups.
-- [ ] **T11.** `pv-fix/SKILL.md` step 5 (línea 106): mismo párrafo anteponer.
-- [ ] **T12.** `pv-fix/SKILL.md` nota final (línea 114): mismo tweak que T10.
-- [ ] **T13.** `pv-new/extend-entry.md` step 6 (línea 10): mismo párrafo, acotado a los
+- [x] **T11.** `pv-fix/SKILL.md` step 5 (línea 106): mismo párrafo anteponer.
+- [x] **T12.** `pv-fix/SKILL.md` nota final (línea 114): mismo tweak que T10.
+- [x] **T13.** `pv-new/extend-entry.md` step 6 (línea 10): mismo párrafo, acotado a los
   `design_*.html` tocados por la extensión + el resto de `design_*.html` ya en `mockups/` de
   la entrada (una anotación pendiente en un archivo no tocado por esta vuelta debe seguir
   resolviéndose).
-- [ ] **T14.** Revisar `pv-new/workflow.new.md` y `pv-fix/workflow.fix.md`: añadir la rama
+- [x] **T14.** Revisar `pv-new/workflow.new.md` y `pv-fix/workflow.fix.md`: añadir la rama
   `ensure-closed` al diagrama (Flujo B) redactada en términos de las acciones de la skill,
   nunca `#mnoteqz7k-data`/estado, o dejar constancia explícita de que es demasiado fina para
   diagramar. Ambos `SKILL.md` declaran que el diagrama manda sobre la prosa.
-- [ ] **T14.5.** `pv-do/SKILL.md` línea 121 (paso de actualización de
+- [x] **T14.5.** `pv-do/SKILL.md` línea 121 (paso de actualización de
   `docs.tech.styleBibleDocDir`): hoy pasa "any `design_*` mockups this entry has" como parte
   del contexto que entrega a `pv-internal-doc-style` — un tercer caller de mockups no cubierto
   por el diseño original de este plan (hallazgo de `dev-analysis`, 2026-09-24). Sustituir esa
@@ -217,11 +233,17 @@ costumbre."*
 
 ## Fase 3.5 — Gate de entrada de `pv-how`
 
+**Estado: completada** (2026-09-24). Nuevo step 1.05 en `pv-how/SKILL.md` (gate `ensure-closed`
+antes de 1.1), step 1.1 reescrito (visuales de `mockups/` vía `describe`, `navigation_*.md`/
+`data_*.md` sin cambios), el punto 2 de step 3 reescrito (referencia visual vía `describe` en
+vez de `Read` directo), y `workflow.how.md` con el nuevo nodo de gate (`S105Check`/
+`S105Ensure`) entre encontrar la entrada y el chequeo de consistencia.
+
 `pv-how` no puede analizar una entrada sin el OK de la skill de mockups — precondición dura,
 no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya pasado o no por
 `pv-new`/`pv-fix` en esta misma sesión.
 
-- [ ] **T14.1.** `pv-how/SKILL.md` — nuevo **step 1.05**, entre step 1 ("Identify the
+- [x] **T14.1.** `pv-how/SKILL.md` — nuevo **step 1.05**, entre step 1 ("Identify the
   change/fix", que resuelve `{xxxx}`) y step 1.1 ("Validate the change's documents before
   analyzing"): *"Si la entrada tiene algún `design_*.html` bajo `mockups/`, invocar
   `action: ensure-closed` de la skill de mockups configurada sobre todos ellos. Esperar su OK
@@ -232,24 +254,37 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   antes incluso de llegar a step 2 — así que el gate tiene que ir antes de 1.1, no solo antes
   de 2. El gate solo cubre `mockups/`: `navigation_*.md`/`data_*.md` no pasan por
   `ensure-closed` ni `describe`, siguen con `Read` directo como hoy.
-- [ ] **T14.2.** Reescribir `pv-how/SKILL.md` step 1.1 (el chequeo de consistencia, línea 80
+- [x] **T14.2.** Reescribir `pv-how/SKILL.md` step 1.1 (el chequeo de consistencia, línea 80
   real): sustituir la lectura de `design_*.html` bajo `mockups/` por una invocación a
   `action: describe` de la skill de mockups para los elementos/áreas relevantes al chequeo —
   la lectura de `navigation_*.md`/`data_*.md` sueltos en la raíz de la entrada no cambia, sigue
   siendo `Read` directo; la lógica del chequeo (comparar contra `description.md`) tampoco
   cambia, solo la fuente de los hechos visuales de `mockups/`.
-- [ ] **T14.3.** Reescribir `pv-how/SKILL.md` step 2 (hoy: *"open them, but treat them only as
+- [x] **T14.3.** Reescribir `pv-how/SKILL.md` step 2 (hoy: *"open them, but treat them only as
   visual reference"*, `Read` directo sobre `mockups/`): invocar `action: describe` para los
   elementos que necesita como referencia visual, y construir su entendimiento a partir de esa
   descripción en vez de abrir el archivo.
-- [ ] **T14.4.** Revisar `pv-how/workflow.how.md`: añadir el nuevo nodo de gate (`ensure-closed`
+- [x] **T14.4.** Revisar `pv-how/workflow.how.md`: añadir el nuevo nodo de gate (`ensure-closed`
   antes de 1.1) al diagrama (Flujo C), redactado en términos de la acción de la skill, nunca
   `#mnoteqz7k-data`/estado, o dejar constancia explícita de que es demasiado fino para diagramar.
   `pv-how/SKILL.md` también declara que el diagrama manda sobre la prosa.
 
 ## Fase 4 — Verificación integral
 
-- [ ] **T15.** Embebido en mockup real ([`PLAN.md`](PLAN.md) Verification §2): splice de los 2
+**Estado: completada** (2026-09-24). T15-T17.3 corridos sobre `sandbox-test1/previo-sdd/changes/
+inProgress/00196/` (splice real en `design_bloc_notas_vista.html`, dry-run de la skill en
+`design_verify-t16-widget.html` — borrado tras las pruebas, contrato `ensure-closed`/`describe`
+verificado con notas reales incluyendo el caso de ambigüedad, que preguntó al usuario en el
+propio turno). T18-T18.2 corridos sobre una copia desechable `00197` (para no ensuciar `00196`):
+ciclo `pv-new`→`ensure-closed`, gate de `pv-how` en step 1.05 (confirmado que bloquea ante una
+re-anotación posterior a `pv-new` y no confía en la validación anterior), y `pv-do` sin fugas de
+`design_*`/`mnoteqz7k-*` en su propia prosa hacia `pv-internal-doc-style`. T19 confirmado con una
+instalación real a un directorio scratch. T20: los tres `workflow.*.md` ya reflejan las nuevas
+ramas; el único punto sin nodo propio (referencia visual dentro del step 3 de `pv-how`) ya era
+demasiado fino para diagramar antes de este plan, sin cambio de criterio. `00197` queda en el
+sandbox como registro de la prueba; bórrala si prefieres no conservarla.
+
+- [x] **T15.** Embebido en mockup real ([`PLAN.md`](PLAN.md) Verification §2): splice de los 2
   bloques en `sandbox-test1\previo-sdd\changes\inProgress\00196\mockups\design_bloc_notas_vista.html`
   y recorrer todos los sub-puntos: clic → contorno azul + barra al cursor, `➕` mini-menú,
   nota general directa, contador ámbar, tarjeta compartiendo contorno, `‹ ›`, toggle `👁` +
@@ -257,38 +292,38 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   rehidratan general + vinculada (ambas `state: "open"`), y **clic en la barra/tarjeta/panel no
   selecciona nada del mockup ni entra en la ruta `nth-of-type`**. Confirmar que no hay ningún
   control de UI para cerrar una nota.
-- [ ] **T16.** Skill dry-run (§3): invocar `pv-internal-mockups-html` vía `pv-new` en un
+- [x] **T16.** Skill dry-run (§3): invocar `pv-internal-mockups-html` vía `pv-new` en un
   cambio visual de prueba en sandbox; confirmar que el `design_*.html` generado contiene
   `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"` y `<!-- mnoteqz7k-framework v1 -->` **byte-idénticos**
   a los bloques del asset.
-- [ ] **T16.1.** Aislamiento de plugin (§3.1): grep de `pv-internal-mockups-html/SKILL.md` por
+- [x] **T16.1.** Aislamiento de plugin (§3.1): grep de `pv-internal-mockups-html/SKILL.md` por
   `resolve-path.py` y `pv-context.json` — ninguno debe aparecer tras la reescritura. Invocar la
   skill directamente con `action: create` sin `style_context`; confirmar estilo neutro +
   comentario placeholder, sin tocar disco fuera de `assets/` y la carpeta destino. Reinvocar con
   `style_context` y confirmar que reusa esos valores en vez del neutro.
-- [ ] **T17.** Edit plano no toca notas (§4): añadir un `#mnoteqz7k-data` falso con 2 notas `open`,
+- [x] **T17.** Edit plano no toca notas (§4): añadir un `#mnoteqz7k-data` falso con 2 notas `open`,
   re-invocar con `action: edit` (no `ensure-closed`); confirmar que `#mnoteqz7k-data` y el `state`
   de cada nota sobreviven completamente intactos, y los bloques framework quedan intactos.
-- [ ] **T17.1.** Contrato `ensure-closed` — resolución (§4.1): con ese mismo `#mnoteqz7k-data` (2
+- [x] **T17.1.** Contrato `ensure-closed` — resolución (§4.1): con ese mismo `#mnoteqz7k-data` (2
   notas `open`, ambas resolubles sin ambigüedad), invocar `action: ensure-closed`; confirmar que
   aplica ambos cambios al markup propio, pone `state: "closed"` en ambas notas (nada más del
   bloque cambia), y devuelve OK con resumen en texto plano sin selectores ni JSON crudo.
   Reinvocar `ensure-closed` sobre el archivo ya cerrado; confirmar que es no-op (OK inmediato).
   Confirmar que una ruta sin framework se salta sin error.
-- [ ] **T17.2.** Contrato `ensure-closed` — ambigüedad (§4.2): añadir una nota `open` con texto
+- [x] **T17.2.** Contrato `ensure-closed` — ambigüedad (§4.2): añadir una nota `open` con texto
   genuinamente ambiguo ("arregla esto"); invocar `ensure-closed` y confirmar que la skill
   pregunta directamente al usuario (no al caller) antes de aplicar nada para esa nota, y la
   cierra tras la respuesta.
-- [ ] **T17.3.** Contrato `describe` (§4.3): invocar `action: describe` sobre un `design_*.html`
+- [x] **T17.3.** Contrato `describe` (§4.3): invocar `action: describe` sobre un `design_*.html`
   real preguntando por un par de elementos; confirmar que la respuesta es texto plano
   describiendo layout/estilo/iconografía, sin HTML/CSS/SVG crudo ni internals `mnoteqz7k-*`, y que
   nunca toca `#mnoteqz7k-data` ni el estado de ninguna nota.
-- [ ] **T18.** Cierre de ciclo — check de encapsulación en `pv-new` (§5): `design_*.html` con
+- [x] **T18.** Cierre de ciclo — check de encapsulación en `pv-new` (§5): `design_*.html` con
   `#mnoteqz7k-data` (una nota vinculada `open` "make this wider", una general `open`); correr la
   ruta extend/validate de `pv-new`; confirmar que Claude solo invoca `ensure-closed` — grepear
   las tool calls y la propia prosa del turno por `#mnoteqz7k-data`/`mnoteqz7k-`/`open`/`closed` para
   confirmar que `pv-new` nunca los menciona — y que ambas notas quedan `closed` internamente.
-- [ ] **T18.1.** Gate de `pv-how` (§5.1): sobre esa misma entrada ya cerrada, invocar `pv-how`;
+- [x] **T18.1.** Gate de `pv-how` (§5.1): sobre esa misma entrada ya cerrada, invocar `pv-how`;
   confirmar que llama a `ensure-closed` de nuevo como su propio step 1.05 antes de 1.1 (no
   asume que la llamada anterior de `pv-new` siga siendo válida), recibe OK inmediato, y que ni
   el step 1.1 ni el step 2 hacen `Read` sobre ningún `design_*.html` de `mockups/` — ambos pasan
@@ -296,7 +331,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   que el usuario volvió a anotar entre que `pv-new` terminó y `pv-how` corrió) y reinvocar
   `pv-how`; confirmar que se bloquea en 1.05 hasta que `ensure-closed` la resuelve, y nunca
   llega a step 1.1/2/3 antes de eso.
-- [ ] **T18.2.** `pv-do` no referencia `design_*` directamente (hallazgo `dev-analysis`
+- [x] **T18.2.** `pv-do` no referencia `design_*` directamente (hallazgo `dev-analysis`
   2026-09-24, resuelto en T14.5): confirmar que `pv-do/SKILL.md` línea 121 invoca
   `action: describe` de la skill de mockups en vez de mencionar/pasar ficheros `design_*`
   como contexto a `pv-internal-doc-style`; correr el paso de actualización de
@@ -307,7 +342,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   scratch (o inspeccionar el bucle de copia, `install.ps1` ~línea 50) y confirmar que
   `.claude/skills/pv-internal-mockups-html/assets/mockup-annotations.html` aterriza en
   destino. Confirmar que `pv-update` no necesita cambios.
-- [ ] **T20.** Consistencia prosa↔diagrama (§7): diff de `pv-new`/`pv-fix`/`extend-entry.md`/
+- [x] **T20.** Consistencia prosa↔diagrama (§7): diff de `pv-new`/`pv-fix`/`extend-entry.md`/
   `pv-how` contra `workflow.new.md` / `workflow.fix.md` / `workflow.how.md` (los tres ya
   reflejan la convención `mockups/design_*.html` — partir de ese estado real, no de una versión
   sin subcarpeta); las ramas `ensure-closed`/`describe` (redactadas en términos de las acciones
