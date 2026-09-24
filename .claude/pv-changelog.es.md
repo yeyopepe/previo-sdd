@@ -1,4 +1,4 @@
-# Changelog de Previo v0.9.8b7 (desde v0.9.7)
+# Changelog de Previo v0.9.8b8 (desde v0.9.7)
 
 Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando al menos dos entradas comparten asunto. En la sección de detalle, un tema es `- 📂**{Tema}**:` con sus entradas anidadas como sub-elementos indentados debajo (sin encabezado, sin enlace). En el índice, ese mismo tema se reduce a una única línea plana `📂{Tema} (N cambios)` sin listar sus entradas. Las entradas sueltas se listan como elementos normales en ambos sitios (título simple en el índice, elemento completo con título en negrita y resumen en el detalle).
 
