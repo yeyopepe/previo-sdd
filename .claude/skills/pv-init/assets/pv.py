@@ -1212,28 +1212,27 @@ MENU: list[tuple[str, "callable"]] = [
 def run_menu(
     title: str, items: list[tuple[str, "callable"]], last_label: str
 ) -> None:
-    last_index = len(items) + 1
-
     while True:
         print()
         print_header(title)
         for i, (label, _) in enumerate(items, start=1):
             print(wrap(f"{i}. {label}", indent="  "))
-        print(wrap(f"{last_index}. {last_label}", indent="  "))
+        print()
+        print(wrap(f"X. {last_label}", indent="  "))
         hr("=", GOLD)
 
         choice = read_input("Choose an option: ").strip()
         if choice == "":
             continue
 
+        if choice.lower() == "x":
+            return
+
         try:
             index = int(choice)
         except ValueError:
             print("Invalid option.")
             continue
-
-        if index == last_index:
-            return
 
         try:
             _, action = items[index - 1]

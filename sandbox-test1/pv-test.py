@@ -61,7 +61,7 @@ chosen flag, across states). The searches scan every state; kept as
 separate options rather than one combined search so each stays as fast as
 the kind of lookup it's actually doing.
 
-"Check Previo versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
+"Check product versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
 folders and prints the chosen one's changelog.md.
 
 Design notes (screen types, colors, how to extend this menu) live in
@@ -1200,7 +1200,7 @@ MENU: list[tuple[str, "callable"]] = [
     ("Ideas in todo/", show_ideas_menu),
     ("Close an implemented entry (move to changes/closed/)", close_entry),
     ("Configuration", show_settings_menu),
-    ("Check Previo versions", show_versions_menu),
+    ("Check product versions", show_versions_menu),
 ]
 
 
@@ -1212,28 +1212,27 @@ MENU: list[tuple[str, "callable"]] = [
 def run_menu(
     title: str, items: list[tuple[str, "callable"]], last_label: str
 ) -> None:
-    last_index = len(items) + 1
-
     while True:
         print()
         print_header(title)
         for i, (label, _) in enumerate(items, start=1):
             print(wrap(f"{i}. {label}", indent="  "))
-        print(wrap(f"{last_index}. {last_label}", indent="  "))
+        print()
+        print(wrap(f"X. {last_label}", indent="  "))
         hr("=", GOLD)
 
         choice = read_input("Choose an option: ").strip()
         if choice == "":
             continue
 
+        if choice.lower() == "x":
+            return
+
         try:
             index = int(choice)
         except ValueError:
             print("Invalid option.")
             continue
-
-        if index == last_index:
-            return
 
         try:
             _, action = items[index - 1]
