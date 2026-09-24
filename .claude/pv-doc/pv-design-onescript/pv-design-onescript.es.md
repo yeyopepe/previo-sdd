@@ -25,7 +25,7 @@ Términos y sus sinónimos, usados de forma consistente en este documento y en l
 
 | Término | Sinónimos | Qué es |
 |---|---|---|
-| **Menú** (Main Menu / Submenú) | pantalla de menú | Pantalla GOLD generada por `run_menu()`/`print_header()` — una cabecera con título centrado, una lista numerada de opciones y un último ítem fijo (`Back`/`Exit`). Ver "Los Cuatro Helpers de Pantalla". |
+| **Menú** (Main Menu / Submenú) | pantalla de menú | Pantalla GOLD generada por `run_menu()`/`print_header()` — una cabecera con título centrado, una lista numerada de opciones y un último ítem fijo (`Back`/`Exit`), separado por una línea en blanco y siempre seleccionado con `X` (nunca un número). Ver "Los Cuatro Helpers de Pantalla". |
 | **Selección** | pantalla de selección | Pantalla DARK_GRAY generada por `show_selection()` — un título (opcional, ver "Selección incrustada") y una lista numerada framed por `hr("-")`, que devuelve el índice elegido. |
 | **Selección incrustada** | *Inline Selection*, opciones incrustadas, menú incrustado (evitar — no es un `run_menu()`) | Un `show_selection()` con `title=""`, colocado **inmediatamente después** de un listado (propio o delegado) para ofrecer acciones sobre sus elementos, sin cabecera, sin línea en blanco de separación propia ni pausa propia — su `hr("-")` queda pegado justo debajo de la última línea del listado, continuando visualmente la misma pantalla lógica en vez de abrir una nueva. Ver `show_ideas_menu()` (tras un listado propio de `pv.py`) y `search_by_id()` (tras una ficha detalle delegada) en "Guía para Extender pv.py". No confundir con un submenú: no llama a `run_menu()`, no lleva `is_submenu = True`, y su "volver" es simplemente dejar el input vacío (`None`), no una opción numerada más. |
 | **Confirmación** | pantalla y/N | `confirm()` — pregunta `y/N` sin cabecera propia, siempre anidada dentro de otra pantalla. |
@@ -85,7 +85,7 @@ NIVEL 1 (Main Navigation)
     │       ├── [5] Acción: Show changes by flag
     │       │   └── Selección incrustada: sin título (Priority / Work in progress)  [Inline Selection — también su propia instancia]
     │       │       └── (→ externo, filter_status.py --flag)                   [Delegated info — otra vez el mismo formato de Ficha Detalle, una por entrada que coincide]
-    │       └── [6] Back
+    │       └── [X] Back
     ├── [3] Acción: Show Ideas (→ externo)                                     [Delegated info, list_todo.py]
     │   └── Selección incrustada: sin título (una sola opción, "empty" = volver)  [Inline Selection — su propia instancia]
     │       └── Acción: Delete an idea by code
@@ -101,7 +101,7 @@ NIVEL 1 (Main Navigation)
     │       ├── [2] Acción: Change max character width
     │       │   └── Info (ancho actual) + Input (nuevo ancho, vacío = mantener)  [Info, framed=False]
     │       │       └── Confirmation: "Set max character width to N..." → escribe framework.onescript.width  [Confirmation]
-    │       └── [3] Back
+    │       └── [X] Back
     ├── [6] Submenu: Versions
     │   └── "Previo: versions"                                                 [Menu]
     │       ├── [1] Acción: Changelog
@@ -109,8 +109,8 @@ NIVEL 1 (Main Navigation)
     │       │       └── Info: Mostrar changelog.md                             [Info, framed=True]
     │       ├── [2] Acción: Check Temp
     │       │   └── Info: Estado del directorio temp                          [Info, framed=True]
-    │       └── [3] Back
-    └── [7] Exit
+    │       └── [X] Back
+    └── [X] Exit
 ```
 
 ---
@@ -193,7 +193,7 @@ graph TD
     I -->|Temp| L
     L -->|Return| I
 
-    C -->|7 - Exit| M
+    C -->|X - Exit| M
 
     style A fill:#FFE4B5
     style B fill:#F0E68C
@@ -335,7 +335,7 @@ Pregunta `y/N` sin cabecera propia — se anida siempre dentro de otra pantalla 
 
 ### `read_input(prompt) -> str`
 
-Envoltorio de `input()` — no es uno de los cuatro tipos de pantalla, pero es el único punto por el que debe pasar cualquier `input()` que espere una respuesta real (no la pausa "Press Enter to return..."). Si el usuario escribe `"exit"` (case-insensitive, ignorando espacios), termina el programa entero al instante (`sys.exit(0)`), sin confirmar ni imprimir nada — funciona igual que elegir la opción numerada "Exit" del menú raíz, pero disponible desde **cualquier** pantalla que pida texto: el prompt de `run_menu()`, `show_selection()`, `confirm()`, o el `input()` libre de una acción como `search_by_id()`/`search_by_content()`.
+Envoltorio de `input()` — no es uno de los cuatro tipos de pantalla, pero es el único punto por el que debe pasar cualquier `input()` que espere una respuesta real (no la pausa "Press Enter to return..."). Si el usuario escribe `"exit"` (case-insensitive, ignorando espacios), termina el programa entero al instante (`sys.exit(0)`), sin confirmar ni imprimir nada — funciona igual que elegir la opción "Exit" del menú raíz (tecla `X`), pero disponible desde **cualquier** pantalla que pida texto: el prompt de `run_menu()`, `show_selection()`, `confirm()`, o el `input()` libre de una acción como `search_by_id()`/`search_by_content()`.
 
 Los tres helpers (`show_selection`, `confirm`) y `run_menu()` ya usan `read_input()` internamente — cualquier función de acción que necesite pedir texto libre directamente (fuera de esos tres) debe usar `read_input()` también, nunca `input()` a secas, para que "exit" siga funcionando ahí. La única excepción deliberada es la pausa `input("\nPress Enter to return to the menu...")` en `run_menu()`: esa pausa no pide una respuesta real, cualquier texto (incluido "exit") simplemente continúa.
 
@@ -357,7 +357,7 @@ Regla general: **un color por pantalla completa**, nunca mezclado dentro del mis
 
 ### Menú (Main Menu y Submenús) — vía `run_menu()` / `print_header()`
 
-Todo en GOLD: la cabecera (arriba, título, abajo) y también el `hr("=", GOLD)` que cierra la lista de opciones antes del prompt "Choose an option:". El default de `hr()` es DARK_GRAY, así que cualquier llamada nueva a `hr()` dentro de `run_menu()` necesita `color=GOLD` explícito (ver "Errores Comunes al Extender", punto 1).
+Todo en GOLD: la cabecera (arriba, título, abajo) y también el `hr("=", GOLD)` que cierra la lista de opciones antes del prompt "Choose an option:". El default de `hr()` es DARK_GRAY, así que cualquier llamada nueva a `hr()` dentro de `run_menu()` necesita `color=GOLD` explícito (ver "Errores Comunes al Extender", punto 1). El último ítem (`Back`/`Exit`) se imprime siempre tras una línea en blanco, separado de las opciones numeradas de arriba, y su tecla es siempre la letra `X` — nunca un número, y nunca se renumera al añadir o quitar opciones.
 
 ```
 ══════════════════════════════════════════════════════════════════   ← GOLD
@@ -366,7 +366,8 @@ Todo en GOLD: la cabecera (arriba, título, abajo) y también el `hr("=", GOLD)`
   1. General project status
   2. Changes info
   ...
-  7. Exit
+
+  X. Exit
 ══════════════════════════════════════════════════════════════════   ← GOLD
 Choose an option:
 ```
