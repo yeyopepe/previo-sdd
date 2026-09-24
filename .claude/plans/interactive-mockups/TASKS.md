@@ -102,6 +102,16 @@ collision guard (T7/T7.3), las nuevas acciones `ensure-closed` (T7.1) y `describ
 excepción de interacción directa con el usuario (T7.4), y la nota de versionado (T8).
 `description` del frontmatter actualizada para reflejar las 4 acciones.
 
+**Ajuste posterior (2026-09-24, tras cerrar la versión 0.9.8b9)**: `create` dejó de escribir
+el markup propio primero y pegar los bloques del framework después con el agente leyéndolos y
+reescribiéndolos — ahora `scripts/scaffold-mockup.py` (nuevo) copia `assets/mockup-annotations.html`
+verbatim a `design_<description>.html` (renombra el `<title>`, sustituye el comentario interno
+del master por un placeholder) **antes** de que el agente escriba nada, y el agente solo rellena
+ese hueco con el markup propio. Ahorra tokens (el agente nunca vuelve a tener el framework
+completo en su propio contexto) y elimina el riesgo de que una transcripción manual lo altere
+sin querer. `edit` no usa el script (el fichero ya existe; el script se niega a sobrescribir) —
+sigue leyendo/reemplazando los 2 bloques puntuales cuando hace falta, como antes.
+
 - [x] **T3.1.** Regla **plugin-isolation** (nueva, al principio de `SKILL.md`): la skill es un
   plugin autocontenido — copiar solo su carpeta a otro repo debe permitir crear/editar/gestionar
   `design_*.html` al 100%. Nunca resuelve su propio contexto desde disco ni desde

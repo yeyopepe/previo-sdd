@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b9
+  version: 0.9.8b10
   uses: []
 ---
 
@@ -24,7 +24,8 @@ This skill is specifically for **HTML** mockups. If a project configures another
 
 ## File inventory
 
-- [`assets/mockup-annotations.html`](assets/mockup-annotations.html) — the master copy of the embedded annotation framework (marker comment + `<style id="mnoteqz7k-styles">` + `<script id="mnoteqz7k-runtime">`, plus a standalone demo shell so the file can be opened on its own). This skill splices only those two blocks (and the marker) verbatim into every `design_*.html` it creates or edits — see "Embed the annotation framework" below. Never re-typed, summarized, or edited to "improve" it.
+- [`assets/mockup-annotations.html`](assets/mockup-annotations.html) — the master copy of the embedded annotation framework (marker comment + `<style id="mnoteqz7k-styles">` + `<script id="mnoteqz7k-runtime">`, plus an empty `#mnoteqz7k-data`). This skill never retypes any of it — see "Embed the annotation framework" below for how it lands in a `design_*.html`, verbatim, via a script rather than by hand.
+- [`scripts/scaffold-mockup.py`](scripts/scaffold-mockup.py) — copies the asset, as-is, to a new `design_<description>.html` (renaming only the `<title>` and swapping the asset's own dev-only comment for a placeholder marking where the mockup's markup goes). Used by `action: create`'s first write — see "Steps" below. Fails without writing anything if the target file already exists.
 
 ## Expected input from the caller
 
@@ -55,22 +56,20 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
 - It must have no real functionality: no JavaScript reacting to events, no network calls, no state — **the one exception is the standard annotation framework copied verbatim from `assets/mockup-annotations.html`** (see "Embed the annotation framework" below); beyond that, the mockup contains no other JS, at most purely decorative JS if needed for the visual look.
 - It must be self-contained: only HTML, CSS and SVG, all embedded in the file itself (no external files, no CDNs, no imports).
 - One file per distinct visual element in the proposal — don't group several different elements into the same `design_*.html` unless the caller asked for them as a single unit.
-- **Embed the annotation framework.** After writing or editing the mockup's own markup (`create` or `edit`), splice in the asset's blocks:
-  - Copy, **verbatim — never re-type, summarize, or "improve" it** (same rule as `pv-init/SKILL.md`'s `assets/pv.py`: *"copied as-is without modifying a single line of it"*), from `assets/mockup-annotations.html`:
-    - the `<!-- mnoteqz7k-framework vN -->` marker comment and `<style id="mnoteqz7k-styles">…</style>` right before `</head>`;
-    - `<script id="mnoteqz7k-runtime">…</script>` right before `</body>`.
-  - Add an empty `<script type="application/json" id="mnoteqz7k-data">[]</script>` if the file doesn't already have one.
-  - The mockup stays self-contained even with this — the framework is embedded inline, never linked externally.
-  - See "Steps" below for the exact three sub-cases this splicing follows on `edit` (new file, older framework, embedded-and-current).
+- **Embed the annotation framework — via the scaffold script, never by hand.** The framework blocks are **never retyped, summarized, or "improved"** (same rule as `pv-init/SKILL.md`'s `assets/pv.py`: *"copied as-is without modifying a single line of it"*) — and, unlike that precedent, this skill doesn't even read-then-rewrite them itself:
+  - **On `create`**: run `scripts/scaffold-mockup.py --dest <destination folder> --description <element-description>` **first**, before writing a single line of markup. It copies the asset verbatim into `design_<description>.html` (renamed title, the asset's own dev-only comment swapped for a placeholder marking where the mockup's markup goes) — the marker, `#mnoteqz7k-styles`, `#mnoteqz7k-runtime`, and an empty `#mnoteqz7k-data` all land byte-identical, at zero token cost, without this skill ever holding their content in its own context. Then edit that same file, replacing only the placeholder comment with the mockup's own markup (`style_context` if given, else neutral styling) — the framework blocks and `#mnoteqz7k-data` are never touched again after the script wrote them.
+  - **On `edit` needing the framework refreshed** (see "Steps" below): the two blocks are small enough that reading the current ones from the asset and replacing just those two in the target file (leaving `#mnoteqz7k-data` untouched) is the right granularity — running the scaffold script here would overwrite the mockup's own markup, so it's `create`-only.
+  - The mockup stays self-contained either way — the framework is embedded inline, never linked externally.
+  - See "Steps" below for the exact three sub-cases this follows on `edit` (new file, older framework, embedded-and-current).
 
 ## Steps
 
 ### `action: create` / `action: edit`
 
 1. For each element in the received list:
-   - **ID collision guard.** Before deciding whether the file already has the framework embedded, check whether it has any element with `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"`, or `id="mnoteqz7k-data"`. If one exists, verify its **content shape** — not just the id's presence — is recognizable as the asset (the style block starts with the same rule set, the script starts with a `/* mnoteqz7k-framework vN — self-contained review-annotation runtime. */`-shaped header, matching the marker comment). If an id exists with unrecognized content (a `design_*.html` predating this framework that happens to reuse the same namespace), **stop and return the conflict to the caller** (which id, and that it holds unrecognized content) **without writing anything** — never silently overwrite it, and never treat it as "no framework present".
-   - **`create`**: write the mockup's own markup (HTML + CSS + SVG inline, no JS of its own) in `design_<description>.html`, following the rules above (`style_context` if given, else neutral styling). Then embed the framework (see "Embed the annotation framework" above).
-   - **`edit`** with no recognizable framework blocks present (older mockup, or one that just failed the collision guard with no conflict — i.e. genuinely absent): edit the mockup's own markup for the requested change, then embed the framework exactly as `create` does.
+   - **`create`**: no ID collision guard needed here — `design_<description>.html` doesn't exist yet by definition (if it does, that's an `edit`). Run `scripts/scaffold-mockup.py` first (see "Embed the annotation framework" above) to get the file with the framework already in place, byte-identical, at no token cost — it fails on its own, without writing anything, if the file somehow already exists, which surfaces the same "this shouldn't be a `create`" problem without needing a separate check. Then edit that same file, replacing only its placeholder comment with the mockup's own markup (HTML + CSS + SVG inline, no JS of its own), following the rules above (`style_context` if given, else neutral styling) — never touch the framework blocks or `#mnoteqz7k-data` the script already wrote.
+   - **ID collision guard** (`edit` only). Before deciding which of the three `edit` sub-cases below applies, check whether the existing file has any element with `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"`, or `id="mnoteqz7k-data"`. If one exists, verify its **content shape** — not just the id's presence — is recognizable as the asset (the style block starts with the same rule set, the script starts with a `/* mnoteqz7k-framework vN — self-contained review-annotation runtime. */`-shaped header, matching the marker comment). If an id exists with unrecognized content (a `design_*.html` predating this framework that happens to reuse the same namespace), **stop and return the conflict to the caller** (which id, and that it holds unrecognized content) **without writing anything** — never silently overwrite it, and never treat it as "no framework present".
+   - **`edit`** with no recognizable framework blocks present (older mockup predating this framework, or one that just failed the collision guard with no conflict — i.e. genuinely absent): edit the mockup's own markup for the requested change, then embed the framework the same way `edit`-with-newer-marker does below (read the two blocks from the asset, splice them in verbatim) — the scaffold script doesn't apply here, it's `create`-only (it refuses to overwrite an existing file).
    - **`edit`** with a recognizable framework already present, and the asset's `<!-- mnoteqz7k-framework vN -->` marker is **not newer** than the file's: edit only the mockup's own markup for the requested change, preserving the rest of the file unrelated to it. **Never touch `mnoteqz7k-*` or `#mnoteqz7k-data` in this case** — not the framework blocks, not any note's state or content. A plain `edit` from a caller never changes or removes a note; resolving annotations is the exclusive job of `action: ensure-closed` below.
    - **`edit`** with a recognizable framework already present, and the asset's marker **is newer**: edit the mockup's own markup for the requested change, **and** replace only the `<style id="mnoteqz7k-styles">` and `<script id="mnoteqz7k-runtime">` blocks with the asset's current ones (same verbatim-copy rule) — keep `#mnoteqz7k-data` exactly as it was, with no exceptions.
 2. Return to the caller, in the same turn: the list of created/edited file paths, one per element. Don't present anything to the user or ask for confirmation — that's the caller's job.
