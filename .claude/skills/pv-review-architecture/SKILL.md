@@ -5,7 +5,7 @@ model: claude-sonnet-5
 effort: high
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b6
+  version: 0.9.8b7
   uses: [pv-todo, pv-new]
 ---
 
