@@ -61,7 +61,7 @@ chosen flag, across states). The searches scan every state; kept as
 separate options rather than one combined search so each stays as fast as
 the kind of lookup it's actually doing.
 
-"Check Previo versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
+"Check product versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
 folders and prints the chosen one's changelog.md.
 
 Design notes (screen types, colors, how to extend this menu) live in
@@ -1200,7 +1200,7 @@ MENU: list[tuple[str, "callable"]] = [
     ("Ideas in todo/", show_ideas_menu),
     ("Close an implemented entry (move to changes/closed/)", close_entry),
     ("Configuration", show_settings_menu),
-    ("Check Previo versions", show_versions_menu),
+    ("Check product versions", show_versions_menu),
 ]
 
 
