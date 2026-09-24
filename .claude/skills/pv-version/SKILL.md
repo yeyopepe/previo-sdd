@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b8
+  version: 0.9.8b9
   uses: [pv-internal-changelog]
 ---
 

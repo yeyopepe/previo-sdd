@@ -1,4 +1,4 @@
-# Previo v0.9.8b8 changelog (from v0.9.7)
+# Previo v0.9.8b9 changelog (from v0.9.7)
 
 Note: within a section, entries may be grouped under a theme when at least two entries share a topic. In the detail section, a theme is `- 📂**{Theme}**:` with its entries nested as indented sub-bullets beneath it (no heading, no link). In the Index, the same theme collapses to a single plain line `📂{Theme} (N changes)` with its member entries not listed. Ungrouped entries are listed as ordinary top-level bullets in both places (bare title in the Index, full bold-title-plus-summary bullet in the detail).
 
@@ -9,10 +9,15 @@ Note: within a section, entries may be grouped under a theme when at least two e
   - 📂Installing and updating the framework itself (2 changes)
   - Mockups now fall back to real code, and flag documentation gaps
   - Mockup count shown in the status detail card
+  - Mockups can be annotated directly in the browser
+  - New mockup actions to resolve annotations and describe a mockup's content
 - ✏️[Changed](#changed)
   - 📂Entry folder layout (2 changes)
+  - 📂Mockup review cycle (3 changes)
   - Framework version check is now a single shared script
   - `pv.py` menu wording and navigation tweaks
+  - Mockup generation no longer resolves the style bible or language itself
+  - The installer no longer offers a version older than the one installed
 
 ## ⭐New
 
@@ -24,11 +29,19 @@ Note: within a section, entries may be grouped under a theme when at least two e
   - **`pv.py` can install a new Previo version directly from its menu** — a new "Install new Previo version" option under Configuration lists the available versions (latest official, and pre-release if newer) and installs the chosen one after explicit confirmation, without needing Claude Code.
 - **Mockups now fall back to real code, and flag documentation gaps** — when generating a visual mockup, if the style bible doesn't cover something needed, the mockup skill now looks for the real convention already used in the app's code before resorting to a neutral placeholder. Any such gap is reported back so it can be tracked as a pending documentation task instead of silently reused.
 - **Mockup count shown in the status detail card** — `pv-status`'s terminal detail view now shows how many mockup files an entry has, separately from its other extra files.
+- **Mockups can be annotated directly in the browser** — every generated `design_*.html` mockup now embeds a lightweight review toolbar: pin a note to any element or add a general note, see them listed in two panels (general and linked), and save the annotated file back. This replaces describing wanted changes in chat prose with pinning them directly on the visual.
+- **New mockup actions to resolve annotations and describe a mockup's content** — the mockup skill gained `ensure-closed` (resolves every pending annotation on a mockup, applying the requested change and asking directly if a note is ambiguous) and `describe` (a plain-text description of a mockup's visual content for another skill that needs a reference without opening the file).
 
 ## ✏️Changed
 
 - 📂**Entry folder layout**:
   - **Mockups now live in their own `mockups/` subfolder** — visual mockup files (`design_*.html`/`design_*.txt`) for a change/fix entry are now kept under a dedicated `mockups/` subfolder instead of loose alongside the entry's other documents.
   - **Navigation and data files dropped their `design_` prefix** — `design_navigation_*.md` and `design_data_*.md` are now named `navigation_*.md` and `data_*.md`. Existing entries in an older layout are migrated automatically the next time `pv-update` runs.
+- 📂**Mockup review cycle**:
+  - **Mockups are re-presented only once every annotation is resolved** — before showing a mockup to the user again, `pv-new`/`pv-fix` now resolve any pending browser annotation on it automatically instead of relying on the user to describe the wanted change in chat.
+  - **`pv-how` no longer trusts an entry's mockups are already clean** — it checks for pending annotations itself before analyzing an entry, even if `pv-new`/`pv-fix` already validated it earlier in the same session.
+  - **`pv-how` no longer opens mockup files directly** — it now gets its visual reference for planning through the mockup skill's own description of the file, instead of reading the raw HTML.
 - **Framework version check is now a single shared script** — every skill now verifies the framework is correctly installed and up to date through one shared check script instead of each doing its own inline comparison; if the framework isn't installed correctly, the user is now pointed to `pv-update`'s new install mode.
 - **`pv.py` menu wording and navigation tweaks** — "Check Previo versions" is now "Check product versions" and "Change max character width" is now "Change terminal max character width"; every menu's exit option is now selected with `X` instead of a trailing number.
+- **Mockup generation no longer resolves the style bible or language itself** — the mockup skill now receives the relevant style-bible excerpts and the sample-text language from whichever skill invokes it, instead of resolving them on its own. This lets it work self-contained if copied into another project.
+- **The installer no longer offers a version older than the one installed** — `pv-update install` and `pv.py`'s own install menu both filter out any listed tag older than the current installation, and warn before reinstalling the exact same version from scratch.
