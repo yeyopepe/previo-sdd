@@ -28,7 +28,9 @@ If `.claude/pv-context.json` doesn't exist at the repo root, or is missing the `
 This project doesn't have the `pv-*` framework initialized yet (or is missing configuration). Run `/pv-init` first before invoking me again.
 ```
 
-Additionally, before continuing, check that the framework's installed version is verified: read `metadata.version` from `.claude/skills/pv-init/SKILL.md`'s frontmatter (a handful of lines, not the whole file) and compare it against `framework.frameworkStatus.lastVerifiedVersion` in the `pv-context.json` you already loaded. If `frameworkStatus` is missing entirely, or `lastVerifiedVersion` doesn't match `pv-init/SKILL.md`'s real version, don't continue: tell the user the framework was updated (or has never been verified) and that they must run `pv-update` first — a stale `pv-context.json` can mean outdated templates, marker conventions, or other assumptions this skill relies on. Same stop if `framework.frameworkStatus.blocked` is already `true` (show `blockedReason` if present). This is a cheap, live comparison of two version strings already in hand — it doesn't require `pv-update` to have run before for the check itself to work, only for it to pass.
+Before continuing, check that `.claude/skills/pv-update/scripts/check-framework-status.py` exists. If it doesn't, tell the user the framework doesn't look correctly installed and that they must install the latest version (see `pv-update`'s "Install mode" — `/pv-update install`) — stop there, don't continue this skill's work.
+
+If it exists, run it (`python .claude/skills/pv-update/scripts/check-framework-status.py`) and read its JSON. If `ok` is `false`, show `message` to the user and stop — no `pv-*` skill can continue its work without this step passing with `ok: true`.
 
 From here on, `changesDir` is shorthand for `{workFolder}/changes` (a fixed-name subfolder inside `framework.workFolder`, which defaults to `"/"`, the repo root).
 

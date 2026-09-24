@@ -47,7 +47,9 @@ Read `.claude/pv-context.json` at the repo root. If it doesn't exist, or is miss
 This project doesn't have the `pv-*` framework initialized yet (or is missing configuration). Run `/pv-init` first before invoking me again.
 ```
 
-Check the framework version the same way every other `pv-*` skill does: compare `metadata.version` in `.claude/skills/pv-init/SKILL.md`'s frontmatter against `framework.frameworkStatus.lastVerifiedVersion`. If they don't match, or `frameworkStatus` is missing, or `framework.frameworkStatus.blocked` is `true`, stop and send the user to `/pv-update`.
+Before continuing, check that `.claude/skills/pv-update/scripts/check-framework-status.py` exists. If it doesn't, tell the user the framework doesn't look correctly installed and that they must install the latest version (see `pv-update`'s "Install mode" — `/pv-update install`) — stop there, don't continue this skill's work.
+
+If it exists, run it (`python .claude/skills/pv-update/scripts/check-framework-status.py`) and read its JSON. If `ok` is `false`, show `message` to the user and stop — no `pv-*` skill can continue its work without this step passing with `ok: true`.
 
 ## 1. Enumerate the folders to review
 

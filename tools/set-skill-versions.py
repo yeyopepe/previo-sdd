@@ -2,7 +2,11 @@
 """One-off: set every pv-* skill's version in its SKILL.md frontmatter.
 
 Rewrites the `  version: X.Y.Z` line under `metadata:` in every
-.claude/skills/pv-*/SKILL.md. Run once from the repo root, then review the diff.
+.claude/skills/pv-*/SKILL.md, then recalculates the number of pv-* skill
+folders in the repo and rewrites EXPECTED_SKILL_COUNT in
+pv-update/scripts/check-framework-status.py to match -- so that constant
+never has to be set by hand and can't drift from what the release actually
+contains. Run once from the repo root, then review the diff.
 """
 import re
 import sys
@@ -11,6 +15,21 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SKILLS_DIR = ROOT / ".claude" / "skills"
 VERSION_RE = re.compile(r"^(\s*version:\s*)\S+(\s*)$", re.MULTILINE)
+SKILL_COUNT_RE = re.compile(r"^(EXPECTED_SKILL_COUNT\s*=\s*)\d+(\s*)$", re.MULTILINE)
+CHECK_STATUS_SCRIPT = SKILLS_DIR / "pv-update" / "scripts" / "check-framework-status.py"
+
+
+def update_expected_skill_count() -> int:
+    actual_count = len(list(SKILLS_DIR.glob("pv-*")))
+    content = CHECK_STATUS_SCRIPT.read_text(encoding="utf-8")
+    new_content, count = SKILL_COUNT_RE.subn(
+        rf"\g<1>{actual_count}\g<2>", content, count=1)
+    if count == 0:
+        raise SystemExit(
+            f"Couldn't find EXPECTED_SKILL_COUNT in {CHECK_STATUS_SCRIPT}")
+    if new_content != content:
+        CHECK_STATUS_SCRIPT.write_text(new_content, encoding="utf-8")
+    return actual_count
 
 
 def main():
@@ -40,6 +59,10 @@ def main():
         print(f"\nSkipped {len(skipped)} file(s) with no 'version:' field:")
         for f in skipped:
             print(f"  {f.relative_to(ROOT)}")
+
+    actual_count = update_expected_skill_count()
+    print(f"\nEXPECTED_SKILL_COUNT set to {actual_count} in "
+          f"{CHECK_STATUS_SCRIPT.relative_to(ROOT)}")
 
 
 if __name__ == "__main__":

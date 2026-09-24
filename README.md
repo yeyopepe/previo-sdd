@@ -32,7 +32,7 @@ It brings the control and traceability of *spec-driven development* without the 
 |<u>**Adaptable and versatile**</u>| Great for projects of any size, and adapts to each project's stack.|
 |<u>**No extra tooling**</u> |Requires nothing beyond Claude Code and Python on the development machine — no installs on your machine, external services, databases, or other headaches.|
 |<u>**100% built by AI, for AI**</u> |The whole cycle (from idea to delivery) is a 100% AI-guided process, for any kind of profile. A few more tokens, much less complexity.|
-|<u>**Multi-language support**</u>| Speak in Spanish, write the technical documentation in English, and draft the changelog in French (for example). Multi-language support is configurable across up to 5 points. |
+|<u>**Everything under control**</u>| **Previo** also provides tools to ensure the quality of your code and your documentation. |
 |<u>**One script**</u>| One terminal to manage your changes quickly and easily. |
 |<u>**And plenty more**</u>| Tracking and traceability for every change, release generation (changelogs included), a prompt history tied to each change, fast changes, security reviews, an autonomous update-checking system, and more.|
 
@@ -46,7 +46,7 @@ It brings the control and traceability of *spec-driven development* without the 
 |<u>**Folder structure and documentation**</u>|Define where everything lives — the changes folder, source code, architecture documentation, style, and features — to fit **Previo** into the structure your project already has.|
 |<u>**Model per skill**</u>|Assign whichever model and effort level you prefer to each skill (for example, a lighter one for lookup tasks and a more capable one for technical analysis).|
 
-See the [user guide](.claude/pv-doc/pv-guide.en.md#more-ways-to-customize-**Previo**) for the detail on each option.
+See the [user guide](.claude/pv-doc/pv-guide.en.md#more-ways-to-customize-previo) for the detail on each option.
 
 ## ⚠️Weaker points and what's coming next
 

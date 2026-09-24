@@ -2,7 +2,7 @@
 
 *Read this in [English](README.md).*
 
-****Previo**** es un framework de desarrollo creado y dirigido por IA para [Claude Code](https://claude.com/claude-code): define cambios, valida el diseño sobre maquetas y diagramas, gestiona el estado de cada cambio y prepara entregas — todo de forma conversacional, sin plantillas rígidas ni herramientas adicionales.
+**Previo** es un framework de desarrollo creado y dirigido por IA para [Claude Code](https://claude.com/claude-code): define cambios, valida el diseño sobre maquetas y diagramas, gestiona el estado de cada cambio y prepara entregas — todo de forma conversacional, sin plantillas rígidas ni herramientas adicionales.
 
 Aporta el control y la trazabilidad del *spec-driven development* sin la sobrecarga de proceso que ese enfoque suele exigir en proyectos grandes. Pensado para proyectos de cualquier tamaño y gestionados por una sola persona.
 
@@ -30,10 +30,10 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 |<u>**Riesgos claros**</u>|Cada cambio se analiza para calcular el riesgo que conlleva de generar potenciales efectos secundarios: 9 factores de riesgo que dan una puntuación de 0 (sin riesgo) a 10 (riesgo extremo).|
 |<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación  del proyecto de forma autónoma, tanto técnica como funcional, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial, analizando un proyecto ya existente o dejar que **Previo** la vaya generando según avance el proyecto.|
 |<u>**Adaptable y versátil**</u> | Ideal para proyectos de cualquier tamaño y se adapta al stack de cada uno.|
-|<u>**Sin herramientas adicionales**</u> |No requiere más que Claude Code y Python en la máquina de desarrollo — sin instalaciones en tu máquina, servicios externos, bases de datos ni otros quebraderos de cabeza.|
+|<u>**Sin otros productos adicionales**</u> |No requiere más que Claude Code y Python en la máquina de desarrollo — sin instalaciones en tu máquina, servicios externos, bases de datos ni otros quebraderos de cabeza.|
 |<u>**100% construido con IA y para IA**</u> |Todo el ciclo (desde la idea hasta su realización) es un proceso 100% guiado por IA, para cualquier tipo de perfil. Unos pocos tokens más, mucha complejidad menos.|
-|<u>**Soporte multi-idioma**</u>| Habla en español, escribe la documentación técnica en inglés y redacta el changelog en francés (por ejemplo). El soporte multi-idioma es configurable hasta en 5 puntos. |
-|<u>**Un Script Único**</u>| Una terminal para gestionar de forma fácil y rápida tus cambios. |
+|<u>**Todo controlado**</u>| Previo proporciona también herramientas para garantizar la calidad de tu código y tu documentación. |
+|<u>**El Script Único**</u>| Una terminal para gestionar de forma fácil y rápida tus cambios. |
 |<u>**Y muchas cosas más**</u>| Gestión y trazabilidad de cada cambio, generación de versiones (incluidos los changelogs), histórico de prompts relacionados con cada cambio, cambios rápidos, evaluaciones de seguridad, sistema autónomo de actualizaciones, etc.|
 
 
@@ -42,11 +42,11 @@ Aporta el control y la trazabilidad del *spec-driven development* sin la sobreca
 | Qué puedes personalizar | Cómo |
 |---|---|
 |<u>**Piezas a tu medida y hooks**</u>| Muchos de los procesos definidos disponen de puntos de personalización (*hooks*) que te permitirán añadir tareas específicas en tu flujo de trabajo, o sustituir algunas skills del framework por otras propias para cambiar la forma en que se hacen ciertas tareas. |
-|<u>**Idioma**</u>|Habla con **Previo** en tu idioma mientras cada tipo de documento (changes, changelog, documentación funcional y técnica) se escribe en el suyo propio — configurable punto por punto en `.claude/pv-context.json`.|
+|<u>**Usa el idioma que quieras en cada caso**</u>|Habla con **Previo** en tu idioma mientras cada tipo de documento (changes, changelog, documentación funcional y técnica) se escribe en el suyo propio: habla en español, escribe la documentación técnica en inglés y redacta el changelog en francés (por ejemplo).|
 |<u>**Estructura de carpetas y documentación**</u>|Define dónde vive cada cosa — carpeta de cambios, código fuente, documentación de arquitectura, estilo y funcionalidades — para encajar **Previo** en la estructura que ya tiene tu proyecto.|
 |<u>**Modelo por skill**</u>|Asigna el modelo y el nivel de esfuerzo que prefieras a cada skill (por ejemplo, uno más ligero para tareas de consulta y uno más potente para el análisis técnico).|
 
-Consulta la [`Guía de usuario`](.claude/pv-doc/pv-guide.es.md#más-formas-de-personalizar-**Previo**) para el detalle de cada opción.
+Consulta la [`Guía de usuario`](.claude/pv-doc/pv-guide.es.md#más-formas-de-personalizar-previo) para el detalle de cada opción.
 
 ## ⚠️Puntos menos fuertes y lo que está por llegar
 - <u>**Contextos grandes.**</u> A medida que el proyecto crezca, el contexto necesario para que **Previo** haga su trabajo también crecerá (y el consumo de tokens). Hemos priorizado la calidad de los resultados frente al supuesto ahorro de tokens (aunque no los hemos olvidado) porque nuestra experiencia nos dice que el retrabajo siempre sale más caro que un buen análisis **Previo**.
@@ -81,7 +81,7 @@ $env:PREVIO_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/
 ```
 
 > ❗**RECUERDA**:
-> Puedes consultar el changelog en `.claude/pv-changelong.es.md`
+> Puedes consultar el changelog en `.claude/pv-changelog.es.md`
 
 Esto instala (o actualiza) `.claude/skills` y la documentación (`pv-guide.md` y su versión `.en.md`) con el contenido del framework, sin tocar tu configuración (`pv-context.json`, `settings.json`) ni ninguna skill propia que no empiece por `pv-`. Volver a ejecutarlo en cualquier momento actualiza el framework a la última versión: añade skills nuevas, actualiza las existentes y elimina las que ya no formen parte de **Previo**.
 
