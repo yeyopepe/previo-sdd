@@ -11,7 +11,7 @@ changes without going through Claude Code or having to remember script
 names, paths, or parameters: run this file and choose a menu option.
 
 Most options are read-only and delegate to the pv-status skill's scripts.
-Four options modify something:
+Five options modify something:
 - "Close an implemented entry": moves the folder from
   changes/implemented/{xxxx} to changes/closed/{xxxx} (delegating to
   pv-internal-workflow's move-change.py, which doesn't touch any file's
@@ -41,7 +41,7 @@ Four options modify something:
   submenu): delegates to pv-init's sync-skill-models.py, which propagates
   pv-context.json's skillModels to each 'pv-*' SKILL.md's frontmatter
   (model/effort).
-- "Change max character width" (inside the "Configuration" submenu): the
+- "Change terminal max character width" (inside the "Configuration" submenu): the
   only place pv.py *writes* pv-context.json -- it stores a single integer
   at framework.onescript.width (>= 40; empty input keeps the current
   value), read back on every launch to set this file's WIDTH. A minimal
@@ -104,6 +104,7 @@ STATUS_SCRIPTS = ROOT / ".claude" / "skills" / "pv-status" / "scripts"
 WORKFLOW_SCRIPTS = ROOT / ".claude" / "skills" / "pv-internal-workflow" / "scripts"
 INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
 INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
+UPDATE_SCRIPTS = ROOT / ".claude" / "skills" / "pv-update" / "scripts"
 CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
 
 # The config file pv.py reads its own settings from and writes them back to:
@@ -741,12 +742,113 @@ def change_width() -> None:
     )
 
 
+def _available_previo_versions() -> tuple[str | None, str | None]:
+    """Queries the official + pre-release tags via install-framework.py
+    --list-only (capturing its stdout, never printed to the screen) --
+    reuses its GitHub Releases logic rather than re-implementing it here.
+    Returns (official_tag, prerelease_tag), either None if unknown/absent."""
+    out = run_script_capture(UPDATE_SCRIPTS / "install-framework.py", "--list-only")
+    official = prerelease = None
+    for line in out.splitlines():
+        if line.startswith("OFFICIAL_TAG="):
+            official = line[len("OFFICIAL_TAG="):].strip() or None
+        elif line.startswith("PRERELEASE_TAG="):
+            prerelease = line[len("PRERELEASE_TAG="):].strip() or None
+    return official, prerelease
+
+
+def install_previo_version() -> None:
+    """"Install new Previo version": lists the latest official release and,
+    if newer, the latest pre-release (same two tags install-framework.py's
+    normal run reports, via --list-only above), then lets the user pick one
+    to install, or go back. Doesn't use show_selection() for the choice --
+    it needs to tell "empty input" (go back) apart from "typed something
+    that isn't a listed number" (error, stay on this same screen), which
+    show_selection() doesn't distinguish (both return None). Every listed
+    tag is shown by name, and confirm(f"Install Previo {tag}?...") always
+    names that exact tag before anything runs -- install-framework.py
+    itself additionally refuses to install without --version <tag> --yes
+    (it only resolves/validates otherwise), so this confirm() is what
+    supplies that required, explicitly-named confirmation, never skipped.
+    The actual install is delegated entirely to install-framework.py
+    --version <tag> --yes, which is the only place that talks to GitHub --
+    including deleting and re-downloading install.sh/.ps1 fresh from
+    previo-sdd's main branch into a temp file every time (never trusting a
+    local copy, never leaving one behind), running it, then deleting it
+    again, all inside that script; pv.py itself stays unaware of any of
+    that. Under --testconfig, the actual install is skipped (it would
+    touch the real repo root, not the test fixture) -- the command that
+    would run is printed instead."""
+    official_tag, prerelease_tag = _available_previo_versions()
+    if not official_tag:
+        show_info(
+            [wrap("Couldn't reach GitHub to check for available Previo versions. Try again later.")],
+            framed=False,
+        )
+        return
+
+    options = [f"{official_tag} (latest official release)"]
+    tags = [official_tag]
+    if prerelease_tag:
+        options.append(f"{prerelease_tag} (pre-release, not recommended for normal use)")
+        tags.append(prerelease_tag)
+
+    while True:
+        print()
+        hr("-")
+        print("Available Previo versions:")
+        for i, option in enumerate(options, start=1):
+            print(wrap(f"{i}. {option}", indent="  "))
+        hr("-")
+
+        choice = read_input("Choose a version to install (number, or empty to go back): ").strip()
+        if not choice:
+            return
+
+        index = int(choice) - 1 if choice.lstrip("-").isdigit() else -1
+        if not (0 <= index < len(tags)):
+            print("Invalid option.")
+            continue
+
+        tag = tags[index]
+        if not confirm(f"Install Previo {tag}? This modifies files in this project."):
+            print("Cancelled.")
+            continue
+
+        if TEST_WORK_FOLDER is not None:
+            # --testconfig never installs for real (it would touch the real
+            # repo root, not the throwaway fixture) -- print the command
+            # that would run instead. install-framework.py has no
+            # --work-folder of its own (it always installs at the real repo
+            # root), unlike SCRIPTS_ACCEPTING_WORK_FOLDER's scripts.
+            show_info(
+                [wrap("--testconfig: not installing for real. Command that would run:")]
+                + [f"python {UPDATE_SCRIPTS / 'install-framework.py'} --version {tag} --yes"],
+                framed=False,
+            )
+            return
+
+        # --yes is required here: install-framework.py refuses to install
+        # anything without it (it only resolves/validates otherwise) -- the
+        # confirm() call right above is exactly the explicit, tag-naming
+        # confirmation that requirement exists to enforce, so passing --yes
+        # now is safe and expected, never a way to skip confirmation.
+        run_script(UPDATE_SCRIPTS / "install-framework.py", "--version", tag, "--yes")
+        show_info(
+            [wrap("Installation finished. Run /pv-update from Claude Code next to "
+                  "verify and repair the configuration against the newly installed version.")],
+            framed=False,
+        )
+        return
+
+
 def show_settings_menu() -> None:
     run_menu(
         "Previo: settings",
         [
             ("Sync skill models per pv-context.json", sync_skill_models),
-            ("Change max character width", change_width),
+            ("Change terminal max character width", change_width),
+            ("Install new Previo version", install_previo_version),
         ],
         "Back",
     )
@@ -1248,7 +1350,7 @@ def run_menu(
 
 def main() -> None:
     global ROOT, STATUS_SCRIPTS, WORKFLOW_SCRIPTS, INIT_SCRIPTS, INIT_SKILL_PATH, CONTEXT_PATH, TEST_WORK_FOLDER
-    global ACTIVE_CONFIG_PATH, WIDTH
+    global ACTIVE_CONFIG_PATH, WIDTH, UPDATE_SCRIPTS
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1272,6 +1374,7 @@ def main() -> None:
         WORKFLOW_SCRIPTS = ROOT / ".claude" / "skills" / "pv-internal-workflow" / "scripts"
         INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
         INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
+        UPDATE_SCRIPTS = ROOT / ".claude" / "skills" / "pv-update" / "scripts"
         CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
         TEST_WORK_FOLDER = config["workFolder"]
         # pv.py's own settings still come from (and are written back to) the

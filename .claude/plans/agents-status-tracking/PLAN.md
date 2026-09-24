@@ -394,9 +394,11 @@ informa al usuario — el script solo informa, igual que `check-agent-conflict.p
 Orden sugerido: de abajo hacia arriba (piezas base primero, instrumentación de skills al
 final, porque estas últimas dependen de que los scripts ya existan).
 
-1. **Config**: añadir `framework.agents.staleTimeoutMinutes` (default `2`) a
-   `.claude/pv-context.json` y a su esquema/documentación si `pv-context.json` tiene uno
-   validado en otro sitio del framework (comprobarlo antes de asumir que no).
+1. **Config**: añadir una sección `agents` a `.claude/skills/pv-init/schema.json` (mismo
+   patrón que `framework.onescript`: objeto con `additionalProperties: false` y
+   propiedad `staleTimeoutMinutes` tipo integer, `default: 2`, descripción de quién la
+   escribe/lee), y `framework.agents.staleTimeoutMinutes` en `.claude/pv-context.json`
+   cuando corresponda escribirla.
 2. **Script de escritura**: `pv-internal-workflow/scripts/set-agent-status.py` —
    `--session-id`, `--phase`, `--xxxx` opcional, `--notes` opcional, `--work-folder`;
    calcula y guarda `refHash` solo cuando `--phase planning`; recalcula `changeStartedAt`
@@ -466,10 +468,56 @@ final, porque estas últimas dependen de que los scripts ya existan).
   3 de `agent-status-file.md`) — no hay garantía de runtime. El timeout (sección 4 de
   `agent-status-file.md`) y la verificación de conflicto (sección 6) son las dos redes de
   seguridad diseñadas para ese límite, no un intento de eliminarlo del todo.
-- **Punto que sigue sin verificar contra el disco real** (a comprobar durante la
-  implementación, no asumido aquí): si `pv-context.json` tiene algún esquema JSON
-  validado en otro sitio del framework (p. ej. algo análogo a
-  `metadata.schema.json` de `pv-internal-workflow`) al que también haya que añadir
-  `framework.agents.staleTimeoutMinutes` — el plan asume que no, por analogía con
-  `framework.onescript.width`, que tampoco parece tener uno, pero no se ha comprobado
-  explícitamente.
+- **Verificado contra el disco real**: `pv-context.json` sí tiene un esquema JSON que lo
+  gobierna — `.claude/skills/pv-init/schema.json` (`$id: pv-context.schema.json`),
+  referenciado desde `pv-internal-workflow/SKILL.md`, con `additionalProperties: false`
+  en `framework` y en cada una de sus subsecciones (incluida `onescript`, que sí tiene
+  entrada propia en el esquema — al contrario de lo que asumía un borrador anterior de
+  este punto). Añadir `framework.agents.staleTimeoutMinutes` sin tocar ese esquema
+  dejaría `pv-context.json` incumpliéndolo. La tarea 1 de la implementación incluye
+  editar `pv-init/schema.json` con una nueva sección `agents`, mismo patrón que
+  `onescript` (objeto, `additionalProperties: false`, propiedad `staleTimeoutMinutes`
+  tipo integer con `default: 2`, descripción de quién escribe y cuándo).
+
+## Análisis crítico (2026-09-24)
+
+### Estructura
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| Falta `TASKS.md` | El plan es un único fichero `PLAN.md` con una sección final "Lista de tareas para la implementación" (líneas 392-447) inline, en vez de un `TASKS.md` hermano. La estructura requerida separa el plan (`PLAN.md`) de su desglose ejecutable (`TASKS.md`). Además, la lista actual no baja a nivel de tarea por fichero en varios puntos: por ejemplo la tarea 6 ("Instrumentar pv-how") mezcla en un solo punto el nodo `check-agent-active.py` y dos nodos `[REPORT: ...]` sobre el mismo `workflow.how.md`, y no hay ninguna tarea que apunte a `.claude/skills/pv-init/schema.json` (necesario, ver hallazgo de Config más abajo). | — |
+| Índice ausente | `PLAN.md` no tiene tabla de contenidos al inicio enlazando a sus propias secciones (Context, Descartado, Diseño propuesto, Fuera de alcance, Decisiones, Lista de tareas, Revisión final). | — |
+| Sección "Objective" no diferenciada | El documento abre directo con `## Context` (línea 3), que cumple parcialmente el rol de objetivo (líneas 10-14 sí declaran el objetivo), pero no hay una sección `## Objetivo` propia y separada como exige la estructura. | — |
+| "Reviews" no es la última sección con el formato esperado | Existe `## Revisión final del plan` (línea 449) al final, lo cual es correcto en posición, pero es una única entrada de prosa sin fecha explícita de revisión ni formato de histórico (fecha + hallazgos que se resuelven con el tiempo). Si se añaden más rondas de revisión en el futuro, esta sección tendría que reestructurarse a un histórico fechado. | — |
+
+### Config (`framework.agents.staleTimeoutMinutes`)
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| El plan da por asumido que no hay schema que tocar, y sí lo hay | `.claude/pv-context.json` está gobernado por `.claude/skills/pv-init/schema.json` (`$id: pv-context.schema.json`), con `additionalProperties: false` en `framework` (línea 37) y en cada subsección (`onescript` línea 125, `skills` línea 99, etc.), referenciado explícitamente desde `pv-internal-workflow/SKILL.md:40`. Añadir `framework.agents.staleTimeoutMinutes` sin tocar ese schema deja `pv-context.json` violando su propio schema documental. Además, la premisa de apoyo del plan es errónea: `framework.onescript.width` (el plan la llama "onescync", nombre inexistente) sí tiene entrada en el schema (líneas 122-135) — no es cierto que "tampoco parece tener uno". | Resuelto: sección "Decisiones ya confirmadas" y tarea 1 de la lista de implementación reescritas para exigir explícitamente editar `pv-init/schema.json` (nueva sección `agents`, objeto con `additionalProperties: false` y `staleTimeoutMinutes` integer/default 2, mismo patrón que `onescript`), además del propio `pv-context.json`. |
+
+### Sección 1 — Registro `.agents-status.json` (concurrencia)
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| "Sin lock file" se apoya en un precedente que en realidad usa lock | El plan justifica el read-modify-write simple citando que "no hay lock file ni escritura atómica en el resto del framework, así que no se introduce aquí una garantía que no existe en ningún otro punto de pv-*" y equipara esto a `set-metadata.py`. Es falso: `set-metadata.py` (`.claude/skills/pv-internal-workflow/scripts/set-metadata.py:34-42`) usa explícitamente un lock exclusivo (`_FileLock`, `.metadata.json.lock`, `msvcrt.locking`/`fcntl.flock`) y lo documenta como "No last-write-wins" — precisamente para el mismo escenario (dos escritores concurrentes) que motiva este plan. El precedente real del framework para "múltiples agentes escribiendo el mismo fichero de estado mutable" es *con* lock, no sin él. Como el propio plan describe el peor caso (dos agentes escribiendo el registro a la vez, sección 6.2), aceptar corrupción silenciosa por carrera en `set-agent-status.py` es más grave aquí que en `.metadata.json`, porque una escritura perdida en `.agents-status.json` puede ocultar una transición de fase real (p. ej. perder el paso a `blocked_conflict` o a `done`). | — |
+
+### Sección 3 — Quién escribe (patrón de scripts)
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| `SCRIPTS_ACCEPTING_WORK_FOLDER` no es un import compartido — hay que editar `pv.py` para cada script nuevo | El plan (y `agent-status-file.md` sección 3) dice que los nuevos scripts aceptan `--work-folder` "como el resto de scripts en `SCRIPTS_ACCEPTING_WORK_FOLDER`", dando a entender que basta con que el script implemente el flag. En realidad esa constante vive únicamente en `pv-init/assets/pv.py:126-134`, mantenida a mano, y `run_script()` solo reenvía `--work-folder` a los scripts cuyo nombre está en ese set (pv.py:403). Si `read-agents-status.py` no se añade a ese set, `show_framework_status_menu()` invocándolo vía `run_script()` nunca le pasará `--work-folder`, rompiendo el test harness para ese camino. Ninguna tarea de la lista de implementación (puntos 2-5) menciona editar esa constante en `pv.py`. | — |
+
+### Sección 5 — `pv.py` (menú)
+
+Sin hallazgos de fondo: la reestructuración del `MENU` raíz, el patrón `show_settings_menu`/`show_versions_menu` con `.is_submenu = True`, y la invocación vía `run_script()` calcada de `show_general_status()` están todos confirmados contra el disco real (`pv.py:1197-1204`, `:744-755`, `:814-825`, `:553-554`, `:410-413`). Ver también el hallazgo de la sección anterior (`SCRIPTS_ACCEPTING_WORK_FOLDER`), que sí afecta a esta pieza aunque esté catalogado bajo "quién escribe".
+
+### Sección 6 — Verificación de conflicto
+
+Sin hallazgos: los nodos citados (`S15Load`/`S20Hook` en `workflow.do.md`, `FTLoad`/`FTHookEntry`/`FTHookStart` en `workflow.fix.md`, orden `S15Load → S20Hook`) están confirmados carácter a carácter contra los diagramas reales, incluido el orden relativo que la sección 6.1 necesita (el nodo de conflicto va antes de `S15Load`, que es lo que dispara `S20Hook` — correcto). `pv-how` confirmado que nunca invoca `pv-internal-workflow action=move` (delega en `pv-do` vía `S32Do`), consistente con quedar fuera de la tabla de 6.1.
+
+### Menor / redacción
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| Ruta de hooks citada sin instancia real en la raíz del repo | La sección 6.1 cita `stuff/hooks/{do,fix}/*.md` y nombres como `10-before-implementation`/`10-before-entry`. Los nombres son exactos (coinciden carácter a carácter con los nodos de los diagramas), pero no existen como ficheros físicos en la raíz de `previo-sdd` — solo como plantillas `.template.md` bajo `.claude/skills/*/hooks/`, y como instancia real dentro de `sandbox-test1/previo-sdd/stuff/hooks/...` (un proyecto de prueba). Si la tarea 11 (prueba manual de extremo a extremo) pretende ejercitar hooks reales, tendría que hacerlo en `sandbox-test1`, no en la raíz del repo, o crear los hooks de prueba primero. | — |

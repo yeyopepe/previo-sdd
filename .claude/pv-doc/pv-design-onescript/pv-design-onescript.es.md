@@ -98,9 +98,15 @@ NIVEL 1 (Main Navigation)
     ├── [5] Submenu: Configuration
     │   └── "Previo: settings"                                                 [Menu]
     │       ├── [1] Acción: Sync Models (→ externo)                          [Delegated info, sync-skill-models.py]
-    │       ├── [2] Acción: Change max character width
+    │       ├── [2] Acción: Change terminal max character width
     │       │   └── Info (ancho actual) + Input (nuevo ancho, vacío = mantener)  [Info, framed=False]
     │       │       └── Confirmation: "Set max character width to N..." → escribe framework.onescript.width  [Confirmation]
+    │       ├── [3] Acción: Install new Previo version
+    │       │   └── Listado "Available Previo versions:" (propio, no show_selection() — ver más abajo) + bucle
+    │       │       ├── Input: un número listado → Confirmation: "Install Previo {tag}?"  [Confirmation]
+    │       │       │   └── (→ externo, install-framework.py --version <tag> --yes; bajo --testconfig, imprime el comando en vez de ejecutarlo)  [Delegated info]
+    │       │       ├── Input: un número fuera de la lista → "Invalid option." → misma pantalla otra vez (bucle)
+    │       │       └── Input: vacío → vuelve a "Previo: settings"
     │       └── [X] Back
     ├── [6] Submenu: Versions
     │   └── "Previo: versions"                                                 [Menu]
@@ -138,6 +144,7 @@ graph TD
     T["🗑️ Delete this idea<br/>Selección incrustada + Confirmación + delete-todo.py<br/>(solo si el id es una idea)"]
     J["🔄 Sync Models<br/>sync-skill-models.py"]
     W["📏 Change width<br/>Info + Input + Confirmación<br/>escribe framework.onescript.width"]
+    IV["⬆️ Install new Previo version<br/>Listado propio (bucle) + Confirmación<br/>install-framework.py --version tag --yes<br/>(--testconfig: solo imprime el comando)"]
     K["📜 Read Changelog<br/>Selección + Mostrar"]
     L["🧹 Check Temp<br/>Mostrar estado"]
 
@@ -185,6 +192,10 @@ graph TD
     J -->|Return| H
     H -->|Change width| W
     W -->|Return| H
+    H -->|Install new Previo version| IV
+    IV -->|"Número inválido"| IV
+    IV -->|"Vacío (volver)"| H
+    IV -->|Instalación confirmada| H
 
     C -->|6| I
     I -->|Back| C
@@ -295,7 +306,7 @@ El fichero está dividido en bloques delimitados por comentarios `# ====...====`
 | `Screen-type helpers` | `print_header()`, `show_selection()`, `show_info()`, `confirm()` | Casi nunca — cambia el comportamiento de un tipo de pantalla en **todas** las opciones a la vez |
 | `Framework paths and shared lookups` | `work_root()`, `load_onescript_width()`, `save_onescript_width()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` — más los globales de módulo `CONTEXT_PATH` y `ACTIVE_CONFIG_PATH` (el fichero de config del que `pv.py` lee sus ajustes / al que los escribe: `CONTEXT_PATH` normalmente, el fichero de `--testconfig` en su defecto) | Al añadir una nueva ruta o subcarpeta del framework que varias opciones necesiten |
 | `Actions -- root menu` | Funciones de acción del menú raíz | Al añadir una opción nueva a "Previo: MAIN MENU" |
-| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" (`sync_skill_models()`, `change_width()`) | Al añadir una opción nueva a Configuration |
+| `Actions -- Configuration submenu` | Funciones de acción de "Previo: settings" (`sync_skill_models()`, `change_width()`, `install_previo_version()`, `_available_previo_versions()`) | Al añadir una opción nueva a Configuration |
 | `Actions -- Versions submenu` | Funciones de acción de "Previo: versions" | Al añadir una opción nueva a Versions |
 | `Actions -- Changes info submenu` | Funciones de acción de "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`, `toggle_flag_on_change()`, `_toggle_flags_on()`, `_print_flaggable_listing()`, `show_changes_by_flag()`, `list_flaggable_changes()` (+ `_flaggable_group_of()`, `FLAG_GROUPS`), `read_change_flags()`, `flag_prefixes_for()`, `flag_prefixes_by_state()`, `_flag_label_with_icon()`, `_ids_match()`) | Al añadir una opción nueva a Changes info |
 | `Actions -- Ideas (root menu)` | Funciones de la opción raíz "Ideas in todo/" (`show_todo_ideas()`, `list_todo_entries()`, `find_todo_code()`, `delete_idea_by_code()`, `delete_idea()`, `show_ideas_menu()`) — también `show_id_detail_card()`, la ficha detalle de un id (con Selección incrustada si es idea), reutilizada por `search_by_id()` (Changes info) y `show_general_status()` (root menu) | Al añadir una opción nueva relacionada con ideas |
@@ -325,7 +336,9 @@ Lista numerada enmarcada por `hr("-")` en DARK_GRAY. Recibe una lista de strings
 
 **`title=""` — Selección incrustada.** Omite la línea de título y también la línea en blanco que normalmente precede a `hr("-")`, dejando solo `hr("-")` + lista + `hr("-")` pegado justo debajo de lo anterior. Úsalo cuando la Selección va **inmediatamente después** de un listado que ya la contextualiza (propio o de Info delegada) — así la regla gris queda pegada a ese listado en vez de flotar separada con su propio título. Ver "Selección incrustada" en el Glosario y `show_ideas_menu()`/`search_by_id()` en "Guía para Extender pv.py" para ejemplos reales.
 
-**Listados propios sin `show_selection()`.** Cuando el listado va agrupado con encabezados que `show_selection()` no sabe renderizar **y** además la elección no es por número de fila, `pv.py` imprime el listado él mismo y lee la elección con `read_input()`, sin pasar por `show_selection()` en absoluto. Único caso: `toggle_flag_on_change()`, cuyo listado "Pick a change by id:" va agrupado por estado como el de "General project status" (🟢/🟠/🟡), **sin numerar**, y el usuario teclea el **id (código)** del cambio — el código ya es un identificador estable y con significado, así que una numeración paralela solo sería una cosa más que cruzar. El match id→entrada usa `_ids_match()` (misma regla que `filter_status.py`'s `ids_match()`: comparar como enteros si ambos lados son solo dígitos, si no comparación de string case-insensitive), así que `193`, `0193` y `00193` encuentran la misma entrada. Ver "Guía para Extender pv.py".
+**Listados propios sin `show_selection()`.** Cuando el listado va agrupado con encabezados que `show_selection()` no sabe renderizar **y** además la elección no es por número de fila, `pv.py` imprime el listado él mismo y lee la elección con `read_input()`, sin pasar por `show_selection()` en absoluto. Primer caso: `toggle_flag_on_change()`, cuyo listado "Pick a change by id:" va agrupado por estado como el de "General project status" (🟢/🟠/🟡), **sin numerar**, y el usuario teclea el **id (código)** del cambio — el código ya es un identificador estable y con significado, así que una numeración paralela solo sería una cosa más que cruzar. El match id→entrada usa `_ids_match()` (misma regla que `filter_status.py`'s `ids_match()`: comparar como enteros si ambos lados son solo dígitos, si no comparación de string case-insensitive), así que `193`, `0193` y `00193` encuentran la misma entrada. Ver "Guía para Extender pv.py".
+
+Segundo caso, por un motivo distinto: el listado "Available Previo versions:" de `install_previo_version()` **sí** va numerado por fila, pero también evita `show_selection()` — ese helper devuelve `None` tanto para "input vacío" como para "escribió algo inválido", sin forma de que el caller distinga uno de otro, y esta pantalla necesita que ambos casos se comporten distinto ("volver atrás" vs. "Invalid option., quedarse en la misma pantalla"). Así que renderiza el mismo marco `hr("-")` + lista numerada + `hr("-")` que usaría `show_selection()`, pero lee la elección con `read_input()` y distingue él mismo vacío de fuera-de-rango.
 
 ### `show_info(lines, framed=True) -> None`
 Muestra líneas de texto ya formateadas. `framed=True` las enmarca con `hr("-")` en DARK_GRAY arriba y abajo (úsalo para contenido "de una pieza" como un changelog completo); `framed=False` las imprime sueltas (úsalo para un mensaje corto de una o dos frases, como un aviso de "no hay nada que mostrar").
@@ -526,7 +539,7 @@ Sin argumentos, en el uso normal. Lee configuración de:
 - `framework.onescript.width` de `pv-context.json` para su propio `WIDTH` (default 80 si falta o está mal formado)
 - Verifica existencia de directorio framework
 
-**`pv.py` escribe `pv-context.json`** — el único sitio donde lo hace — a través de la opción "Configuration > Change max character width". Es un read-modify-write mínimo (`json.load` → fija `framework.onescript.width` → `json.dump(indent=2)`) que preserva todos los demás campos y el orden de claves, creando los objetos `framework`/`onescript` si faltan, siempre tras un `confirm()`. El valor escrito es un entero `>= 40` (input vacío mantiene el actual; por debajo de 40 se rechaza sin escribir — bajo ese umbral el splash de arte ASCII y las fichas detalle se rompen). `framework.onescript.width` es un campo opcional en `schema.json`; `pv-init` nunca pregunta por él, y su ausencia solo significa que `pv.py` usa el default interno.
+**`pv.py` escribe `pv-context.json`** — el único sitio donde lo hace — a través de la opción "Configuration > Change terminal max character width". Es un read-modify-write mínimo (`json.load` → fija `framework.onescript.width` → `json.dump(indent=2)`) que preserva todos los demás campos y el orden de claves, creando los objetos `framework`/`onescript` si faltan, siempre tras un `confirm()`. El valor escrito es un entero `>= 40` (input vacío mantiene el actual; por debajo de 40 se rechaza sin escribir — bajo ese umbral el splash de arte ASCII y las fichas detalle se rompen). `framework.onescript.width` es un campo opcional en `schema.json`; `pv-init` nunca pregunta por él, y su ausencia solo significa que `pv.py` usa el default interno.
 
 ### `--testconfig` — solo para probar `pv.py`, no para uso normal
 
@@ -548,7 +561,7 @@ Flag exclusivo del test harness del propio framework (`pv-test.py`, una copia id
 
 - `repoRoot` (**obligatorio, nivel raíz**): ruta a la raíz real del repo (donde vive `.claude/skills/...`), **resuelta relativa a la ubicación del propio fichero de config** (que a su vez está siempre junto al script), no al directorio desde el que se invoca. Necesaria porque `pv.py` sigue invocando los scripts reales del framework (`filter_status.py`, `render_status.py`, etc.) — nunca copias — así que necesita saber dónde están. Se queda a nivel raíz porque **no tiene equivalente en `pv-context.json`** — es metadato exclusivo del harness (el script real, en la raíz del repo, deriva su raíz de `__file__`).
 - `framework.workFolder` (**obligatorio**): el `workFolder` de prueba, en la **misma ruta que usa `pv-context.json`** (`framework.workFolder`), para que la resolución tipo `work_root()` no necesite un caso especial de modo test. Apunta a datos de fixture desechables (p.ej. `/sandbox-test1/previo-sdd`) para no tocar los datos reales del proyecto.
-- `framework.onescript.width` (**opcional**): el ajuste persistido propio de `pv.py`, leído de — y escrito por "Change max character width" en — este fichero, en la **misma ruta anidada** que usaría en `pv-context.json`. `ACTIVE_CONFIG_PATH` (fijado en `main()`) solo apunta `load_onescript_width()`/`save_onescript_width()` al fichero que esté activo; tampoco hay rama de modo test ahí. Ausente → `pv.py` usa su default interno (80).
+- `framework.onescript.width` (**opcional**): el ajuste persistido propio de `pv.py`, leído de — y escrito por "Change terminal max character width" en — este fichero, en la **misma ruta anidada** que usaría en `pv-context.json`. `ACTIVE_CONFIG_PATH` (fijado en `main()`) solo apunta `load_onescript_width()`/`save_onescript_width()` al fichero que esté activo; tampoco hay rama de modo test ahí. Ausente → `pv.py` usa su default interno (80).
 
 `run_script()` reenvía `framework.workFolder` como `--work-folder <valor>` a los scripts que soportan ese override (`SCRIPTS_ACCEPTING_WORK_FOLDER`: `filter_status.py`, `render_status.py`, `list_todo.py`, `read-flags.py`, `move-change.py`, `set-metadata.py`, `delete-todo.py`) — `sync-skill-models.py` queda excluido porque no toca `changes/`/`workFolder` en absoluto y no tiene ese flag. `read-flags.py` va además en `SCRIPTS_ACCEPTING_WIDTH` (acepta `--width` por simetría con los otros scripts de `pv-status`, aunque lo ignora: un prefijo de iconos no tiene columna que ajustar). `set-metadata.py` **no** recibe `--width` (no imprime pantallas, solo una línea de confirmación). Aparte del reenvío genérico de `run_script()`, `flag_prefixes_for()` añade a mano `--color` o `--no-color` a la llamada a `read-flags.py` (según `supports_color()` de `pv.py`) — `run_script()` no infiere color, y `read-flags.py` capturado no puede detectarlo por sí mismo.
 
@@ -592,7 +605,7 @@ Cualquier opción nueva debe ser:
 
 Mutaciones más complejas (borrar, crear versiones, redactar contenido de ficheros) quedan **fuera del alcance de `pv.py`** — necesitan contexto que solo la skill correspondiente puede aportar vía Claude Code. No añadas esa lógica aquí aunque parezca conveniente.
 
-**La única excepción de escritura de config.** "Change max character width" escribe `framework.onescript.width` en `pv-context.json` directamente desde `pv.py` (`save_onescript_width()`), sin script externo. Se permite a propósito porque es un único entero ya validado (rango comprobado en la acción, `confirm()` antes) escrito con un read-modify-write mínimo que no toca nada más — el mismo nivel de "mutación simple" que mover una carpeta. **No** es un precedente para que `pv.py` escriba nada más rico en `pv-context.json`: cualquier ajuste que no sea un único escalar con regla de validación obvia sigue siendo de `pv-init`/`pv-update`. Si algún día aparece un segundo ajuste propio de `pv.py`, va bajo el mismo objeto `framework.onescript.*`, leído/escrito por los mismos dos helpers.
+**La única excepción de escritura de config.** "Change terminal max character width" escribe `framework.onescript.width` en `pv-context.json` directamente desde `pv.py` (`save_onescript_width()`), sin script externo. Se permite a propósito porque es un único entero ya validado (rango comprobado en la acción, `confirm()` antes) escrito con un read-modify-write mínimo que no toca nada más — el mismo nivel de "mutación simple" que mover una carpeta. **No** es un precedente para que `pv.py` escriba nada más rico en `pv-context.json`: cualquier ajuste que no sea un único escalar con regla de validación obvia sigue siendo de `pv-init`/`pv-update`. Si algún día aparece un segundo ajuste propio de `pv.py`, va bajo el mismo objeto `framework.onescript.*`, leído/escrito por los mismos dos helpers.
 
 ### Errores Comunes al Extender
 
@@ -621,6 +634,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 | `filter_status.py` | `.claude/skills/pv-status/scripts/` | Filtrar cambios por estado (`<estado>`), buscar por id exacto en todos los estados (`--search-id <texto>`), buscar por contenido de `description.md` (`--search-content <texto>`), o listar cambios por flag en todos los estados (`--flag <name>`, repetible, semántica OR). Línea 1 de ficha en orden `flags · code · [type] · (status) · Risk`. Acepta `--width` |
 | `read-flags.py` | `.claude/skills/pv-status/scripts/` | Devuelve el prefijo de iconos de flags ya renderizado, una línea por `--xxxx` (batch de entrada). `pv.py` **captura su stdout** y le pasa `--color` / `--no-color` (según el color del terminal de `pv.py`, ya que la tubería capturada nunca es un tty). Acepta `--work-folder`, `--state` y `--width` (este último ignorado) |
 | `sync-skill-models.py` | `.claude/skills/pv-init/scripts/` | Sincronizar modelos de skills |
+| `install-framework.py` | `.claude/skills/pv-update/scripts/` | Instala/actualiza el framework en sí. `pv.py` lo usa en dos modos: `--list-only` (capturado, nunca impreso — devuelve `OFFICIAL_TAG=`/`PRERELEASE_TAG=` junto a las mismas líneas legibles que imprime su ejecución normal) para listar versiones en "Install new Previo version", y `--version <tag> --yes` para instalar de verdad la elegida, después de que `confirm()` ya haya nombrado explícitamente ese tag exacto — el script se niega a instalar sin `--yes` (una ejecución sin `--yes` solo resuelve/valida y se detiene), así que esto nunca es una forma de saltarse la confirmación, solo la segunda mitad de una confirmación que `pv.py` ya obtuvo. Tampoco confía nunca en un `install.sh`/`.ps1` local: borra cualquiera que encuentre en la raíz del repo y siempre vuelve a descargar una copia limpia desde la rama `main` de previo-sdd a un archivo temporal, lo ejecuta, y lo borra. Bajo `--testconfig`, la instalación real se omite (este script no tiene `--work-folder` propio — siempre instala en la raíz real del repo) y en su lugar se imprime el comando que se ejecutaría |
 | `move-change.py` | `.claude/skills/pv-internal-workflow/scripts/` | Mover entrada a closed |
 | `set-metadata.py` | `.claude/skills/pv-internal-workflow/scripts/` | Único escritor de `.metadata.json` (`flags` + `risk` + `relatedIds`). `pv.py` lo invoca con `--xxxx <code> --state <state> --toggle-flag <value>` para "Toggle a flag on a change" (sin `confirm()` previo — toggle reversible); nunca usa `--set-risk` (eso es cosa de `pv-how`) ni `--add-related`/`--remove-related` (eso es cosa de `pv-new`/`pv-fix` — `pv.py` no tiene ninguna opción de menú para ids relacionados). Imprime una línea de confirmación. Acepta `--work-folder`; **no** `--width` |
 | `delete-todo.py` | `.claude/skills/pv-internal-workflow/scripts/` | Borrar una carpeta de idea en `changes/todo/{xxxx}` |
@@ -630,7 +644,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 
 | Ruta | Propósito |
 |------|-----------|
-| `pv-context.json` | Configuración del framework. Leído para `workFolder` y `framework.onescript.width`. **También escrito** (el único fichero que `pv.py` escribe) por "Configuration > Change max character width" — ver "Configuración de Línea de Comandos" y la excepción de escritura de config en "Cómo extender". Bajo `--testconfig`, `pv-config-test.json` ocupa su lugar tanto para las lecturas como para esa escritura. |
+| `pv-context.json` | Configuración del framework. Leído para `workFolder` y `framework.onescript.width`. **También escrito** (el único fichero que `pv.py` escribe) por "Configuration > Change terminal max character width" — ver "Configuración de Línea de Comandos" y la excepción de escritura de config en "Cómo extender". Bajo `--testconfig`, `pv-config-test.json` ocupa su lugar tanto para las lecturas como para esa escritura. |
 | `pv-init/SKILL.md` | Leído (no ejecutado) por `framework_version()` para obtener la versión del propio framework `pv-*` (`metadata.version` de su frontmatter YAML), mostrada en el título del menú principal — distinta de la versión del proyecto bajo `versions/{XXXX}/` |
 | `changes/` | Directorio de cambios (estados) |
 | `changes/{state}/{xxxx}/.metadata.json` | Estado mutable por cambio (dotfile, opcional): `flags`, `risk` (entero 0-10) y `relatedIds` (códigos de otros cambios/fixes, **recíproco** — relacionar `A` con `B` actualiza ambos ficheros en la misma llamada a `set-metadata.py`). Leído por `read-flags.py` / `pv-status`; escrito solo por `set-metadata.py`. `pv.py` lo lee directamente en `read_change_flags()` (solo para los `[x]`/`[ ]` de "Toggle a flag" — no le interesa `risk`/`relatedIds`), pero nunca lo escribe. `relatedIds` lo fija `pv-new`/`pv-fix`, nunca desde el menú de `pv.py`; solo aparece como la línea opcional `Related` de la ficha detalle (ver "La Ficha Detalle") |
@@ -647,7 +661,7 @@ Puntos de fricción reales de este diseño — ten cuidado con ellos al añadir 
 - **Soporte Windows ANSI:** Activa ENABLE_VIRTUAL_TERMINAL_PROCESSING en Windows 11
 - **Sin color:** Detecta variable de entorno `NO_COLOR` y desactiva colores
 - **Responsivo a terminal:** Detecta `sys.stdout.isatty()` para colores
-- **Ancho máximo:** 80 caracteres por defecto para legibilidad en terminales pequeñas; ajustable por el usuario (mínimo 40) y persistido vía "Configuration > Change max character width" (`framework.onescript.width` en `pv-context.json`), leído en cada arranque
+- **Ancho máximo:** 80 caracteres por defecto para legibilidad en terminales pequeñas; ajustable por el usuario (mínimo 40) y persistido vía "Configuration > Change terminal max character width" (`framework.onescript.width` en `pv-context.json`), leído en cada arranque
 - **Encodificación UTF-8:** Fuerza UTF-8 en salida de Python
 
 ---

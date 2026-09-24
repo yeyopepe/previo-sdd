@@ -2,28 +2,34 @@
 flowchart TD
     Start([Invocation of pv-update install])
 
-    Start --> S1Report[Run install-framework.py: query GitHub Releases, print latest official + newer pre-release if any]
-    S1Report --> S2Resolve[Resolve target version: latest, or the --version tag the user asked for]
+    Start --> S2Resolve[Resolve target version: latest, or the --version tag the user asked for]
     S2Resolve --> S2Ask{Version unclear from the prompt?}
     S2Ask -->|Yes| S2AskUser[ASK: latest, or a specific version?]
     S2AskUser --> S2Resolve
-    S2Ask -->|No| S3Compare
+    S2Ask -->|No| S1Report
 
-    S3Compare{install-framework.py's version check} -->|Tag doesn't parse as X.Y.Z| S3RejectFormat[INFO: tag isn't a valid version, not installing]
+    S1Report[Run install-framework.py WITHOUT --yes: query GitHub Releases, print latest official + newer pre-release if any] --> S3Compare
+
+    S3Compare{install-framework.py's version check, against the resolved tag whatever its origin} -->|Tag doesn't parse as X.Y.Z| S3RejectFormat[INFO: tag isn't a valid version, not installing]
     S3RejectFormat --> EndReject([End: nothing installed])
-    S3Compare -->|Older than installed| S3RejectDowngrade[INFO: pv-update install never downgrades, not installing]
+    S3Compare -->|Older than installed, incl. when 'latest' itself resolves older than an installed pre-release| S3RejectDowngrade[INFO: pv-update install never downgrades, not installing]
     S3RejectDowngrade --> EndReject
     S3Compare -->|Equal or newer| S3PrereleaseCheck{Target is a pre-release?}
 
     S3PrereleaseCheck -->|Yes| S3PrereleaseWarn[INFO: pre-release, not recommended for normal use]
-    S3PrereleaseWarn --> S4Install
-    S3PrereleaseCheck -->|No| S4Install
+    S3PrereleaseWarn --> S3Print
+    S3PrereleaseCheck -->|No| S3Print
 
-    S4Install[Invoke install.sh/install.ps1 with the resolved tag] --> S4Result{Platform script succeeded?}
+    S3Print[Script prints 'Resolved target version: X' and stops -- nothing installed yet] --> S3Confirm[ASK: confirm installing THIS EXACT resolved tag, naming it explicitly, even if it differs from what 'latest' implied]
+    S3Confirm -->|User declines or asks for a different version| S2Resolve
+    S3Confirm -->|User confirms this exact tag| S4Install
+
+    S4Install[Re-run install-framework.py --version resolved_tag --yes: deletes any local install.sh/.ps1 first, downloads a fresh copy from previo-sdd main to a temp file, runs it, deletes it] --> S4Result{Platform script succeeded?}
     S4Result -->|No| S4Fail[INFO: installation failed, show the error]
     S4Fail --> EndFail([End: installation failed])
-    S4Result -->|Yes| S5Remind[INFO: installed, run /pv-update audit mode next]
-    S5Remind --> EndOK([End: installed])
+    S4Result -->|Yes| S5Chain[INFO: installed, now auditing the configuration]
+    S5Chain --> S5Audit[Continue into audit mode workflow.audit.md, starting at S1Read]
+    S5Audit --> EndOK([End: installed and audited])
 ```
 
 Legend:

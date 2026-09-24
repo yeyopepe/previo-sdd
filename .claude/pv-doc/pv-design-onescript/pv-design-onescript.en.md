@@ -98,9 +98,15 @@ LEVEL 1 (Main Navigation)
     ├── [5] Submenu: Configuration
     │   └── "Previo: settings"                                                 [Menu]
     │       ├── [1] Action: Sync Models (→ external)                          [Delegated info, sync-skill-models.py]
-    │       ├── [2] Action: Change max character width
+    │       ├── [2] Action: Change terminal max character width
     │       │   └── Info (current width) + Input (new width, empty = keep)    [Info, framed=False]
     │       │       └── Confirmation: "Set max character width to N..." → writes framework.onescript.width  [Confirmation]
+    │       ├── [3] Action: Install new Previo version
+    │       │   └── "Available Previo versions:" listing (own, not show_selection() — see below) + loop
+    │       │       ├── Input: a listed number → Confirmation: "Install Previo {tag}?"  [Confirmation]
+    │       │       │   └── (→ external, install-framework.py --version <tag> --yes; under --testconfig, prints the command instead)  [Delegated info]
+    │       │       ├── Input: a number not in the list → "Invalid option." → same screen again (loop)
+    │       │       └── Input: empty → back to "Previo: settings"
     │       └── [X] Back
     ├── [6] Submenu: Versions
     │   └── "Previo: versions"                                                 [Menu]
@@ -138,6 +144,7 @@ graph TD
     T["🗑️ Delete this idea<br/>Inline Selection + Confirmation + delete-todo.py<br/>(only if the id is an idea)"]
     J["🔄 Sync Models<br/>sync-skill-models.py"]
     W["📏 Change width<br/>Info + Input + Confirmation<br/>writes framework.onescript.width"]
+    IV["⬆️ Install new Previo version<br/>Own listing (loop) + Confirmation<br/>install-framework.py --version tag --yes<br/>(--testconfig: prints command only)"]
     K["📜 Read Changelog<br/>Selection + Display"]
     L["🧹 Check Temp<br/>Show status"]
 
@@ -185,6 +192,10 @@ graph TD
     J -->|Return| H
     H -->|Change width| W
     W -->|Return| H
+    H -->|Install new Previo version| IV
+    IV -->|"Invalid number"| IV
+    IV -->|"Empty (go back)"| H
+    IV -->|Confirmed install| H
 
     C -->|6| I
     I -->|Back| C
@@ -295,7 +306,7 @@ The file is split into blocks delimited by `# ====...====` comments, in this fix
 | `Screen-type helpers` | `print_header()`, `show_selection()`, `show_info()`, `confirm()` | Almost never — changes the behavior of a screen type across **all** options at once |
 | `Framework paths and shared lookups` | `work_root()`, `load_onescript_width()`, `save_onescript_width()`, `changes_dir()`, `versions_dir()`, `framework_version()`, `run_script()`, `load_test_config()` — plus the module globals `CONTEXT_PATH` and `ACTIVE_CONFIG_PATH` (the config file pv.py reads its settings from / writes them to: `CONTEXT_PATH` normally, the `--testconfig` file otherwise) | When adding a new framework path or subfolder several options need |
 | `Actions -- root menu` | Action functions for the root menu | When adding a new option to "Previo: MAIN MENU" |
-| `Actions -- Configuration submenu` | Action functions for "Previo: settings" (`sync_skill_models()`, `change_width()`) | When adding a new option to Configuration |
+| `Actions -- Configuration submenu` | Action functions for "Previo: settings" (`sync_skill_models()`, `change_width()`, `install_previo_version()`, `_available_previo_versions()`) | When adding a new option to Configuration |
 | `Actions -- Versions submenu` | Action functions for "Previo: versions" | When adding a new option to Versions |
 | `Actions -- Changes info submenu` | Action functions for "Previo: Changes info" (`search_by_id()`, `search_by_content()`, `search_by_state()`, `list_states()`, `toggle_flag_on_change()`, `_toggle_flags_on()`, `_print_flaggable_listing()`, `show_changes_by_flag()`, `list_flaggable_changes()` (+ `_flaggable_group_of()`, `FLAG_GROUPS`), `read_change_flags()`, `flag_prefixes_for()`, `flag_prefixes_by_state()`, `_flag_label_with_icon()`, `_ids_match()`) | When adding a new option to Changes info |
 | `Actions -- Ideas (root menu)` | Functions for the "Ideas in todo/" root option (`show_todo_ideas()`, `list_todo_entries()`, `find_todo_code()`, `delete_idea_by_code()`, `delete_idea()`, `show_ideas_menu()`) — also `show_id_detail_card()`, one id's detail card (with an Inline Selection when it's an idea), reused by `search_by_id()` (Changes info) and `show_general_status()` (root menu) | When adding a new idea-related option |
@@ -325,7 +336,9 @@ A numbered list framed by `hr("-")` in DARK_GRAY. Takes a list of already-format
 
 **`title=""` — Inline Selection.** Omits the title line and also the blank line that normally precedes `hr("-")`, leaving just `hr("-")` + list + `hr("-")` sitting right below whatever came before. Use it when the Selection goes **immediately after** a listing that already gives it context (this file's own or Delegated Info) — so the gray rule stays attached to that listing instead of floating apart with its own title. See "Inline Selection" in the Glossary and `show_ideas_menu()`/`search_by_id()` in "Guide for Extending pv.py" for real examples.
 
-**Own listings without `show_selection()`.** When a listing is grouped with headings `show_selection()` can't render **and** the choice isn't by row number, `pv.py` prints the listing itself and reads the choice with `read_input()`, bypassing `show_selection()` entirely. Only case: `toggle_flag_on_change()`, whose "Pick a change by id:" listing is grouped by state like "General project status"'s (🟢/🟠/🟡), **unnumbered**, and the user types the change's **id (code)** — the code is already a stable, meaningful handle, so a parallel numbering would only be one more thing to cross-reference. The id→entry match uses `_ids_match()` (same rule as `filter_status.py`'s `ids_match()`: compare as integers when both sides are all-digits, else case-insensitive string compare), so `193`, `0193` and `00193` all hit the same entry. See "Guide for Extending pv.py".
+**Own listings without `show_selection()`.** When a listing is grouped with headings `show_selection()` can't render **and** the choice isn't by row number, `pv.py` prints the listing itself and reads the choice with `read_input()`, bypassing `show_selection()` entirely. First case: `toggle_flag_on_change()`, whose "Pick a change by id:" listing is grouped by state like "General project status"'s (🟢/🟠/🟡), **unnumbered**, and the user types the change's **id (code)** — the code is already a stable, meaningful handle, so a parallel numbering would only be one more thing to cross-reference. The id→entry match uses `_ids_match()` (same rule as `filter_status.py`'s `ids_match()`: compare as integers when both sides are all-digits, else case-insensitive string compare), so `193`, `0193` and `00193` all hit the same entry. See "Guide for Extending pv.py".
+
+Second case, for a different reason: `install_previo_version()`'s "Available Previo versions:" listing **is** row-numbered, but still bypasses `show_selection()` — that helper returns `None` for both "empty input" and "typed something invalid," with no way for the caller to tell them apart, while this screen needs the two to behave differently ("go back" vs. "Invalid option., stay on the same screen"). So it renders the same `hr("-")` + numbered-list + `hr("-")` frame `show_selection()` would, but reads the choice with `read_input()` and branches on empty vs. out-of-range itself.
 
 ### `show_info(lines, framed=True) -> None`
 Displays already-formatted lines of text. `framed=True` frames them with `hr("-")` in DARK_GRAY above and below (use it for "single-piece" content like a full changelog); `framed=False` prints them loose (use it for a short one- or two-sentence message, like a "nothing to show" notice).
@@ -526,7 +539,7 @@ No arguments, in normal use. Reads configuration from:
 - `pv-context.json`'s `framework.onescript.width` for its own `WIDTH` (default 80 if absent/malformed)
 - Checks that the framework directory exists
 
-**`pv.py` writes `pv-context.json`** — the only place it does — through the "Configuration > Change max character width" option. It's a minimal read-modify-write (`json.load` → set `framework.onescript.width` → `json.dump(indent=2)`) that preserves every other field and key order, creating the `framework`/`onescript` objects if missing, always gated behind a `confirm()`. The written value is an integer `>= 40` (empty input keeps the current one; anything below 40 is rejected without writing — below that the ring-art splash and detail cards break). `framework.onescript.width` is an optional field in `schema.json`; `pv-init` never asks about it, and its absence just means `pv.py` uses the built-in default.
+**`pv.py` writes `pv-context.json`** — the only place it does — through the "Configuration > Change terminal max character width" option. It's a minimal read-modify-write (`json.load` → set `framework.onescript.width` → `json.dump(indent=2)`) that preserves every other field and key order, creating the `framework`/`onescript` objects if missing, always gated behind a `confirm()`. The written value is an integer `>= 40` (empty input keeps the current one; anything below 40 is rejected without writing — below that the ring-art splash and detail cards break). `framework.onescript.width` is an optional field in `schema.json`; `pv-init` never asks about it, and its absence just means `pv.py` uses the built-in default.
 
 ### `--testconfig` — for testing `pv.py` only, not normal use
 
@@ -548,7 +561,7 @@ Flag exclusive to the framework's own test harness (`pv-test.py`, a plain identi
 
 - `repoRoot` (**required, top-level**): path to the real repo root (where `.claude/skills/...` lives), **resolved relative to the config file's own location** (itself always next to the script), not the directory the script is invoked from. Needed because `pv.py` still invokes the framework's real scripts (`filter_status.py`, `render_status.py`, etc.) — never copies — so it needs to know where they are. It stays top-level because it has **no equivalent in `pv-context.json`** — it's purely test-harness metadata (the real script, at the repo root, derives its root from `__file__`).
 - `framework.workFolder` (**required**): the test `workFolder`, at the **same path `pv-context.json` uses** (`framework.workFolder`), so `work_root()`-style resolution needs no test-mode branch. Points at throwaway fixture data (e.g. `/sandbox-test1/previo-sdd`) so the project's real data is never touched.
-- `framework.onescript.width` (**optional**): `pv.py`'s own persisted setting, read from — and written to by "Change max character width" — this file, at the **identical nested path** it would use in `pv-context.json`. `ACTIVE_CONFIG_PATH` (set in `main()`) just points `load_onescript_width()`/`save_onescript_width()` at whichever file is active; no test-mode branch there either. Absent → `pv.py` uses its built-in default (80).
+- `framework.onescript.width` (**optional**): `pv.py`'s own persisted setting, read from — and written to by "Change terminal max character width" — this file, at the **identical nested path** it would use in `pv-context.json`. `ACTIVE_CONFIG_PATH` (set in `main()`) just points `load_onescript_width()`/`save_onescript_width()` at whichever file is active; no test-mode branch there either. Absent → `pv.py` uses its built-in default (80).
 
 `run_script()` forwards `framework.workFolder` as `--work-folder <value>` to the scripts that support that override (`SCRIPTS_ACCEPTING_WORK_FOLDER`: `filter_status.py`, `render_status.py`, `list_todo.py`, `read-flags.py`, `move-change.py`, `set-metadata.py`, `delete-todo.py`) — `sync-skill-models.py` is excluded since it doesn't touch `changes/`/`workFolder` at all and has no such flag. `read-flags.py` is also in `SCRIPTS_ACCEPTING_WIDTH` (it accepts `--width` for symmetry with the other `pv-status` scripts, though it ignores it: an icon prefix has no column to fit). `set-metadata.py` does **not** get `--width` (it prints no screens, only a confirmation line). Beyond `run_script()`'s generic forwarding, `flag_prefixes_for()` appends `--color` or `--no-color` to the `read-flags.py` call by hand (from `pv.py`'s `supports_color()`) — `run_script()` doesn't infer color, and a captured `read-flags.py` can't detect it itself.
 
@@ -592,7 +605,7 @@ Any new option must be either:
 
 More complex mutations (deleting, creating versions, drafting file content) stay **out of `pv.py`'s scope** — they need context only the corresponding skill can provide via Claude Code. Don't add that logic here even if it seems convenient.
 
-**The one config-write exception.** "Change max character width" writes `framework.onescript.width` into `pv-context.json` directly from `pv.py` (`save_onescript_width()`), with no external script. This is deliberately allowed because it's a single already-validated integer (range-checked in the action, `confirm()`ed first) written by a minimal read-modify-write that touches nothing else — the same "simple mutation" tier as moving a folder. It is **not** a precedent for `pv.py` writing anything richer into `pv-context.json`: any setting that isn't a single scalar with an obvious validation rule still belongs to `pv-init`/`pv-update`. If a second `pv.py`-owned setting ever appears, it goes under the same `framework.onescript.*` object, read/written by the same two helpers.
+**The one config-write exception.** "Change terminal max character width" writes `framework.onescript.width` into `pv-context.json` directly from `pv.py` (`save_onescript_width()`), with no external script. This is deliberately allowed because it's a single already-validated integer (range-checked in the action, `confirm()`ed first) written by a minimal read-modify-write that touches nothing else — the same "simple mutation" tier as moving a folder. It is **not** a precedent for `pv.py` writing anything richer into `pv-context.json`: any setting that isn't a single scalar with an obvious validation rule still belongs to `pv-init`/`pv-update`. If a second `pv.py`-owned setting ever appears, it goes under the same `framework.onescript.*` object, read/written by the same two helpers.
 
 ### Common Mistakes When Extending
 
@@ -621,6 +634,7 @@ Real friction points in this design — watch out for them when adding new code.
 | `filter_status.py` | `.claude/skills/pv-status/scripts/` | Filter changes by state (`<state>`), search by exact id across every state (`--search-id <text>`), search by `description.md` content (`--search-content <text>`), or list changes by flag across every state (`--flag <name>`, repeatable, OR semantics). Card line 1 in `flags · code · [type] · (status) · Risk` order. Accepts `--width` |
 | `read-flags.py` | `.claude/skills/pv-status/scripts/` | Returns the already-rendered flag-icon prefix, one line per `--xxxx` (batch input). `pv.py` **captures its stdout** and passes `--color` / `--no-color` (from `pv.py`'s terminal, since the captured pipe is never a tty). Accepts `--work-folder`, `--state`, and `--width` (the last ignored) |
 | `sync-skill-models.py` | `.claude/skills/pv-init/scripts/` | Sync skill models |
+| `install-framework.py` | `.claude/skills/pv-update/scripts/` | Installs/updates the framework itself. `pv.py` uses two modes: `--list-only` (captured, never printed — returns `OFFICIAL_TAG=`/`PRERELEASE_TAG=` alongside the same human-readable lines its normal run prints) to list versions for "Install new Previo version", and `--version <tag> --yes` to actually install the one the user picked, after `confirm()` has already named that exact tag — the script refuses to install without `--yes` (a no-`--yes` run only resolves/validates and stops), so this is never a way to skip confirmation, only the second half of a confirmation `pv.py` already obtained. It also never trusts a local `install.sh`/`.ps1`: it deletes any it finds at the repo root and always re-downloads a fresh copy from previo-sdd's `main` branch into a temp file, runs it, and deletes it. Under `--testconfig`, the real install is skipped (no `--work-folder` override exists for this script — it always installs at the real repo root) and the command that would run is printed instead |
 | `move-change.py` | `.claude/skills/pv-internal-workflow/scripts/` | Move entry to closed |
 | `set-metadata.py` | `.claude/skills/pv-internal-workflow/scripts/` | Sole writer of `.metadata.json` (`flags` + `risk` + `relatedIds`). `pv.py` invokes it with `--xxxx <code> --state <state> --toggle-flag <value>` for "Toggle a flag on a change" (no prior `confirm()` — reversible toggle); it never uses `--set-risk` (that's `pv-how`'s job) nor `--add-related`/`--remove-related` (that's `pv-new`/`pv-fix`'s job — `pv.py` has no menu option for related ids). Prints one confirmation line. Accepts `--work-folder`; **not** `--width` |
 | `delete-todo.py` | `.claude/skills/pv-internal-workflow/scripts/` | Delete an idea folder at `changes/todo/{xxxx}` |
@@ -630,7 +644,7 @@ Real friction points in this design — watch out for them when adding new code.
 
 | Path | Purpose |
 |------|-----------|
-| `pv-context.json` | Framework configuration. Read for `workFolder` and `framework.onescript.width`. **Also written** (the only file `pv.py` writes) by "Configuration > Change max character width" — see "Command-Line Configuration" and the config-write exception under "How to Extend". Under `--testconfig`, `pv-config-test.json` takes its place for both reads and that write. |
+| `pv-context.json` | Framework configuration. Read for `workFolder` and `framework.onescript.width`. **Also written** (the only file `pv.py` writes) by "Configuration > Change terminal max character width" — see "Command-Line Configuration" and the config-write exception under "How to Extend". Under `--testconfig`, `pv-config-test.json` takes its place for both reads and that write. |
 | `pv-init/SKILL.md` | Read (not executed) by `framework_version()` to get the `pv-*` framework's own version (YAML frontmatter's `metadata.version`) shown in the main menu's title — distinct from the project's own version under `versions/{XXXX}/` |
 | `changes/` | Changes directory (states) |
 | `changes/{state}/{xxxx}/.metadata.json` | Per-change mutable state (dotfile, optional): `flags`, `risk` (integer 0-10), and `relatedIds` (other changes/fixes' codes, **reciprocal** — relating `A` to `B` updates both files in the same `set-metadata.py` call). Read by `read-flags.py` / `pv-status`; written only by `set-metadata.py`. `pv.py` reads it directly in `read_change_flags()` (only for the `[x]`/`[ ]` in "Toggle a flag" — it has no interest in `risk`/`relatedIds`), but never writes it. `relatedIds` is set by `pv-new`/`pv-fix`, never from `pv.py`'s menu; it only ever surfaces as the detail card's optional `Related` line (see "The Detail Card") |
@@ -647,7 +661,7 @@ Real friction points in this design — watch out for them when adding new code.
 - **Windows ANSI support:** Enables ENABLE_VIRTUAL_TERMINAL_PROCESSING on Windows 11
 - **No color:** Detects the `NO_COLOR` environment variable and disables colors
 - **Terminal-responsive:** Detects `sys.stdout.isatty()` for colors
-- **Maximum width:** 80 characters by default for readability in small terminals; user-adjustable (minimum 40) and persisted via "Configuration > Change max character width" (`framework.onescript.width` in `pv-context.json`), read on every launch
+- **Maximum width:** 80 characters by default for readability in small terminals; user-adjustable (minimum 40) and persisted via "Configuration > Change terminal max character width" (`framework.onescript.width` in `pv-context.json`), read on every launch
 - **UTF-8 encoding:** Forces UTF-8 on Python's output
 
 ---
