@@ -6,20 +6,21 @@
 - [Context: current state](#context-current-state)
 - [Design](#design)
   - [1. `check-framework-status.py` — script de verificación, propiedad de `pv-update`](#1-check-framework-statuspy--script-de-verificación-propiedad-de-pv-update)
-  - [2. Migración de las 7 skills públicas al script único](#2-migración-de-las-7-skills-públicas-al-script-único)
+  - [2. Migración de las 9 skills públicas al script único](#2-migración-de-las-9-skills-públicas-al-script-único)
   - [3. Conteo exacto de skills instaladas](#3-conteo-exacto-de-skills-instaladas)
   - [4. `pv-update install` — nueva capacidad de instalación/actualización](#4-pv-update-install--nueva-capacidad-de-instalaciónactualización)
   - [5. Ejemplos de prompts `/pv-update`](#5-ejemplos-de-prompts-pv-update)
 - [Fuera de alcance](#fuera-de-alcance)
+- [Tareas](./TASKS.md)
 - [Reviews](#reviews)
 
 ## Objective
 
-Hoy, siete skills públicas del framework (`pv-do`, `pv-fix`, `pv-how`, `pv-new`, `pv-status`,
-`pv-todo`, `pv-version`) repiten, palabra por palabra, el mismo bloque de prosa en su
-paso 0 para comprobar que `.claude/pv-context.json` existe y que la versión instalada del
-framework está verificada (`frameworkStatus.lastVerifiedVersion` / `blocked`). Esa
-verificación:
+Hoy, nueve skills públicas del framework (`pv-do`, `pv-fix`, `pv-how`, `pv-new`, `pv-status`,
+`pv-todo`, `pv-version`, `pv-review-architecture`, `pv-review-doc-tech`) repiten, palabra
+por palabra o con una redacción equivalente, el mismo bloque de prosa en su paso 0 para
+comprobar que `.claude/pv-context.json` existe y que la versión instalada del framework
+está verificada (`frameworkStatus.lastVerifiedVersion` / `blocked`). Esa verificación:
 
 1. Debe pasar a apoyarse en un **script propio de `pv-update`**, en vez de en una
    comparación hecha "a mano" por el modelo leyendo dos ficheros. Si el script no existe
@@ -43,12 +44,15 @@ GitHub Releases.
 
 ## Context: current state
 
-- Las 7 skills públicas (`pv-do/SKILL.md`, `pv-fix/SKILL.md`, `pv-how/SKILL.md`,
-  `pv-new/SKILL.md`, `pv-status/SKILL.md`, `pv-todo/SKILL.md`, `pv-version/SKILL.md`)
-  tienen en su paso 0 un párrafo idéntico: leer `metadata.version` del frontmatter de
-  `pv-init/SKILL.md`, compararlo con `framework.frameworkStatus.lastVerifiedVersion` de
-  `pv-context.json`, y parar si no coincide, si `frameworkStatus` falta, o si
-  `blocked` es `true`.
+- Las 9 skills públicas (`pv-do/SKILL.md`, `pv-fix/SKILL.md`, `pv-how/SKILL.md`,
+  `pv-new/SKILL.md`, `pv-status/SKILL.md`, `pv-todo/SKILL.md`, `pv-version/SKILL.md`,
+  `pv-review-architecture/SKILL.md`, `pv-review-doc-tech/SKILL.md`) tienen en su paso 0 un
+  párrafo con esta misma comprobación — idéntico palabra por palabra en las primeras 7,
+  con una redacción más corta pero funcionalmente equivalente en las dos últimas ("Check
+  the framework version the same way every other `pv-*` skill does..."): leer
+  `metadata.version` del frontmatter de `pv-init/SKILL.md`, compararlo con
+  `framework.frameworkStatus.lastVerifiedVersion` de `pv-context.json`, y parar si no
+  coincide, si `frameworkStatus` falta, o si `blocked` es `true`.
 - `pv-update/scripts/audit-context.py` ya implementa (Check A, líneas ~1102-1125) esa
   misma comparación de versión, más un chequeo de mayoría de versión entre skills
   (`skill-version-mismatch:*`, líneas ~1066-1100) — pero **no** un conteo exacto contra un
@@ -64,8 +68,9 @@ GitHub Releases.
   `metadata.version` en todos los `pv-*/SKILL.md` al cortar una release — es el punto
   natural para mantener también sincronizado cualquier valor derivado del número de
   skills, si se decide declararlo en vez de derivarlo en tiempo de ejecución.
-- Hoy existen exactamente **22 carpetas** bajo `.claude/skills/pv-*/`, todas en
-  `0.9.8b6`.
+- Hoy existen exactamente **23 carpetas** bajo `.claude/skills/pv-*/`, todas en
+  `0.9.8b6` y todas con `SKILL.md` (incluye `pv-review-architecture` y
+  `pv-review-doc-tech`, ver arriba).
 
 ## Design
 
@@ -74,7 +79,7 @@ GitHub Releases.
 Nuevo script en `pv-update/scripts/check-framework-status.py`. Es deliberadamente
 **distinto** de `audit-context.py`: mientras `audit-context.py` es el auditor completo y
 lento (markers, `.metadata.json`, namespace, hooks...) que solo corre bajo demanda
-(`/pv-update`), este nuevo script es el subconjunto barato que **cada una de las 7 skills
+(`/pv-update`), este nuevo script es el subconjunto barato que **cada una de las 9 skills
 públicas ejecuta en cada invocación propia**, así que debe ser rápido y no debe
 duplicar los chequeos caros del auditor completo.
 
@@ -101,7 +106,7 @@ o, en caso de fallo:
 ```json
 {
   "ok": false,
-  "problem": "context-missing | context-invalid-json | version-mismatch | blocked | skill-count-mismatch",
+  "problem": "context-missing | context-invalid-json | blocked | version-mismatch | skill-count-mismatch",
   "message": "texto explicativo listo para mostrar al usuario",
   "expected": "...",
   "actual": "..."
@@ -116,28 +121,35 @@ rápido, no un informe):
    está inicializado, ejecuta `pv-init`.
 2. **`context-invalid-json`** — existe pero no parsea. Mensaje: la configuración está
    rota, ejecuta `/pv-update`.
-3. **`version-mismatch`** — mismo Check A que ya hace `audit-context.py` (leer
+3. **`blocked`** — `framework.frameworkStatus.blocked` es `true`. Mensaje incluye
+   `blockedReason` si está presente. **Va antes que `version-mismatch`** a propósito:
+   `mark-verified.py --block` (única forma en que `blocked` llega a `true`) deja
+   `lastVerifiedVersion` intacto mientras bloquea, así que siempre que `blocked` es
+   `true` la versión real ya es distinta de `lastVerifiedVersion` — si `version-mismatch`
+   fuera antes, `blocked` nunca llegaría a evaluarse, porque el script para en el primer
+   fallo. Comprobar `blocked` primero da al usuario el mensaje específico (con
+   `blockedReason`) en vez del genérico de mismatch.
+4. **`version-mismatch`** — mismo Check A que ya hace `audit-context.py` (leer
    `metadata.version` de `pv-init/SKILL.md`, comparar con
    `framework.frameworkStatus.lastVerifiedVersion`; ausencia de `frameworkStatus`
    cuenta como mismatch). Reutiliza la misma lógica de lectura de frontmatter que ya
    existe en `audit-context.py`/`mark-verified.py` (duplicada aquí a propósito, mismo
    patrón que ya siguen esos dos scripts — cada script `pv-*` es autocontenido).
-4. **`blocked`** — `framework.frameworkStatus.blocked` es `true`. Mensaje incluye
-   `blockedReason` si está presente.
 5. **`skill-count-mismatch`** — ver sección 3 más abajo.
 
 **Cuando el script no existe en su ubicación esperada** (`.claude/skills/pv-update/scripts/check-framework-status.py`):
 esto es justo el caso "el framework no parece bien instalado" que pide el punto 1 del
 objetivo — no es un problema que el script mismo pueda reportar (no puede ejecutarse si
-no existe). La skill que lo invoca (paso 0 de las 7 skills públicas) debe comprobar la
+no existe). La skill que lo invoca (paso 0 de las 9 skills públicas) debe comprobar la
 existencia del fichero *antes* de intentar ejecutarlo y, si falta, mostrar directamente
 el mensaje de instalación sin más rodeo (ver sección 2).
 
-### 2. Migración de las 7 skills públicas al script único
+### 2. Migración de las 9 skills públicas al script único
 
-El párrafo duplicado del paso 0 en `pv-do`, `pv-fix`, `pv-how`, `pv-new`, `pv-status`,
-`pv-todo`, `pv-version` se sustituye, en las 7 skills, por el mismo texto (evitando
-volver a duplicar prosa distinta en cada una):
+El párrafo duplicado (o su equivalente funcional) del paso 0 en `pv-do`, `pv-fix`,
+`pv-how`, `pv-new`, `pv-status`, `pv-todo`, `pv-version`, `pv-review-architecture`,
+`pv-review-doc-tech` se sustituye, en las 9 skills, por el mismo texto (evitando volver a
+duplicar prosa distinta en cada una):
 
 > Antes de continuar, comprobar que `.claude/skills/pv-update/scripts/check-framework-status.py`
 > existe. Si no existe, informar al usuario de que el framework no parece estar bien
@@ -148,11 +160,14 @@ volver a duplicar prosa distinta en cada una):
 > y leer su JSON. Si `ok` es `false`, mostrar `message` al usuario y parar — ninguna skill
 > `pv-*` puede continuar su trabajo sin que este paso pase con `ok: true`.
 
-Esto **reemplaza por completo** el párrafo "Additionally, before continuing, check that
-the framework's installed version is verified: read `metadata.version`..." en las 7
-skills — no coexisten las dos formas de comprobar lo mismo.
+Esto **reemplaza por completo** el párrafo equivalente en las 9 skills — tanto la forma
+larga ("Additionally, before continuing, check that the framework's installed version is
+verified: read `metadata.version`...") de las 7 primeras, como la forma corta ("Check the
+framework version the same way every other `pv-*` skill does...") de
+`pv-review-architecture`/`pv-review-doc-tech` — no coexisten varias formas de comprobar lo
+mismo.
 
-La comprobación de existencia de `.claude/pv-context.json` que cada una de las 7 skills
+La comprobación de existencia de `.claude/pv-context.json` que cada una de las 9 skills
 ya hace *antes* de este párrafo (p. ej. "If `.claude/pv-context.json` doesn't exist...")
 se mantiene sin cambios — sigue siendo el primer chequeo, específico de "el framework no
 se ha inicializado nunca en este proyecto" vs. "el framework está instalado pero algo no
@@ -214,13 +229,16 @@ python .claude/skills/pv-update/scripts/install-framework.py [--version <tag>]
 - **Antes de decidir nada**, el script consulta GitHub Releases para informar al usuario,
   independientemente de si luego instala algo: `GET /repos/{repo}/releases/latest`
   (la última release **oficial** — GitHub excluye pre-releases de este endpoint por
-  diseño) y `GET /repos/{repo}/releases?per_page=1` (la release más reciente de
-  cualquier tipo; si su `tag_name` difiere del de `/releases/latest` y su campo
-  `prerelease` es `true`, hay una pre-release más nueva que la última oficial
-  disponible). Ambos datos —versión oficial más reciente, y pre-release más reciente si
-  existe una posterior a esa— se muestran siempre al usuario antes de instalar nada,
-  aunque el usuario haya pedido explícitamente una versión concreta: es información,
-  no una pregunta a responder.
+  diseño) y `GET /repos/{repo}/releases?per_page=1` (**la última release publicada en
+  el repo, sea oficial o pre-release** — GitHub devuelve las releases siempre ordenadas
+  de más a menos reciente independientemente de su tipo, así que este segundo endpoint
+  nunca filtra por `prerelease`, a diferencia del primero). Si el `tag_name` de este
+  segundo resultado difiere del de `/releases/latest` **y** su campo `prerelease` es
+  `true`, eso significa que existe una pre-release más nueva que la última oficial, y se
+  informa de ella. Ambos datos —versión oficial más reciente, y esa pre-release más
+  reciente cuando existe— se muestran siempre al usuario antes de instalar nada, aunque
+  el usuario haya pedido explícitamente una versión concreta: es información, no una
+  pregunta a responder.
 - La pre-release se informa **sin recomendarla** — mensaje neutro tipo "hay una
   pre-release `X.Y.Zb1` disponible, pero no se recomienda para uso normal por su
   estabilidad" — nunca se instala por defecto ni se ofrece como opción destacada frente
@@ -232,13 +250,27 @@ python .claude/skills/pv-update/scripts/install-framework.py [--version <tag>]
 - Con `--version <tag>`: antes de invocar el script de instalación, resuelve la versión
   actual instalada (mismo `read_skill_version` sobre `pv-init/SKILL.md`) y la compara con
   `<tag>` (parseo semver ya existente en `audit-context.py`, `parse_version`). **Si
-  `<tag>` es inferior a la instalada, rechazo duro**: el script termina con error,
+  `<tag>` no matchea el formato `X.Y.Z[sufijo]` que `parse_version` espera** (devuelve
+  `None` — typo, nombre de rama, cualquier string que no sea una versión del framework),
+  **mismo rechazo duro que el caso de downgrade**: el script termina con error sin
+  invocar `install.sh`/`.ps1`, explicando que `<tag>` no tiene forma de versión válida y
+  que por tanto no se puede verificar que sea igual o superior a la instalada — nunca se
+  delega la comparación al script de plataforma ni se asume que es válido solo porque
+  GitHub podría resolverlo como tag. **Si `<tag>` sí parsea pero es inferior a la
+  instalada, rechazo duro**: el script termina con error,
   mensaje explicando que `pv-update install` nunca hace downgrades (y que instalar una
   versión inferior a mano requiere ejecutar `install.sh`/`install.ps1` directamente,
-  fuera de este flujo asistido) — no hay flag de escape para forzarlo. Si `<tag>` resulta
-  ser una pre-release (su release en GitHub tiene `prerelease: true`), el script procede
-  igualmente (el usuario la pidió explícitamente) pero antes emite el mismo aviso de
-  riesgo no vinculante del punto anterior.
+  fuera de este flujo asistido) — no hay flag de escape para forzarlo. **Esto es fricción
+  deliberada contra un downgrade accidental dentro del flujo asistido (p. ej. un
+  `--version` mal tecleado), no una prohibición real de hacer downgrade**: un downgrade
+  intencional sigue siendo alcanzable ejecutando `install.sh`/`install.ps1` a mano, y ese
+  camino ya termina en el mecanismo existente de `audit-context.py`
+  (`version-check-downgrade` + `mark-verified.py --confirm-downgrade`, ver Context) que
+  lo detecta y lo confirma sin bloqueo permanente — este plan no cambia ni sustituye ese
+  mecanismo, solo evita que se dispare por accidente desde el flujo asistido. Si `<tag>`
+  resulta ser una pre-release (su release en GitHub tiene `prerelease: true`), el script
+  procede igualmente (el usuario la pidió explícitamente) pero antes emite el mismo aviso
+  de riesgo no vinculante del punto anterior.
 - Igual o superior a la instalada (incluida la reinstalación de la misma versión):
   procede, invocando el script de plataforma correspondiente con el tag resuelto.
 - Al terminar con éxito, no hace el `mark-verified.py --clear` por sí mismo — el flujo
@@ -296,7 +328,63 @@ usar en `pv-update/SKILL.md` como guía de qué reconocer), estos son los casos:
 - Cambiar qué comprueba `audit-context.py` más allá de lo ya descrito — el nuevo script
   de la sección 1 es un subconjunto rápido, no un reemplazo del auditor completo.
 - Instrumentar el conteo de skills o el gate de versión en skills internas
-  (`pv-internal-*`, `pv-review-*`) ni en `pv-init`/`pv-update` mismas — por diseño, ellas
-  no pasan por este paso 0 (son las que bootstrapean o reparan el propio framework).
+  (`pv-internal-*`) ni en `pv-init`/`pv-update` mismas — por diseño, ellas no pasan por
+  este paso 0 (son las que bootstrapean o reparan el propio framework). `pv-review-*` **sí**
+  entra en el alcance de la migración (ver sección 2) — ya tienen hoy una variante de este
+  mismo chequeo, así que no están exentas.
 
 ## Reviews
+
+- **2026-09-24** — Análisis crítico general: 7 hallazgos, todos resueltos e integrados
+  (alcance ampliado de 7 a 9 skills en Objective/Context/Design/Fuera de alcance; conteo
+  de carpetas corregido a 23; orden de comprobaciones `blocked`/`version-mismatch`
+  corregido en Design §1; rechazo de downgrade en Design §4 reescrito; índice enlazado a
+  `TASKS.md`; tarea añadida en TASKS §6 para `pv-design.en.md`/`.es.md`).
+- **2026-09-24** — Análisis crítico SKILL.md vs. workflow.*.md: 3 hallazgos, todos
+  resueltos e integrados (TASKS §5 ampliada con las tareas de sincronización de los 6
+  `workflow.*.md` afectados — 5 skills que ya tenían el nodo del chequeo más la
+  corrección del gap preexistente en `pv-version`, y anotación explícita en las 3 skills
+  sin diagrama propio).
+
+## Critical analysis — 2026-09-24
+
+### Structure
+
+No structural deviations. `PLAN.md` has all five required sections in order (Title,
+Index, Objective, Design/Fuera de alcance content, Reviews last), the index links to
+every own heading plus `TASKS.md`, and `TASKS.md` exists with a concrete, ordered,
+checkable breakdown that covers every element the analysis raises (scripts, workflow
+files, `SKILL.md` changes, both doc languages, manual verification).
+
+### Design §4 / TASKS §6 — pv-update's documentation entry
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| `pv-update` has no existing "Assets and scripts" section to extend | TASKS §6's first task said to update "the 'Assets and scripts' sections of `pv-update`" for the two new scripts, as if such a section already exists (matching the pattern every other skill has, e.g. `pv-todo` at `pv-design.en.md:141`, `pv-version` at `:147`). It doesn't: `pv-update` has no dedicated skill-entry bullet anywhere in `pv-design.en.md` at all — grepping the file for `pv-update` only turns up passing mentions inside *other* skills' entries (lines 458, 490, 496, 500, 506, 533, 665), never a `- **pv-update** — ...` bullet of its own, the way every other public skill has. | Rewrote TASKS §6's first task: create `pv-update`'s full skill entry from scratch (summary + `*Uses:*` + "Assets and scripts"), alphabetically between `pv-todo` and `pv-version`, listing all five assets it will have after this plan — the three already-existing and undocumented (`workflow.audit.md`, `audit-context.py`, `mark-verified.py`) plus the two new ones (`check-framework-status.py`, `install-framework.py`) and `workflow.install.md` — in both `pv-design.en.md` and `pv-design.es.md`. |
+
+### Design §4 — `install-framework.py` version-comparison contract
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| Tag-vs-installed-version comparison never states the exact strings compared | Design §4 says `--version <tag>` is compared against the installed version via `parse_version` (reused from `audit-context.py`). `parse_version`'s regex (`audit-context.py:139`) requires the full `X.Y.Z[suffix]` shape and returns `None` on anything else (`audit-context.py:142-147`), silently — no exception, no error message. Section 4's rejection-message prose only covered the case where the comparison *succeeds* and finds a genuine downgrade — the case where it can't parse `<tag>` at all wasn't mentioned as a distinct outcome. | Design §4 rewritten: an unparseable `<tag>` (`parse_version` returns `None`) now gets the same hard rejection as a genuine downgrade — never silently delegated to `install.sh`/`.ps1` for GitHub to resolve or reject. TASKS §3's `install-framework.py` task updated to state this explicitly. |
+
+### Design §4 — pre-release detection window
+
+| Finding | Explanation | Proposed improvement |
+|---|---|---|
+| "Most recent release of any kind" isn't necessarily one release ahead of `/releases/latest` | Design §4's Spanish prose ("la release más reciente de cualquier tipo") could be misread by an implementer as "the most recent pre-release," when it actually means "the most recent release, pre-release or not" — `/releases?per_page=1` never filters by `prerelease`, unlike `/releases/latest`. Minor wording ambiguity, not a logic bug, but worth tightening since `install-framework.py` doesn't exist yet and whoever writes it only has this prose to go on. | Design §4 reworded: now states explicitly that `/releases?per_page=1` returns the last published release regardless of type (GitHub orders all releases newest-first independent of `prerelease`/draft status, unlike `/releases/latest` which excludes pre-releases by design), and that the pre-release notice only fires when that result's `tag_name` differs from `/releases/latest`'s **and** its `prerelease` field is `true`. TASKS §3's wording was already unambiguous, no change needed there. |
+
+## Detalle de implementación
+
+- [ ] `.claude/pv-doc/pv-design/pv-design.en.md`
+- [ ] `.claude/pv-doc/pv-design/pv-design.es.md`
+- [ ] `.claude/skills/pv-update/scripts/install-framework.py`
+
+### Everything else (Objective, Context, Design §1-§3, §5, Fuera de alcance, TASKS §1-§5, §7)
+
+No findings. Every file/function/line reference checked against the repo (23 `pv-*`
+folders, `audit-context.py`'s `parse_version`/`read_skill_version`/Check A/Check B,
+`mark-verified.py`'s three modes, `install.sh`/`install.ps1`'s tag resolution and
+`REPO=` constant, the 9 skills' current step-0 prose, the 6 `workflow.*.md` files'
+`S0Check`/`S0Ok` nodes including the confirmed pre-existing gap in `pv-version`, and
+`pv-design.en.md:527`'s "Reading rule") matches what the plan claims.
