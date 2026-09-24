@@ -125,6 +125,8 @@ Así es cómo quedará tu repo tras la instalación, listo para empezar a trabaj
 
 Cada cambio vive en una carpeta numerada dentro de `changes/` que va viajando entre subcarpetas según su estado: `inProgress/` → `implemented/` → `closed/`.
 
+Consulta el [documento de diseño](.claude/pv-doc/pv-design/pv-design.es.md) para el detalle completo.
+
 ### Flujo mínimo
 
 El ciclo obligatorio: documentar la intención y, si el usuario confirma, planificar e implementar.
@@ -170,4 +172,4 @@ Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo s
 
 ## ⚖️Licencia
 
-[MIT](LICENSE)
+[AGPL v3](LICENSE)

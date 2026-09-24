@@ -125,6 +125,8 @@ Here's what your repo will look like after installation, ready to start working 
 
 Each change lives in a numbered folder inside `changes/` that travels between subfolders as its state progresses: `inProgress/` → `implemented/` → `closed/`.
 
+See the [design document](.claude/pv-doc/pv-design/pv-design.en.md) for the full detail.
+
 ### Minimal flow
 
 The mandatory cycle: document the intent and, once the user confirms, plan and implement.
@@ -169,4 +171,4 @@ If you want to see how it's built (the framework's skill map, how they invoke ea
 
 ## ⚖️License
 
-[MIT](LICENSE)
+[AGPL v3](LICENSE)
