@@ -38,7 +38,7 @@ flowchart TD
     S5Validate{Any diagram, mockups/design_*.html or data_*.md generated?}
     S5Validate -->|No| S6Chain
     S5Validate -->|Yes| S5EnsureCheck{Any mockups/design_*.html generated?}
-    S5EnsureCheck -->|Yes| S5EnsureClosed[Invoke mockups skill: ensure-closed on the design_*.html about to be presented; summarize what it changed]
+    S5EnsureCheck -->|Yes| S5EnsureClosed[Invoke mockups skill: ensure-closed on every design_*.html in mockups/, not just this turn's; summarize what it changed]
     S5EnsureClosed --> S5Ask
     S5EnsureCheck -->|No| S5Ask
     S5Ask[ASK: does the representation reflect expected behavior?]
