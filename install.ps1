@@ -48,6 +48,8 @@ try {
         $Dest = Join-Path $DestSkills $_.Name
         if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
         Copy-Item -Recurse -Path $_.FullName -Destination $Dest
+        # Dev-only tooling (sandbox test files, their builder script) never ships to consuming projects.
+        Get-ChildItem -Path $Dest -Recurse -File -Include "*.sandbox.*", "_build_sandbox.py" | Remove-Item -Force
     }
 
     if (Test-Path $DestSkills) {

@@ -42,6 +42,8 @@ for dir in "$SRC_SKILLS"/pv-*; do
   name=$(basename "$dir")
   rm -rf "$DEST_SKILLS/$name"
   cp -r "$dir" "$DEST_SKILLS/$name"
+  # Dev-only tooling (sandbox test files, their builder script) never ships to consuming projects.
+  find "$DEST_SKILLS/$name" -type f \( -name "*.sandbox.*" -o -name "_build_sandbox.py" \) -delete
 done
 
 for dir in "$DEST_SKILLS"/pv-*; do

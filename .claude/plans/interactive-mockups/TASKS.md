@@ -3,57 +3,94 @@ secuenciales.
 
 ## Fase 1 — El asset (núcleo)
 
-- [ ] **T1.** Crear `.claude/skills/pv-internal-mockups-html/assets/mockup-annotations.html`:
-  marcador `<!-- mnote-framework v1 -->` + `<style id="mnote-styles">` +
-  `<script id="mnote-runtime">` (IIFE, sin dependencias) +
-  `<script type="application/json" id="mnote-data">[]</script>` + cuerpo de demo para abrirlo
+**Estado: completada** (2026-09-24), con varias mejoras sobre el diseño original surgidas
+durante la verificación manual en el sandbox — ver notas en T1-T3:
+
+- [x] **T1.** Crear `.claude/skills/pv-internal-mockups-html/assets/mockup-annotations.html`:
+  marcador `<!-- mnoteqz7k-framework v1 -->` + `<style id="mnoteqz7k-styles">` +
+  `<script id="mnoteqz7k-runtime">` (IIFE, sin dependencias) +
+  `<script type="application/json" id="mnoteqz7k-data">[]</script>` + cuerpo de demo para abrirlo
   suelto. Referencia de diseño: `mockup_catalog.html` y `mockup_examples.html` de esta
   carpeta (definen ya los 3 componentes, los 2 colores `#f5a623` / `#2c7dd8`, el namespace
-  `.mnote-*`, el mini-menú del `➕`, el contador ámbar, el panel de generales y el estado
+  `.mnoteqz7k-*`, el mini-menú del `➕`, el contador ámbar, el panel de generales y el estado
   "desvinculada").
-- [ ] **T2.** Implementar `#mnote-runtime`:
-  - Barra `#mnote-bar` (`position:absolute`, solo iconos `➕ 👁 💾` + contador,
+- [x] **T2.** Implementar `#mnoteqz7k-runtime`:
+  - Barra `#mnoteqz7k-bar` (`position:absolute`, solo iconos `➕ 👁 💾` + contador,
     `title`/`aria-label`, enfocable por teclado); se desplaza junto al cursor al seleccionar,
     vuelve a una esquina sin selección.
-  - Selección por **clic simple** en cualquier nodo → `.mnote-sel` (contorno azul); cálculo
+  - Selección por **clic simple** en cualquier nodo → `.mnoteqz7k-sel` (contorno azul); cálculo
     de **selector robusto** (`#id`; si no, ruta `nth-of-type` desde `body`). **El recorrido
-    del DOM ignora `#mnote-bar`, `#mnote-menu`, `#mnote-panel`, `.mnote-card` y `#mnote-data`**
+    del DOM ignora `#mnoteqz7k-bar`, `#mnoteqz7k-menu`, `#mnoteqz7k-panel`, `.mnoteqz7k-card` y `#mnoteqz7k-data`**
     (ni seleccionables ni cuentan en la ruta). `Esc` / clic fuera deselecciona.
-  - `➕`: sin selección → **nota general** directa; con selección → mini-menú `#mnote-menu`
+  - `➕`: sin selección → **nota general** directa; con selección → mini-menú `#mnoteqz7k-menu`
     ("Nota en `<selector>`" / "Nota general").
-  - Tarjeta `.mnote-card` (vinculada/general, lectura/edición con `<textarea>`, pie
+  - Tarjeta `.mnoteqz7k-card` (vinculada/general, lectura/edición con `<textarea>`, pie
     Editar/Guardar/Eliminar con **confirmación de borrado**, `‹ ›` entre notas del mismo
     elemento). **Sin ningún control para cerrar una nota** — cerrar es un juicio exclusivo de
     `pv-internal-mockups-html`, nunca del framework en el navegador.
-  - Contador ámbar `.mnote-count` en la esquina del elemento con notas vinculadas (**solo con
+  - Contador ámbar `.mnoteqz7k-count` en la esquina del elemento con notas vinculadas (**solo con
     anotaciones visibles**); al pulsar el elemento se abre su tarjeta al lado compartiendo el
-    contorno ámbar `.mnote-linked`.
-  - Panel `#mnote-panel` de notas generales acoplado a una esquina; estado **"desvinculada"**
+    contorno ámbar `.mnoteqz7k-linked`.
+  - Panel `#mnoteqz7k-panel` de notas generales acoplado a una esquina; estado **"desvinculada"**
     (borde rojo, conserva el texto) para notas vinculadas cuyo selector ya no resuelve.
   - **Estado `open`/`closed` de la nota**: toda nota nace `state: "open"` al crearse. El
     navegador nunca escribe `"closed"`. Una nota `closed` (escrita ahí solo por
     `pv-internal-mockups-html` vía `ensure-closed`) se muestra atenuada (gris/tachado/✓) y deja
     de contar en el contador ámbar del elemento y en el total de la barra, pero permanece en
-    `#mnote-data` hasta que el reviewer la borre explícitamente con 🗑.
-  - `👁`: togglea `mnote-hidden` en `<html>`; estado en `localStorage` por
+    `#mnoteqz7k-data` hasta que el reviewer la borre explícitamente con 🗑.
+  - `👁`: togglea `mnoteqz7k-hidden` en `<html>`; estado en `localStorage` por
     `location.pathname`.
   - `💾`: serializa `[{id, kind:"linked"|"general", selector, text, createdAt, state:"open"}]`
-    (siempre `"open"` desde el navegador), escribe/actualiza `#mnote-data` en el DOM, descarga
+    (siempre `"open"` desde el navegador), escribe/actualiza `#mnoteqz7k-data` en el DOM, descarga
     un Blob de `document.documentElement.outerHTML` con **el mismo nombre de archivo**.
-  - `#mnote-toast`: barra fina fija abajo, se muestra al pulsar `💾` con
+  - `#mnoteqz7k-toast`: barra fina fija abajo, se muestra al pulsar `💾` con
     "Guardado. Sustituye el original en: `<ruta completa>`" — ruta de `location.pathname`
     decodificado (coincide con el disco porque siempre se abre como `file://`), botón 📋 que
     copia la ruta con `navigator.clipboard.writeText` (no-op silencioso si la API no existe),
     autodesvanece ~6s o al clic (la descarga en `file://` nunca sobrescribe el original sola).
-  - `💾` con `try/catch`: si falla la descarga, `#mnote-toast.error` (fondo rojo, **sin
+  - `💾` con `try/catch`: si falla la descarga, `#mnoteqz7k-toast.error` (fondo rojo, **sin
     autodesvanecer**) con "No se han guardado tus cambios. La descarga falló — copia el HTML
     manualmente o inténtalo con otro navegador."
-  - Al cargar: lee `#mnote-data` si existe y rehidrata contadores, panel y estado.
+  - Al cargar: lee `#mnoteqz7k-data` si existe y rehidrata contadores, panel y estado.
   - Degradación sin JS: mockup intacto, sin anotaciones.
-- [ ] **T3.** Verificación standalone del asset ([`PLAN.md`](PLAN.md) Verification §1): abrir
+- [x] **T3.** Verificación standalone del asset ([`PLAN.md`](PLAN.md) Verification §1): abrir
   en navegador — barra visible, nota general nace `state: "open"`, editar/borrar, Save
-  descarga, reabrir → la nota persiste vía `#mnote-data` con su estado intacto. Confirmar que
+  descarga, reabrir → la nota persiste vía `#mnoteqz7k-data` con su estado intacto. Confirmar que
   la UI no ofrece ningún control para cerrar una nota.
+
+  **Mejoras surgidas durante la verificación manual, no contempladas en el diseño original**:
+  - **Namespace anti-colisión**: todo el namespace pasó de `mnote-*` a `mnoteqz7k-*` (sufijo
+    corto y arbitrario) para hacer improbable una colisión accidental con el naming propio de
+    un mockup real — importa porque el ID collision guard (Fase 2) depende de distinguir
+    "framework ya incrustado" de "elemento sin relación que coincide de nombre por casualidad".
+  - **Panel de notas vinculadas** (nuevo, no estaba en el diseño original): además del panel de
+    generales (siempre visible, colapsable, expandido por defecto), un segundo panel análogo
+    listando las notas vinculadas (colapsado por defecto); clicar un ítem abre esa nota en su
+    posición real. Ambos paneles quedan siempre visibles — el toggle `👁` solo oculta
+    badges/contornos/tarjetas sobre el propio mockup, nunca los paneles-lista.
+  - **Badges fuera del árbol del mockup**: el contador ámbar dejó de insertarse dentro del
+    elemento anotado (fallaba silenciosamente en elementos "replaced" como `<input>`/checkbox,
+    que no admiten hijos visuales) — ahora es `position:fixed`, vive en `document.body`, y se
+    reposiciona en un loop continuo de `requestAnimationFrame` (no solo en scroll/resize) para
+    seguir a elementos que se mueven por drag-and-drop, animaciones CSS, o cualquier reposición
+    ajena a eventos de ventana.
+  - **Selección en fase de captura**: el listener de selección de `onDocumentClick` pasó a
+    `capture:true` para poder seleccionar un elemento del mockup aunque su propio handler haga
+    `stopPropagation()` en burbuja (p. ej. un dropdown decorativo) — antes ese caso bloqueaba
+    la selección por completo.
+  - **Guardado vía File System Access API** (`showSaveFilePicker`), con fallback automático a
+    la descarga por Blob del diseño original si el navegador no la soporta o el usuario
+    cancela: abre el diálogo nativo "Guardar como", permitiendo elegir/sobrescribir la ruta
+    real en vez de caer siempre en Descargas. Un toast previo (anclado junto al botón 💾, con
+    la carpeta a elegir copiable al portapapeles y el nombre exacto del archivo a confirmar)
+    antecede el picker, ya que éste requiere un gesto de usuario directo.
+  - **Serialización limpia al guardar**: `serializeClean()` clona el documento y retira toda la
+    UI runtime (barra, menú, tarjetas, paneles, toast, badges, contornos, watermark) antes de
+    generar el HTML a guardar — el diseño original serializaba `outerHTML` tal cual, lo que
+    duplicaba la barra (fosilizada + recreada por `init()`) al reabrir un archivo ya guardado.
+  - **Marca de agua** "Developed with Previo", fija en la esquina inferior derecha, enlazando
+    al repo (`github.com/yeyopepe/previo-sdd`); se recrea en cada carga (nunca persistida en
+    `#mnoteqz7k-data` ni en el HTML guardado) para evitar duplicados.
 
 ## Fase 2 — `pv-internal-mockups-html/SKILL.md`
 
@@ -79,29 +116,29 @@ secuenciales.
   el mockup no contiene ningún otro JS.
 - [ ] **T6.** Nueva regla **"Embed the annotation framework"** en "Rules for each mockup":
   tras escribir/editar el markup propio, copiar **verbatim** marcador +
-  `<style id="mnote-styles">` antes de `</head>` y `<script id="mnote-runtime">` antes de
-  `</body>`; añadir `#mnote-data` vacío si no existe. Redacción espejo de `pv-init/SKILL.md`
+  `<style id="mnoteqz7k-styles">` antes de `</head>` y `<script id="mnoteqz7k-runtime">` antes de
+  `</body>`; añadir `#mnoteqz7k-data` vacío si no existe. Redacción espejo de `pv-init/SKILL.md`
   línea 142 ("copied as-is without modifying a single line of it"). Nunca
   reescribir/resumir/"mejorar".
 - [ ] **T7.** Especificar el comportamiento de `action: edit` (step 1 de "Steps", hoy solo
   "preserve the rest of the file") con los 3 sub-casos de Flujo A:
   1. sin bloques framework → añadirlos, igual que `create`;
   2. con bloques (contenido reconocible, ver T7.3) y `vN` del asset **no más nuevo** que el del
-     archivo → editar el markup propio sin tocar `mnote-*` **ni `#mnote-data`** — un `edit`
+     archivo → editar el markup propio sin tocar `mnoteqz7k-*` **ni `#mnoteqz7k-data`** — un `edit`
      plano nunca cambia el estado ni el contenido de ninguna nota, eso es solo cosa de
      `ensure-closed` (T7.1);
   3. `vN` del asset **más nuevo** → reemplazar solo los 2 bloques framework, conservando
-     `#mnote-data` verbatim.
+     `#mnoteqz7k-data` verbatim.
 - [ ] **T7.1.** Nueva acción **`action: ensure-closed`** (sustituye por completo al diseño
   anterior de `read-annotations` + `edit`-por-nota): recibe una lista de rutas `design_*.html`
   bajo `mockups/` (las que el caller va a (re-)presentar, o — para `pv-how` — todas las de la
   entrada). Por cada ruta con framework reconocible:
-  - parsea `#mnote-data` internamente;
+  - parsea `#mnoteqz7k-data` internamente;
   - si no hay ninguna nota `state: "open"` (o no hay notas), no hace nada en esa ruta;
   - por cada nota `open`: si puede aplicar el cambio pedido sin ambigüedad, lo aplica
     directamente al markup propio del mockup (mismo mecanismo que un `edit` interno, decidido
     por la propia skill — sin ida y vuelta al caller) y marca esa nota `state: "closed"` en
-    `#mnote-data` (nada más del bloque cambia);
+    `#mnoteqz7k-data` (nada más del bloque cambia);
   - si una nota es ambigua, **la skill pregunta al usuario directamente** (T7.4) antes de
     aplicar nada para esa nota concreta; con la respuesta, aplica y cierra igual;
   - una nota "desvinculada" (selector que ya no resuelve) se trata como nota general a estos
@@ -110,19 +147,19 @@ secuenciales.
   - Devuelve **OK** + resumen en texto plano de qué se cambió por nota (sin selectores ni JSON
     crudo) solo cuando cada ruta dada queda sin ninguna nota `open`. **Es la única vía por la
     que cualquier caller se entera de o resuelve anotaciones** — ningún otro skill abre
-    `#mnote-data` ni conoce el estado `open`/`closed` de una nota.
-- [ ] **T7.2.** Nueva acción **`action: describe`** (solo lectura, nunca toca `#mnote-data` ni
+    `#mnoteqz7k-data` ni conoce el estado `open`/`closed` de una nota.
+- [ ] **T7.2.** Nueva acción **`action: describe`** (solo lectura, nunca toca `#mnoteqz7k-data` ni
   el estado de ninguna nota): recibe una lista de rutas `design_*.html` bajo `mockups/` y,
   opcionalmente, qué elementos/áreas interesan; lee el markup propio (algo que solo esta skill
   hace directamente) y devuelve una descripción en texto plano del layout/estilo/iconografía
   pedido — suficiente para que un caller como `pv-how` la use como referencia visual, sin
-  exponer HTML/CSS/SVG crudo ni los bloques `mnote-*`. **Es la única vía por la que cualquier
+  exponer HTML/CSS/SVG crudo ni los bloques `mnoteqz7k-*`. **Es la única vía por la que cualquier
   caller accede al contenido visual de un `design_*.html`** — ningún caller hace `Read` sobre
   uno de ellos. `navigation_*.md`/`data_*.md` quedan fuera de esta acción: viven fuera de
   `mockups/`, no son responsabilidad de esta skill, y siguen leyéndose con `Read` directo.
 - [ ] **T7.3.** ID collision guard: el check "¿el archivo ya tiene el framework?" debe verificar
-  que el contenido del `id="mnote-runtime"` (o `-styles`/`-data`) es reconocible como el asset
-  (marcador/cabecera), no solo que el id exista. Si hay un id `mnote-*` con contenido distinto
+  que el contenido del `id="mnoteqz7k-runtime"` (o `-styles`/`-data`) es reconocible como el asset
+  (marcador/cabecera), no solo que el id exista. Si hay un id `mnoteqz7k-*` con contenido distinto
   (mockup viejo previo a este plan que coincide por casualidad), **detener y devolver el
   conflicto al caller sin escribir nada** — nunca pisarlo ni tratarlo como "sin framework".
 - [ ] **T7.4.** Capacidad de interacción directa con el usuario (excepción única en todo el
@@ -135,8 +172,8 @@ secuenciales.
 
 ## Fase 3 — Cierre de ciclo en `pv-new` / `pv-fix` / `extend-entry.md`
 
-**Regla de encapsulación**: ningún caller lee, parsea o escribe `#mnote-data`, ni menciona
-`mnote-*`/selectores/JSON/estado `open`/`closed` en su propia prosa o lógica — eso es concern
+**Regla de encapsulación**: ningún caller lee, parsea o escribe `#mnoteqz7k-data`, ni menciona
+`mnoteqz7k-*`/selectores/JSON/estado `open`/`closed` en su propia prosa o lógica — eso es concern
 exclusivo de `pv-internal-mockups-html` (T7.1/T7.2). El caller solo invoca `ensure-closed` y
 espera su OK/resumen.
 
@@ -167,7 +204,7 @@ costumbre."*
   resolviéndose).
 - [ ] **T14.** Revisar `pv-new/workflow.new.md` y `pv-fix/workflow.fix.md`: añadir la rama
   `ensure-closed` al diagrama (Flujo B) redactada en términos de las acciones de la skill,
-  nunca `#mnote-data`/estado, o dejar constancia explícita de que es demasiado fina para
+  nunca `#mnoteqz7k-data`/estado, o dejar constancia explícita de que es demasiado fina para
   diagramar. Ambos `SKILL.md` declaran que el diagrama manda sobre la prosa.
 - [ ] **T14.5.** `pv-do/SKILL.md` línea 121 (paso de actualización de
   `docs.tech.styleBibleDocDir`): hoy pasa "any `design_*` mockups this entry has" como parte
@@ -207,7 +244,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   descripción en vez de abrir el archivo.
 - [ ] **T14.4.** Revisar `pv-how/workflow.how.md`: añadir el nuevo nodo de gate (`ensure-closed`
   antes de 1.1) al diagrama (Flujo C), redactado en términos de la acción de la skill, nunca
-  `#mnote-data`/estado, o dejar constancia explícita de que es demasiado fino para diagramar.
+  `#mnoteqz7k-data`/estado, o dejar constancia explícita de que es demasiado fino para diagramar.
   `pv-how/SKILL.md` también declara que el diagrama manda sobre la prosa.
 
 ## Fase 4 — Verificación integral
@@ -222,17 +259,17 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   control de UI para cerrar una nota.
 - [ ] **T16.** Skill dry-run (§3): invocar `pv-internal-mockups-html` vía `pv-new` en un
   cambio visual de prueba en sandbox; confirmar que el `design_*.html` generado contiene
-  `id="mnote-styles"`, `id="mnote-runtime"` y `<!-- mnote-framework v1 -->` **byte-idénticos**
+  `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"` y `<!-- mnoteqz7k-framework v1 -->` **byte-idénticos**
   a los bloques del asset.
 - [ ] **T16.1.** Aislamiento de plugin (§3.1): grep de `pv-internal-mockups-html/SKILL.md` por
   `resolve-path.py` y `pv-context.json` — ninguno debe aparecer tras la reescritura. Invocar la
   skill directamente con `action: create` sin `style_context`; confirmar estilo neutro +
   comentario placeholder, sin tocar disco fuera de `assets/` y la carpeta destino. Reinvocar con
   `style_context` y confirmar que reusa esos valores en vez del neutro.
-- [ ] **T17.** Edit plano no toca notas (§4): añadir un `#mnote-data` falso con 2 notas `open`,
-  re-invocar con `action: edit` (no `ensure-closed`); confirmar que `#mnote-data` y el `state`
+- [ ] **T17.** Edit plano no toca notas (§4): añadir un `#mnoteqz7k-data` falso con 2 notas `open`,
+  re-invocar con `action: edit` (no `ensure-closed`); confirmar que `#mnoteqz7k-data` y el `state`
   de cada nota sobreviven completamente intactos, y los bloques framework quedan intactos.
-- [ ] **T17.1.** Contrato `ensure-closed` — resolución (§4.1): con ese mismo `#mnote-data` (2
+- [ ] **T17.1.** Contrato `ensure-closed` — resolución (§4.1): con ese mismo `#mnoteqz7k-data` (2
   notas `open`, ambas resolubles sin ambigüedad), invocar `action: ensure-closed`; confirmar que
   aplica ambos cambios al markup propio, pone `state: "closed"` en ambas notas (nada más del
   bloque cambia), y devuelve OK con resumen en texto plano sin selectores ni JSON crudo.
@@ -244,18 +281,18 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   cierra tras la respuesta.
 - [ ] **T17.3.** Contrato `describe` (§4.3): invocar `action: describe` sobre un `design_*.html`
   real preguntando por un par de elementos; confirmar que la respuesta es texto plano
-  describiendo layout/estilo/iconografía, sin HTML/CSS/SVG crudo ni internals `mnote-*`, y que
-  nunca toca `#mnote-data` ni el estado de ninguna nota.
+  describiendo layout/estilo/iconografía, sin HTML/CSS/SVG crudo ni internals `mnoteqz7k-*`, y que
+  nunca toca `#mnoteqz7k-data` ni el estado de ninguna nota.
 - [ ] **T18.** Cierre de ciclo — check de encapsulación en `pv-new` (§5): `design_*.html` con
-  `#mnote-data` (una nota vinculada `open` "make this wider", una general `open`); correr la
+  `#mnoteqz7k-data` (una nota vinculada `open` "make this wider", una general `open`); correr la
   ruta extend/validate de `pv-new`; confirmar que Claude solo invoca `ensure-closed` — grepear
-  las tool calls y la propia prosa del turno por `#mnote-data`/`mnote-`/`open`/`closed` para
+  las tool calls y la propia prosa del turno por `#mnoteqz7k-data`/`mnoteqz7k-`/`open`/`closed` para
   confirmar que `pv-new` nunca los menciona — y que ambas notas quedan `closed` internamente.
 - [ ] **T18.1.** Gate de `pv-how` (§5.1): sobre esa misma entrada ya cerrada, invocar `pv-how`;
   confirmar que llama a `ensure-closed` de nuevo como su propio step 1.05 antes de 1.1 (no
   asume que la llamada anterior de `pv-new` siga siendo válida), recibe OK inmediato, y que ni
   el step 1.1 ni el step 2 hacen `Read` sobre ningún `design_*.html` de `mockups/` — ambos pasan
-  por `describe`. Después añadir una nota `open` nueva directamente a `#mnote-data` (simulando
+  por `describe`. Después añadir una nota `open` nueva directamente a `#mnoteqz7k-data` (simulando
   que el usuario volvió a anotar entre que `pv-new` terminó y `pv-how` corrió) y reinvocar
   `pv-how`; confirmar que se bloquea en 1.05 hasta que `ensure-closed` la resuelve, y nunca
   llega a step 1.1/2/3 antes de eso.
@@ -264,7 +301,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   `action: describe` de la skill de mockups en vez de mencionar/pasar ficheros `design_*`
   como contexto a `pv-internal-doc-style`; correr el paso de actualización de
   `docs.tech.styleBibleDocDir` de `pv-do` sobre una entrada con mockups y grepear la respuesta
-  del turno por `design_*`/`mnote-`/`#mnote-data` para confirmar que `pv-do` nunca los
+  del turno por `design_*`/`mnoteqz7k-`/`#mnoteqz7k-data` para confirmar que `pv-do` nunca los
   menciona directamente.
 - [ ] **T19.** Propagación en instalación (§6): correr `install.sh` / `install.ps1` a un dir
   scratch (o inspeccionar el bucle de copia, `install.ps1` ~línea 50) y confirmar que
@@ -274,7 +311,7 @@ no una optimización. Se aplica siempre, invoque quien invoque a `pv-how` y haya
   `pv-how` contra `workflow.new.md` / `workflow.fix.md` / `workflow.how.md` (los tres ya
   reflejan la convención `mockups/design_*.html` — partir de ese estado real, no de una versión
   sin subcarpeta); las ramas `ensure-closed`/`describe` (redactadas en términos de las acciones
-  de la skill, nunca `#mnote-data`/estado) deben estar en cada diagrama o marcadas como
+  de la skill, nunca `#mnoteqz7k-data`/estado) deben estar en cada diagrama o marcadas como
   demasiado finas, sin desacuerdo silencioso.
 
 ## Fase 5 — Cierre

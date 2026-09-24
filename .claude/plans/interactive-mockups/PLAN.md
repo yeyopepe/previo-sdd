@@ -46,7 +46,7 @@ the confirmed design decisions.
 > **Nota de estado.** No existe un borrador `asset_mockup-annotations.html` en esta carpeta.
 > El asset `assets/mockup-annotations.html` se escribe **desde cero** (Approach § 1), usando
 > `mockup_catalog.html` y `mockup_examples.html` como única referencia de diseño (definen ya
-> los 3 componentes, los 2 colores `#f5a623` / `#2c7dd8`, el namespace `.mnote-*`, el
+> los 3 componentes, los 2 colores `#f5a623` / `#2c7dd8`, el namespace `.mnoteqz7k-*`, el
 > mini-menú del `➕`, el contador ámbar, el panel de generales y el estado "desvinculada").
 
 ## Context
@@ -78,11 +78,11 @@ proposed.
 1. **Embedding mechanism**: inline splice — copy the asset's `<style>` + `<script>` blocks
    verbatim into each `design_*.html` (keeps the "single self-contained file" rule).
 2. **Save format**: rewrite the `design_*.html` itself — Save downloads the whole file with
-   notes embedded in a `<script id="mnote-data">` JSON block; the user overwrites the file.
+   notes embedded in a `<script id="mnoteqz7k-data">` JSON block; the user overwrites the file.
 3. **Cycle closure — encapsulated in `pv-internal-mockups-html`, gated by note state.** The
-   annotation framework (`mnote-*`, `#mnote-data`'s JSON shape, selectors) is an implementation
+   annotation framework (`mnoteqz7k-*`, `#mnoteqz7k-data`'s JSON shape, selectors) is an implementation
    detail of **this skill alone**. No caller (`pv-new`, `pv-fix`, `extend-entry.md`, `pv-how`)
-   ever parses `#mnote-data`, knows its shape, or edits it directly — that would leak the
+   ever parses `#mnoteqz7k-data`, knows its shape, or edits it directly — that would leak the
    framework's internals into every skill that touches mockups (and break the day a project
    configures a different `framework.skills.mockups`, e.g. `pv-internal-mockups-ascii`, which
    has no such concept). Nor does any caller open the `design_*.html` markup itself as a visual
@@ -95,7 +95,7 @@ proposed.
    requested change). This replaces the earlier `read-annotations` + `edit`-per-note dance with
    a single entry point: **`action: ensure-closed`**. Given a list of `design_*.html` paths, the
    skill:
-   - reads any embedded `#mnote-data` internally;
+   - reads any embedded `#mnoteqz7k-data` internally;
    - for every `open` note, resolves it itself — applies the requested change to that mockup's
      own markup directly (no round-trip through the caller for the edit itself), then marks
      that note `closed`;
@@ -106,7 +106,7 @@ proposed.
 
    The caller's only interface with annotations is invoking `ensure-closed` and waiting for its
    OK (or its report of what it changed/asked) — it never sees individual notes, selectors, or
-   `#mnote-data` at any point.
+   `#mnoteqz7k-data` at any point.
 4. **The skill talks to the user directly when needed.** Unlike every other `pv-internal-*`
    skill (which are mute — they only exchange input/output with their caller), when
    `ensure-closed` hits a note it can't resolve unambiguously on its own, it asks the reviewer
@@ -125,7 +125,7 @@ El paso **"copiar la plantilla del framework"** es lo único que se añade al co
 deja de hacerla la skill (ver "Ampliación de alcance" arriba) — ahora es un input opcional que
 trae el caller. El modo `action: ensure-closed` (Flujo A') es completamente nuevo — ver más
 abajo. **Este Flujo A describe únicamente el `edit`/`create` que invoca el caller directamente
-— nunca toca `#mnote-data` ni el estado de ninguna nota**, sea cual sea el motivo del edit. La
+— nunca toca `#mnoteqz7k-data` ni el estado de ninguna nota**, sea cual sea el motivo del edit. La
 resolución de anotaciones (aplicar el cambio pedido por una nota y cerrarla) es responsabilidad
 exclusiva de `ensure-closed` (Flujo A'), que internamente usa este mismo mecanismo de edición
 del markup pero como un paso propio suyo, no como parte de este flujo.
@@ -139,15 +139,15 @@ flowchart TD
     ACT -- create --> NEWFILE["Escribir el markup propio del mockup\nen design_&lt;desc&gt;.html\n(HTML + CSS + SVG inline, sin JS propio).\nUsar style_context si lo dio el caller;\nsi no, estilo neutro + comentario\n'No documented visual identity...'"]
     NEWFILE --> EMBED
 
-    ACT -- edit --> HAS{"¿el archivo ya tiene un elemento\ncon id=mnote-runtime **cuyo contenido\nes reconocible como el framework**\n(marcador/cabecera del asset)?"}
-    HAS -- no --> COLLIDE{"**¿existe id=mnote-styles/-runtime/-data\ncon OTRO contenido (colisión)?**"}
+    ACT -- edit --> HAS{"¿el archivo ya tiene un elemento\ncon id=mnoteqz7k-runtime **cuyo contenido\nes reconocible como el framework**\n(marcador/cabecera del asset)?"}
+    HAS -- no --> COLLIDE{"**¿existe id=mnoteqz7k-styles/-runtime/-data\ncon OTRO contenido (colisión)?**"}
     COLLIDE -- "sí" --> RET_CONFLICT["Detener: devolver al caller el conflicto\n(qué id, contenido no reconocido)\nsin escribir nada"]
     COLLIDE -- no --> EDITFILE["Editar el markup propio\n(preservar lo no relacionado;\nmismo criterio style_context/neutro que create)"] --> EMBED
     HAS -- "sí" --> VER{"¿el marcador vN del asset\nes más nuevo que el del archivo?"}
-    VER -- no --> EDITKEEP["Editar el markup propio.\n**Nunca tocar mnote-* ni #mnote-data**\n(ni el estado ni el contenido de ninguna nota) —\neso es solo cosa de ensure-closed (Flujo A')."] --> NEXT
-    VER -- "sí" --> REFRESH["Reemplazar solo &lt;style id=mnote-styles&gt;\ny &lt;script id=mnote-runtime&gt; por los del asset\n(conservar #mnote-data verbatim, sin excepciones)"] --> NEXT
+    VER -- no --> EDITKEEP["Editar el markup propio.\n**Nunca tocar mnoteqz7k-* ni #mnoteqz7k-data**\n(ni el estado ni el contenido de ninguna nota) —\neso es solo cosa de ensure-closed (Flujo A')."] --> NEXT
+    VER -- "sí" --> REFRESH["Reemplazar solo &lt;style id=mnoteqz7k-styles&gt;\ny &lt;script id=mnoteqz7k-runtime&gt; por los del asset\n(conservar #mnoteqz7k-data verbatim, sin excepciones)"] --> NEXT
 
-    EMBED["**PASO NUEVO — copiar la plantilla**\nDe assets/mockup-annotations.html, copiar VERBATIM:\n• &lt;!-- mnote-framework vN --&gt; + &lt;style id=mnote-styles&gt; → antes de &lt;/head&gt;\n• &lt;script id=mnote-runtime&gt; → antes de &lt;/body&gt;\n• &lt;script type=application/json id=mnote-data&gt;[]&lt;/script&gt; si no existe\nNunca reescribir ni resumir estos bloques."] --> NEXT
+    EMBED["**PASO NUEVO — copiar la plantilla**\nDe assets/mockup-annotations.html, copiar VERBATIM:\n• &lt;!-- mnoteqz7k-framework vN --&gt; + &lt;style id=mnoteqz7k-styles&gt; → antes de &lt;/head&gt;\n• &lt;script id=mnoteqz7k-runtime&gt; → antes de &lt;/body&gt;\n• &lt;script type=application/json id=mnoteqz7k-data&gt;[]&lt;/script&gt; si no existe\nNunca reescribir ni resumir estos bloques."] --> NEXT
 
     NEXT["¿quedan elementos?"] -- "sí" --> LOOP
     NEXT -- no --> RET["Devolver al caller la lista de rutas\ndesign_*.html creadas/editadas.\nNo se presenta nada al usuario."]
@@ -155,7 +155,7 @@ flowchart TD
 
 ### A' · Nuevo modo `action: ensure-closed` (garantiza cierre, puede escribir y puede preguntar)
 
-El caller nunca lee ni resuelve `#mnote-data` por su cuenta, y nunca abre el `design_*.html`
+El caller nunca lee ni resuelve `#mnoteqz7k-data` por su cuenta, y nunca abre el `design_*.html`
 como referencia visual él mismo (eso también pasa a ser responsabilidad de la skill — ver
 Flujo C más abajo). Antes de presentar/re-presentar mockups, o antes de que `pv-how` analice
 una entrada, se invoca `ensure-closed` con la lista de `design_*.html` a garantizar; la skill
@@ -165,14 +165,14 @@ resuelve todo internamente y solo devuelve **OK** cuando no queda ninguna nota `
 flowchart TD
     IN2["Entrada del caller:\nlista de rutas design_*.html a garantizar cerradas"] --> LOOP2
 
-    LOOP2["Para cada ruta"] --> EXISTS{"¿existe el archivo\ny tiene id=mnote-runtime?"}
+    LOOP2["Para cada ruta"] --> EXISTS{"¿existe el archivo\ny tiene id=mnoteqz7k-runtime?"}
     EXISTS -- no --> SKIP["Nada que cerrar en este archivo\n(mockup de otra skill de mockups,\no framework no incrustado aún)"] --> NEXT2
-    EXISTS -- sí --> PARSE["Leer #mnote-data internamente"]
+    EXISTS -- sí --> PARSE["Leer #mnoteqz7k-data internamente"]
     PARSE --> HASOPEN{"¿alguna nota con\nestado 'open'?"}
     HASOPEN -- no --> NEXT2
     HASOPEN -- "sí" --> RESOLVE["Por cada nota 'open':\n¿la skill puede aplicar el cambio\nsin ambigüedad?"]
     RESOLVE -- "sí" --> APPLY2["Aplicar el cambio directamente\nal markup propio del mockup\n(mismo mecanismo que action: edit interno)"]
-    APPLY2 --> CLOSE["Marcar esa nota state: 'closed'\nen #mnote-data (nunca al revés)"]
+    APPLY2 --> CLOSE["Marcar esa nota state: 'closed'\nen #mnoteqz7k-data (nunca al revés)"]
     CLOSE --> MORE{"¿quedan notas 'open'\nen este archivo?"}
     MORE -- "sí" --> RESOLVE
     RESOLVE -- "no, hay ambigüedad" --> ASKUSER["**La skill pregunta al usuario\ndirectamente** (nueva capacidad):\nqué hacer con esa nota concreta"]
@@ -208,7 +208,7 @@ flowchart TD
 **Notas del flujo B:**
 
 - **Encapsulación estricta**: el caller (`pv-new`/`pv-fix`/`extend-entry.md`) nunca abre, parsea
-  ni edita `#mnote-data`, ni conoce el namespace `mnote-*`, el formato JSON, ni los selectores
+  ni edita `#mnoteqz7k-data`, ni conoce el namespace `mnoteqz7k-*`, el formato JSON, ni los selectores
   CSS, ni el estado `open`/`closed` de una nota. Su única interfaz con las anotaciones es
   invocar `action: ensure-closed` y esperar su OK/resumen — exactamente el mismo contrato
   input/output que ya usa para crear o editar cualquier mockup. Esto es lo que permite que un
@@ -261,7 +261,7 @@ flowchart TD
   este se inserte en 1.05, no más tarde) y los dos pasos dejan de usar `Read` sobre `mockups/`
   para pasar a invocar la nueva acción de solo lectura **`action: describe`** de
   `pv-internal-mockups-html`, que devuelve una descripción textual del layout/estilo/iconografía
-  pedido sin exponer el HTML/CSS/SVG crudo ni los bloques `mnote-*`. El `Read` directo de
+  pedido sin exponer el HTML/CSS/SVG crudo ni los bloques `mnoteqz7k-*`. El `Read` directo de
   `navigation_*.md`/`data_*.md` (fuera de `mockups/`, sin skill dueña) no cambia. Ver Approach
   §2 para el contrato exacto de `describe`, y §3.1 para el detalle de los dos sitios de edición
   en `pv-how/SKILL.md`.
@@ -270,69 +270,69 @@ flowchart TD
 
 ### 1. New asset: `pv-internal-mockups-html/assets/mockup-annotations.html`
 
-One self-contained file: an `<style id="mnote-styles">` block + a `<script id="mnote-runtime">`
+One self-contained file: an `<style id="mnoteqz7k-styles">` block + a `<script id="mnoteqz7k-runtime">`
 block (IIFE, no external deps — matches the "self-contained, no CDN" mockup rule) + a demo
-page body so it can be opened standalone for testing. A `<!-- mnote-framework v1 -->` marker
+page body so it can be opened standalone for testing. A `<!-- mnoteqz7k-framework v1 -->` marker
 comment precedes the style block.
 
-The skill splices **only** those two blocks into each generated mockup — `mnote-styles`
-before `</head>`, `mnote-runtime` before `</body>` — plus the marker comment.
+The skill splices **only** those two blocks into each generated mockup — `mnoteqz7k-styles`
+before `</head>`, `mnoteqz7k-runtime` before `</body>` — plus the marker comment.
 
 Framework responsibilities (all browser runtime, zero build step). **Sin pin-globo ni modo
 "armado"**: un clic simple selecciona; la barra sigue al cursor; el `➕` decide.
 
-- **Barra flotante** `#mnote-bar` (`position:absolute`): fondo gris claro, **solo iconos**
+- **Barra flotante** `#mnoteqz7k-bar` (`position:absolute`): fondo gris claro, **solo iconos**
   (`➕` · `👁` · `💾` + contador), cada acción con `title`/`aria-label`. Al seleccionar un
   elemento se desplaza junto al cursor; sin selección vuelve a una esquina.
-- **Estilo diferenciado**: namespace `.mnote-*` y **dos colores** — ámbar `#f5a623` (nota
+- **Estilo diferenciado**: namespace `.mnoteqz7k-*` y **dos colores** — ámbar `#f5a623` (nota
   vinculada a un elemento) y azul `#2c7dd8` (nota general / elemento seleccionado). Todo
-  selector prefijado `mnote-` para no chocar con el CSS del mockup.
+  selector prefijado `mnoteqz7k-` para no chocar con el CSS del mockup.
 - **Selección de elemento**: un **clic simple** en cualquier nodo del mockup lo marca
-  (`.mnote-sel`, contorno azul), calcula su **selector robusto** (`#id`; si no, ruta
+  (`.mnoteqz7k-sel`, contorno azul), calcula su **selector robusto** (`#id`; si no, ruta
   `nth-of-type` desde `body`) y mueve la barra a su lado. `Esc` o clic fuera deselecciona.
   El recorrido del DOM (tanto para elegir el objetivo del clic como para construir la ruta
-  `nth-of-type`) **ignora los propios nodos `#mnote-bar`, `#mnote-menu`, `#mnote-panel`,
-  `.mnote-card` y `#mnote-data`** — nunca son seleccionables ni cuentan en la ruta.
+  `nth-of-type`) **ignora los propios nodos `#mnoteqz7k-bar`, `#mnoteqz7k-menu`, `#mnoteqz7k-panel`,
+  `.mnoteqz7k-card` y `#mnoteqz7k-data`** — nunca son seleccionables ni cuentan en la ruta.
 - **Crear nota (features a y b) — el `➕`**:
   - **sin elemento seleccionado** → crea una **nota general** directamente;
-  - **con elemento seleccionado** → despliega un **mini-menú** `#mnote-menu`: "Nota en
+  - **con elemento seleccionado** → despliega un **mini-menú** `#mnoteqz7k-menu`: "Nota en
     `<selector>`" / "Nota general".
-- **Tarjeta de nota** `.mnote-card` (única, vinculada o general, lectura o edición): borde
+- **Tarjeta de nota** `.mnoteqz7k-card` (única, vinculada o general, lectura o edición): borde
   izquierdo de 6px ámbar (vinculada) o azul (general); cuerpo `<div>` que en edición pasa a
   `<textarea>`; pie con Editar / Guardar / Eliminar (**feature c**, borrado con confirmación).
   Si el elemento tiene varias notas, `‹ ›` las recorre.
 - **Estado de la nota (`open`/`closed`, nuevo)**: toda nota nace `open` al crearse en el
   navegador. **El framework de anotaciones (JS del lado del navegador) nunca pone una nota en
   `closed`** — esa transición la hace únicamente `pv-internal-mockups-html` al procesar
-  `action: ensure-closed` y reescribir `#mnote-data`. El reviewer puede editar/eliminar una nota
+  `action: ensure-closed` y reescribir `#mnoteqz7k-data`. El reviewer puede editar/eliminar una nota
   libremente (eso no cambia su estado), pero no tiene ningún botón para "cerrarla" él mismo —
   cerrar significa "ya se aplicó", un juicio que solo hace la skill al aplicar el cambio de
   verdad. Una nota `closed` se muestra en la tarjeta/panel con un estilo atenuado (gris, tachado
   o icono ✓) y ya no cuenta en el contador ámbar del elemento ni en el total de la barra —
-  visualmente "resuelta", pero sigue en `#mnote-data` como registro (no se borra) hasta que el
+  visualmente "resuelta", pero sigue en `#mnoteqz7k-data` como registro (no se borra) hasta que el
   reviewer la elimine explícitamente con 🗑.
-- **Marca de elemento con notas**: un **contador ámbar** `.mnote-count` en la esquina
+- **Marca de elemento con notas**: un **contador ámbar** `.mnoteqz7k-count` en la esquina
   (nº de notas vinculadas), visible **solo con las anotaciones visibles**. Al pulsar el
-  elemento se abre su tarjeta al lado, compartiendo el contorno ámbar (`.mnote-linked`)
+  elemento se abre su tarjeta al lado, compartiendo el contorno ámbar (`.mnoteqz7k-linked`)
   mientras está abierta — así se ve la relación sin dibujar líneas.
-- **Notas generales (feature b)**: en un **panel-lista** `#mnote-panel` acoplado a una
+- **Notas generales (feature b)**: en un **panel-lista** `#mnoteqz7k-panel` acoplado a una
   esquina; lista sobria con borde izquierdo azul.
-- **Mostrar / ocultar** (`👁`): togglea `mnote-hidden` en `<html>` que colapsa contadores,
+- **Mostrar / ocultar** (`👁`): togglea `mnoteqz7k-hidden` en `<html>` que colapsa contadores,
   contornos, tarjetas y panel (la barra queda). Estado en `localStorage` por
   `location.pathname`.
 - **Guardar (feature d)** (`💾`):
   - serializa a JSON `[{id, kind:"linked"|"general", selector, text, createdAt, state:"open"}]`
     — `state` nace siempre `"open"` desde el navegador; solo `pv-internal-mockups-html` lo pasa
     a `"closed"` al procesar `ensure-closed` (ver Approach §1, "Estado de la nota");
-  - escribe/actualiza `<script type="application/json" id="mnote-data">…</script>` en el DOM;
+  - escribe/actualiza `<script type="application/json" id="mnoteqz7k-data">…</script>` en el DOM;
   - descarga un Blob de `document.documentElement.outerHTML` con **el mismo nombre de
     archivo** (funciona desde `file://`).
-  - Al cargar, lee `#mnote-data` si existe y rehidrata contadores, panel y estado.
+  - Al cargar, lee `#mnoteqz7k-data` si existe y rehidrata contadores, panel y estado.
 - **Notificación de guardado (feature e)**: desde `file://` la descarga de un Blob nunca
   sobrescribe el archivo abierto — el navegador siempre abre "Guardar como" o cae en la carpeta
   de Descargas, así que el usuario **debe mover manualmente** el archivo descargado a la ruta
-  original. Al pulsar `💾`, `#mnote-toast` (barra fina fija en la parte inferior del viewport,
-  namespace `mnote-*`, fondo neutro) muestra: *"Guardado. Sustituye el original en:
+  original. Al pulsar `💾`, `#mnoteqz7k-toast` (barra fina fija en la parte inferior del viewport,
+  namespace `mnoteqz7k-*`, fondo neutro) muestra: *"Guardado. Sustituye el original en:
   `<ruta completa>`"*, con la ruta tomada de `location.pathname` (decodificado con
   `decodeURIComponent`) — coincide con la ruta real en disco porque el mockup siempre se abre
   como archivo local (`file://`), nunca servido por HTTP. Junto a la ruta, un botón **📋** copia
@@ -343,7 +343,7 @@ Framework responsibilities (all browser runtime, zero build step). **Sin pin-glo
   framework — el resto de la UI (barra, tarjetas, panel) no repite este mensaje.
   - **Fallo al guardar**: el intento de `💾` va envuelto en `try/catch` — si crear el Blob o
     disparar la descarga lanza una excepción (política del navegador en `file://`, modo privado
-    restrictivo, etc.), se muestra la variante `#mnote-toast.error` (fondo rojo oscuro):
+    restrictivo, etc.), se muestra la variante `#mnoteqz7k-toast.error` (fondo rojo oscuro):
     *"No se han guardado tus cambios. La descarga falló — copia el HTML manualmente o inténtalo
     con otro navegador."* A diferencia del toast de éxito, **este no se autodesvanece** — exige
     cierre explícito del usuario, para que no se lleve la falsa impresión de que sus notas ya
@@ -391,8 +391,8 @@ vez de desaparecer; sin JS, todo degrada a "sin anotaciones".
   annotation framework); the mockup still contains no other JS."*
 - **New rule "Embed the annotation framework"** under "Rules for each mockup":
   - After writing/editing the mockup's own markup, the skill **must** copy the asset's
-    `<!-- mnote-framework vN -->` marker + `<style id="mnote-styles">…</style>` right before
-    `</head>` and `<script id="mnote-runtime">…</script>` right before `</body>`.
+    `<!-- mnoteqz7k-framework vN -->` marker + `<style id="mnoteqz7k-styles">…</style>` right before
+    `</head>` and `<script id="mnoteqz7k-runtime">…</script>` right before `</body>`.
   - **Copy verbatim — never re-type, summarize or "improve" the framework blocks.** Mirror
     `pv-init/SKILL.md`'s wording for `assets/pv.py`: *"copied as-is without modifying a single
     line of it."* This verbatim copy is the whole point — it keeps the framework out of the
@@ -403,18 +403,18 @@ vez de desaparecer; sin JS, todo degrada a "sin anotaciones".
   - If it has no framework blocks (older mockup): add them, same as `create`.
   - If the target `design_*.html` already contains a recognizable framework and the asset's
     `vN` marker is **not newer** than the file's: edit the mockup's own markup, leaving the
-    framework blocks **and `#mnote-data` untouched** — a plain `action: edit` from a caller
+    framework blocks **and `#mnoteqz7k-data` untouched** — a plain `action: edit` from a caller
     never changes any note's state or content; only `ensure-closed` does that (see below).
   - If the asset's `vN` marker **is newer** than the file's: replace only the two framework
-    blocks (`<style id="mnote-styles">` + `<script id="mnote-runtime">`) while keeping
-    `#mnote-data` verbatim.
+    blocks (`<style id="mnoteqz7k-styles">` + `<script id="mnoteqz7k-runtime">`) while keeping
+    `#mnoteqz7k-data` verbatim.
 - **New action: `ensure-closed`.** Input: a list of `design_*.html` paths (the ones the caller
   is about to (re-)present, or — for `pv-how` — every `design_*.html` in the entry). For each
-  path with a recognizable framework, parse `#mnote-data` internally:
+  path with a recognizable framework, parse `#mnoteqz7k-data` internally:
   - if every note is already `closed` (or there are none), that path is done — nothing to do;
   - for each note with `state: "open"`: apply the requested change to that mockup's own markup
     (same mechanism as an internal `action: edit`, decided by the skill itself — no round-trip
-    to the caller for this), then set that note's `state` to `"closed"` in `#mnote-data`. A note
+    to the caller for this), then set that note's `state` to `"closed"` in `#mnoteqz7k-data`. A note
     whose stored selector no longer resolves ("desvinculada") is treated as a general note for
     this purpose — same resolve-then-close handling.
   - if a note is ambiguous enough that the skill can't confidently decide what change to apply,
@@ -427,36 +427,36 @@ vez de desaparecer; sin JS, todo degrada a "sin anotaciones".
   - Returns **OK** plus a plain-text summary of what was changed per resolved note (no
     selectors, no JSON) once every given path has zero `open` notes left. **This is the only
     way any caller learns about or resolves annotations** — no other skill ever opens
-    `#mnote-data`, and no caller ever sees an individual note or its `open`/`closed` state
+    `#mnoteqz7k-data`, and no caller ever sees an individual note or its `open`/`closed` state
     directly.
 - **New action: `describe`.** Input: a list of `design_*.html` paths and, optionally, which
   elements/areas to focus on. For each path, read its own markup (something only this skill
   ever does directly) and return a plain-text description of the requested elements' layout,
   styling, and iconography — enough for a caller like `pv-how` (or `pv-do`, when drafting the
   style-bible update for an entry that has mockups — see Approach §3's "Other callers" note)
-  to use as visual reference, without exposing the raw HTML/CSS/SVG or the `mnote-*` framework blocks (which are irrelevant
-  to that purpose anyway). Read-only; never touches `#mnote-data` or note state. This is the
+  to use as visual reference, without exposing the raw HTML/CSS/SVG or the `mnoteqz7k-*` framework blocks (which are irrelevant
+  to that purpose anyway). Read-only; never touches `#mnoteqz7k-data` or note state. This is the
   only way any caller accesses a mockup's visual content — no caller ever `Read`s a
   `design_*.html` file itself.
 - The asset's `vN` marker is independent of `metadata.version`; framework-release version
   bumps are handled by `/dev-generate-version`, not here.
-- **ID collision guard.** The "does the file already have `id="mnote-runtime"`?" check (Flujo A)
+- **ID collision guard.** The "does the file already have `id="mnoteqz7k-runtime"`?" check (Flujo A)
   must verify the element's **content shape**, not just its presence — a `<script>` tag whose
   body starts with the framework's own recognizable header (e.g. the IIFE's opening comment/
   marker), not just any element carrying that id. If a `design_*.html` predating this framework
-  happens to already use `id="mnote-styles"`/`"mnote-runtime"`/`"mnote-data"` for something
+  happens to already use `id="mnoteqz7k-styles"`/`"mnoteqz7k-runtime"`/`"mnoteqz7k-data"` for something
   unrelated, the content check fails to match: treat it exactly like "no framework blocks
   present" is **not** safe here (it would silently duplicate/shadow an id), so instead **stop
   and report the conflict to the caller** (which id, and that it holds unrecognized content)
   without writing anything — same "return the error, generate nothing" pattern already used for
   a `resolve-path.py` failure (pre-rewrite) or a style-bible resolution issue. This is a rare
-  edge case (the `mnote-*` namespace wasn't reserved before this plan) but cheap to guard given
+  edge case (the `mnoteqz7k-*` namespace wasn't reserved before this plan) but cheap to guard given
   the check already exists.
 
 ### 3. Close the cycle in `pv-new`, `pv-fix`, `extend-entry.md`
 
-**Encapsulation rule.** No caller ever reads, parses, or writes `#mnote-data`, nor references
-`mnote-*`, selectors, note state (`open`/`closed`), or the JSON shape in its own prose or
+**Encapsulation rule.** No caller ever reads, parses, or writes `#mnoteqz7k-data`, nor references
+`mnoteqz7k-*`, selectors, note state (`open`/`closed`), or the JSON shape in its own prose or
 logic — that's `pv-internal-mockups-html`'s internal concern alone (see the plan's "Confirmed
 decisions" §3-4). The caller's only verb for annotations is invoking `action: ensure-closed`
 and waiting for its OK/summary.
@@ -545,7 +545,7 @@ inside `pv-new`'s/`pv-fix`'s visual-validation loop, and a new mandatory node at
 `pv-how`'s flow — so **check all three `workflow.*.md` files** (`workflow.new.md`,
 `workflow.fix.md`, `workflow.how.md`) and add the branch/node to each diagram if the change is
 not fine enough to leave as prose-only, worded in terms of the skill's actions
-(`ensure-closed`, `describe`), never `#mnote-data` or note state directly.
+(`ensure-closed`, `describe`), never `#mnoteqz7k-data` or note state directly.
 
 ### 4. Distribution to existing projects
 
@@ -568,15 +568,15 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
 ## Critical files
 
 - **new** `d:\repos\previo-sdd\.claude\skills\pv-internal-mockups-html\assets\mockup-annotations.html`
-  — the whole embedded framework (marker comment + `#mnote-styles` + `#mnote-runtime` + a
-  standalone demo body with an empty `#mnote-data`).
+  — the whole embedded framework (marker comment + `#mnoteqz7k-styles` + `#mnoteqz7k-runtime` + a
+  standalone demo body with an empty `#mnoteqz7k-data`).
 - `d:\repos\previo-sdd\.claude\skills\pv-internal-mockups-html\SKILL.md` — file inventory, the
   "Embed the annotation framework" rule, the amended "no JavaScript" rule, the new
   `ensure-closed` action (note `open`/`closed` state, own-judgment resolution, asking the user
   directly when ambiguous) and the new `describe` action, `vN` marker behavior, **and the
   plugin-isolation rewrite of the style bible rule** (drops `pv-init/scripts/resolve-path.py`,
-  gains the `style_context` input). **All `#mnote-data` and note-state knowledge lives only
-  here** — no other file in this list should end up mentioning `#mnote-data`, `mnote-*`,
+  gains the `style_context` input). **All `#mnoteqz7k-data` and note-state knowledge lives only
+  here** — no other file in this list should end up mentioning `#mnoteqz7k-data`, `mnoteqz7k-*`,
   `open`/`closed`, or a CSS selector. Likewise, no path-resolution logic (`resolve-path.py`,
   `pv-context.json` fields) should remain in this file after the rewrite. **This is also the
   only `pv-internal-*` skill in the framework that talks to the user directly** — call that out
@@ -598,7 +598,7 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
   `d:\repos\previo-sdd\.claude\skills\pv-fix\workflow.fix.md` /
   `d:\repos\previo-sdd\.claude\skills\pv-how\workflow.how.md` — check the visual-validation loop
   (new/fix) and the new entry gate (how) against Flujos B/C; add the `ensure-closed`/`describe`
-  branches to each diagram (worded in terms of the skill's actions, never `#mnote-data` or note
+  branches to each diagram (worded in terms of the skill's actions, never `#mnoteqz7k-data` or note
   state) if prose-only would leave them inconsistent with the diagram (all three SKILL.md files
   say the diagram wins).
 - `d:\repos\previo-sdd\.claude\skills\pv-do\SKILL.md` line 121 (the `docs.tech.styleBibleDocDir`
@@ -619,7 +619,7 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
 
 1. **Asset standalone**: open `assets/mockup-annotations.html` in a browser. Toolbar shows;
    "General note" adds a note; edit/delete work; Save downloads a file; reopen the downloaded
-   file → the note is still there (round-trip via `#mnote-data`).
+   file → the note is still there (round-trip via `#mnoteqz7k-data`).
 2. **Embedded in a real mockup**: splice the two framework blocks into
    `sandbox-test1\previo-sdd\changes\inProgress\00196\design_bloc_notas_vista.html` and open
    it:
@@ -630,17 +630,17 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
      compartiendo el contorno ámbar; `‹ ›` recorre si hay varias.
    - `👁` togglea a diseño limpio y vuelve; recargar mantiene el último estado
      (localStorage). Con anotaciones ocultas el CSS del mockup queda intacto (sin fugas
-     `.mnote-*`, sin contadores).
+     `.mnoteqz7k-*`, sin contadores).
    - Añadir una nota general + una vinculada, `💾` Guardar, reabrir el archivo guardado →
      ambas rehidratan (panel + contador) desde el selector almacenado, ambas con `state: "open"`
-     en `#mnote-data` (el framework del navegador nunca escribe `"closed"`).
+     en `#mnoteqz7k-data` (el framework del navegador nunca escribe `"closed"`).
    - Clic sobre la propia barra / tarjeta / panel **no** selecciona nada del mockup ni
      entra en la ruta `nth-of-type` de una nota vinculada creada después.
    - Confirmar que la tarjeta/panel **no ofrece ningún control para cerrar una nota** — solo
      Editar/Guardar/Eliminar; cerrar es un juicio exclusivo de `pv-internal-mockups-html`.
 3. **Skill dry-run**: invoke `pv-internal-mockups-html` via `pv-new` on a throwaway visual
    change in a sandbox project; confirm the generated `design_*.html` contains
-   `id="mnote-styles"`, `id="mnote-runtime"` and the `<!-- mnote-framework v1 -->` marker,
+   `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"` and the `<!-- mnoteqz7k-framework v1 -->` marker,
    byte-identical to the asset's blocks (Flujo A, paso "copiar la plantilla").
 3.1 **Plugin isolation**: grep `pv-internal-mockups-html/SKILL.md` for `resolve-path.py` and
    `pv-context.json` — neither should appear after the rewrite. Invoke the skill directly with
@@ -648,13 +648,13 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
    with the documented comment, without attempting to read anything from disk beyond its own
    `assets/` folder and the destination path it was given. Then invoke it again with a
    `style_context` string and confirm it reuses those values instead of the neutral fallback.
-4. **Edit round-trip**: add a fake `#mnote-data` with two `open` notes to that file, re-invoke
-   the skill with a plain `action: edit` (not `ensure-closed`); confirm `#mnote-data` and every
+4. **Edit round-trip**: add a fake `#mnoteqz7k-data` with two `open` notes to that file, re-invoke
+   the skill with a plain `action: edit` (not `ensure-closed`); confirm `#mnoteqz7k-data` and every
    note's `state` survive completely untouched, and the framework blocks are untouched.
-4.1 **`ensure-closed` contract — resolution**: with that same fake `#mnote-data` (two `open`
+4.1 **`ensure-closed` contract — resolution**: with that same fake `#mnoteqz7k-data` (two `open`
    notes, both resolvable without ambiguity), invoke `action: ensure-closed` on the file;
    confirm it applies both changes to the mockup's own markup, sets both notes' `state` to
-   `"closed"` in `#mnote-data` (nothing else in the block changes), and returns OK with a
+   `"closed"` in `#mnoteqz7k-data` (nothing else in the block changes), and returns OK with a
    plain-text summary containing no selector or raw JSON. Re-invoke `ensure-closed` again on the
    now-closed file; confirm it's a no-op (OK immediately, nothing re-applied). Also confirm a
    path with no framework embedded is skipped without error.
@@ -664,18 +664,18 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
    answered.
 4.3 **`describe` contract**: invoke `action: describe` on a `design_*.html` with real markup,
    asking about a couple of elements; confirm the response is plain text describing
-   layout/style/iconography, contains no raw HTML/CSS/SVG and no `mnote-*` framework
-   internals, and that the action never touches `#mnote-data` or note state.
+   layout/style/iconography, contains no raw HTML/CSS/SVG and no `mnoteqz7k-*` framework
+   internals, and that the action never touches `#mnoteqz7k-data` or note state.
 5. **Cycle closure — encapsulation check (`pv-new`)**: with a `design_*.html` carrying
-   `#mnote-data` (one linked `open` note "make this wider", one general `open` note), run
+   `#mnoteqz7k-data` (one linked `open` note "make this wider", one general `open` note), run
    `pv-new`'s extend/validate path; confirm Claude only calls `ensure-closed` — grep the turn's
-   tool calls and its own prose for `#mnote-data`/`mnote-`/`open`/`closed` to confirm `pv-new`
+   tool calls and its own prose for `#mnoteqz7k-data`/`mnoteqz7k-`/`open`/`closed` to confirm `pv-new`
    itself never references them — and that both notes end up `closed` internally (Flujo B).
 5.1 **`pv-how` gate check**: on that same now-closed entry, invoke `pv-how`; confirm it calls
    `ensure-closed` again as its own new step 1.05 before step 1.1 (it doesn't assume `pv-new`'s
    earlier call is still valid), gets an immediate OK (nothing left `open`), and that neither
    step 1.1 nor step 2 issues a `Read` on any `design_*.html` — both go through `describe`
-   instead. Then add a fresh `open` note directly to `#mnote-data` (simulating the user having
+   instead. Then add a fresh `open` note directly to `#mnoteqz7k-data` (simulating the user having
    re-annotated after `pv-new` finished but before `pv-how` ran) and re-invoke `pv-how`; confirm
    it blocks at 1.05 until `ensure-closed` resolves that note, and never reaches step 1.1/2/3
    before it does.
@@ -686,13 +686,13 @@ step 5 and its trailing note, `pv-new/extend-entry.md` step 6) + the `workflow.n
 7. **Workflow-diagram consistency**: after editing `pv-new`/`pv-fix`/`extend-entry.md`/`pv-how`,
    diff their prose against `workflow.new.md` / `workflow.fix.md` / `workflow.how.md`; the
    `ensure-closed`/`describe` branches must be present in each diagram (worded in terms of the
-   skill's actions, never `#mnote-data` or note state) or explicitly deemed too fine to diagram —
+   skill's actions, never `#mnoteqz7k-data` or note state) or explicitly deemed too fine to diagram —
    no silent disagreement (all three SKILL.md files mandate the diagram wins).
 8. **`pv-do` no longer references `design_*` directly**: grep `pv-do/SKILL.md` for `design_*` —
    the only remaining match should be the `action: describe` call itself, not a raw file
    mention passed as context to `pv-internal-doc-style`. Run `pv-do`'s style-bible update step
    on an entry that has mockups and confirm its turn's tool calls and prose never mention
-   `design_*`/`mnote-`/`#mnote-data` directly.
+   `design_*`/`mnoteqz7k-`/`#mnoteqz7k-data` directly.
 
 ## Implementation plan
 
@@ -702,4 +702,4 @@ See [TASKS.md](TASKS.md) for the ordered, checkable task breakdown.
 
 - **2026-09-22**: primera revisión completa (contrato `style_context`, alcance incompleto del `Read` en `pv-how` step 1.1, versión `vN` del asset, referencias de línea desalineadas, mecanismo de guardado del asset, ID collision guard, caso `pv-do`, asimetría `extend-entry.md`, ampliación de alcance a plugin autocontenido). Todos los hallazgos se resolvieron directamente en el cuerpo del plan durante esa misma pasada, salvo el del alcance de `pv-how` step 1.1, que quedó marcado como dependiente de un cambio transversal de convención de subcarpetas a implementar antes que este plan.
 - **2026-09-24**: segunda revisión — actualización de conocimiento del estado del framework, ya que el cambio de convención de subcarpetas (`mockups/`) se implementó directamente en el código, sin el plan hermano que la revisión anterior esperaba. Hallazgos: estructura del documento incompleta (faltaban Índice, Objective, Implementation plan y Reviews en el formato exigido, y las revisiones no eran la última sección); la dependencia declarada hacia `mockups-subfolder/PLAN.md` era obsoleta; `navigation_*.md`/`data_*.md` quedaron fuera de `mockups/` de forma explícita, con nombre distinto al asumido antes; ninguna pieza propia de este plan (`style_context`, `ensure-closed`, `describe`, el asset) estaba todavía implementada en `pv-internal-mockups-html/SKILL.md`, y sus referencias a línea habían vuelto a desalinearse por la reescritura de subcarpetas; los tres `workflow.*.md` ya reflejaban la convención de subcarpetas sin rama de anotaciones (esperado, aún no implementada). Resuelto en un walkthrough punto por punto en la misma fecha: se eliminó el bloque de dependencia obsoleto, se fusionó `TASKS.md` como sección `## Implementation plan` de este documento (fichero borrado), se añadió `## Objective`, se corrigieron todas las rutas y referencias a línea del cuerpo normativo (`mockups/design_*.html` vs. `navigation_*.md`/`data_*.md` sueltos en la raíz; regla de estilo del `SKILL.md` de `pv-internal-mockups-html` en líneas 35-56, "no JavaScript" en línea 65), y se recortaron ambas secciones de revisión a este historial.
-- **2026-09-24 (segunda pasada)**: tercera revisión (dev-analysis) — se detectó que la sección de análisis crítico de la pasada anterior había quedado colocada después de `## Reviews` (violando la regla de que debe ser siempre la última sección) y que 2 de sus 4 hallazgos seguían genuinamente sin resolver. Hallazgos: (1) el nodo `EDITKEEP`/`REFRESH` del Flujo A dejaba que un `action: edit` plano borrara una nota de `#mnote-data` si "resolvía" lo que pedía, contradiciendo Approach §2 ("a plain `action: edit` ... never changes any note's state or content; only `ensure-closed` does that"), Confirmed decisions §3 y la propia regla de que una nota cerrada nunca se borra, solo se marca `closed`; (2) la frase introductoria del Flujo A todavía nombraba el modo retirado `action: read-annotations` en vez de `ensure-closed`. Recreado también `TASKS.md` como fichero hermano y `pv-do` como caller cubierto (ya resueltos en el cuerpo del documento por la pasada anterior, sin cambios en esta). Resuelto en walkthrough punto por punto el mismo día: Flujo A reescrito para que `edit`/`create` nunca toquen `#mnote-data` bajo ningún caso (se eliminó el nodo `PENDING` y se limpiaron `EDITKEEP`/`REFRESH`), con una nota explícita de que la resolución de anotaciones es responsabilidad exclusiva de `ensure-closed` (Flujo A'); referencia introductoria corregida a `ensure-closed`; se creó `design_edit-vs-ensure-closed.html` como mockup de apoyo mostrando las dos secuencias separadas (`edit` del caller vs. `ensure-closed` resolviendo y cerrando notas). La sección de análisis crítico, ya sin hallazgos abiertos, se eliminó y su historial se recogió aquí.
+- **2026-09-24 (segunda pasada)**: tercera revisión (dev-analysis) — se detectó que la sección de análisis crítico de la pasada anterior había quedado colocada después de `## Reviews` (violando la regla de que debe ser siempre la última sección) y que 2 de sus 4 hallazgos seguían genuinamente sin resolver. Hallazgos: (1) el nodo `EDITKEEP`/`REFRESH` del Flujo A dejaba que un `action: edit` plano borrara una nota de `#mnoteqz7k-data` si "resolvía" lo que pedía, contradiciendo Approach §2 ("a plain `action: edit` ... never changes any note's state or content; only `ensure-closed` does that"), Confirmed decisions §3 y la propia regla de que una nota cerrada nunca se borra, solo se marca `closed`; (2) la frase introductoria del Flujo A todavía nombraba el modo retirado `action: read-annotations` en vez de `ensure-closed`. Recreado también `TASKS.md` como fichero hermano y `pv-do` como caller cubierto (ya resueltos en el cuerpo del documento por la pasada anterior, sin cambios en esta). Resuelto en walkthrough punto por punto el mismo día: Flujo A reescrito para que `edit`/`create` nunca toquen `#mnoteqz7k-data` bajo ningún caso (se eliminó el nodo `PENDING` y se limpiaron `EDITKEEP`/`REFRESH`), con una nota explícita de que la resolución de anotaciones es responsabilidad exclusiva de `ensure-closed` (Flujo A'); referencia introductoria corregida a `ensure-closed`; se creó `design_edit-vs-ensure-closed.html` como mockup de apoyo mostrando las dos secuencias separadas (`edit` del caller vs. `ensure-closed` resolviendo y cerrando notas). La sección de análisis crítico, ya sin hallazgos abiertos, se eliminó y su historial se recogió aquí.

@@ -1,0 +1,950 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>mnoteqz7k-framework</title>
+<!-- mnoteqz7k-framework v1 -->
+<style id="mnoteqz7k-styles">
+  :root {
+    --mnoteqz7k-pin: #f5a623;   /* amber: note linked to an element */
+    --mnoteqz7k-gen: #2c7dd8;   /* blue: general note / selected element */
+    --mnoteqz7k-border: #d6dce0;
+    --mnoteqz7k-ink: #1a1a1a;
+    --mnoteqz7k-ink-muted: #5f6b73;
+  }
+
+  .mnoteqz7k-sel { outline: 2px solid var(--mnoteqz7k-gen) !important; outline-offset: 2px; }
+  .mnoteqz7k-linked { outline: 2px solid var(--mnoteqz7k-pin) !important; outline-offset: 2px; }
+
+  html.mnoteqz7k-hidden .mnoteqz7k-count,
+  html.mnoteqz7k-hidden .mnoteqz7k-card,
+  html.mnoteqz7k-hidden .mnoteqz7k-menu { display: none !important; }
+
+  html.mnoteqz7k-hidden .mnoteqz7k-sel,
+  html.mnoteqz7k-hidden .mnoteqz7k-linked { outline: none !important; }
+
+  .mnoteqz7k-count { position: fixed;
+    min-width: 16px; height: 16px; padding: 0 3px; border-radius: 8px;
+    background: var(--mnoteqz7k-pin); color: #2b2b2b; border: 2px solid #fff;
+    font: 700 10px/12px system-ui, sans-serif; display: inline-flex; align-items: center;
+    justify-content: center; z-index: 2147483000; cursor: pointer; }
+
+  #mnoteqz7k-bar { position: fixed; display: inline-flex; gap: .15rem; align-items: center;
+    background: #e9edf0; border: 1px solid var(--mnoteqz7k-border); color: var(--mnoteqz7k-ink);
+    padding: .25rem .3rem; border-radius: 6px; font-size: .95rem;
+    box-shadow: 0 3px 10px rgba(0,0,0,.18); z-index: 2147483001;
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #mnoteqz7k-bar button { border: 0; background: transparent; color: inherit; font: inherit; line-height: 1;
+    width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+    border-radius: 4px; cursor: pointer; }
+  #mnoteqz7k-bar button:hover { background: rgba(0,0,0,.08); }
+  #mnoteqz7k-bar button[aria-pressed="true"] { background: var(--mnoteqz7k-pin); }
+  #mnoteqz7k-bar button:disabled { opacity: .35; cursor: default; }
+  #mnoteqz7k-bar button:disabled:hover { background: transparent; }
+  #mnoteqz7k-bar .mnoteqz7k-total { background: var(--mnoteqz7k-pin); color: #2b2b2b; font-weight: 700; font-size: .72rem;
+    border-radius: 4px; padding: 0 .35rem; margin-left: .15rem; min-width: 1em; text-align: center; }
+
+  #mnoteqz7k-menu { position: fixed; border: 1px solid var(--mnoteqz7k-border); background: #fff; border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0,0,0,.2); font-size: .8rem; width: 220px; overflow: hidden;
+    z-index: 2147483002; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #mnoteqz7k-menu button { display: block; width: 100%; text-align: left; border: 0; background: transparent;
+    font: inherit; padding: .5rem .6rem; cursor: pointer; color: var(--mnoteqz7k-ink); }
+  #mnoteqz7k-menu button:hover { background: #f4f6f8; }
+  #mnoteqz7k-menu button + button { border-top: 1px solid var(--mnoteqz7k-border); }
+  #mnoteqz7k-menu code { font-size: .82em; background: #f0f2f4; padding: .05em .3em; border-radius: 3px; }
+
+  .mnoteqz7k-card { position: fixed; width: 320px; background: #fff; border: 1px solid var(--mnoteqz7k-border);
+    border-left: 6px solid var(--mnoteqz7k-pin); border-radius: 5px; font-size: .8rem;
+    box-shadow: 0 6px 18px rgba(0,0,0,.18); z-index: 2147483002; color: var(--mnoteqz7k-ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mnoteqz7k-card.mnoteqz7k-card--gen { border-left-color: var(--mnoteqz7k-gen); }
+  .mnoteqz7k-card__head { padding: .4rem .55rem; font-size: .72rem; color: var(--mnoteqz7k-ink-muted);
+    display: flex; gap: .35rem; align-items: center; }
+  .mnoteqz7k-card__head code { font-size: .9em; }
+  .mnoteqz7k-card__head .mnoteqz7k-card__nav { margin-left: auto; display: inline-flex; align-items: center; gap: .2rem; }
+  .mnoteqz7k-card__head .mnoteqz7k-card__nav button { border: 0; background: transparent; color: inherit; font: inherit;
+    font-size: .85rem; cursor: pointer; padding: 0 .15rem; line-height: 1; }
+  .mnoteqz7k-card__head .mnoteqz7k-card__nav button:hover { color: var(--mnoteqz7k-ink); }
+  .mnoteqz7k-card__head .mnoteqz7k-badge { margin-left: auto; background: #b8bdc2; color: #fff; border-radius: 3px;
+    padding: .05rem .35rem; font-size: .65rem; font-weight: 700; }
+  .mnoteqz7k-card__body { padding: 0 .55rem .5rem; white-space: pre-wrap; word-break: break-word;
+    font-size: .92rem; line-height: 1.4; }
+  .mnoteqz7k-card__body textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit;
+    border: 1px solid var(--mnoteqz7k-border); border-radius: 4px; padding: .35rem; box-sizing: border-box; }
+  .mnoteqz7k-card__foot { display: flex; gap: .4rem; align-items: center; padding: .4rem .55rem;
+    border-top: 1px solid var(--mnoteqz7k-border); }
+  .mnoteqz7k-card__foot button { border: 1px solid var(--mnoteqz7k-border); background: #f7f8f9; font: inherit;
+    font-size: .74rem; padding: .25rem .5rem; border-radius: 4px; cursor: pointer; color: var(--mnoteqz7k-ink); }
+  .mnoteqz7k-card__foot .mnoteqz7k-del { margin-left: auto; color: #b3261e; border-color: #e0b4b4; background: #fff; }
+  .mnoteqz7k-card__foot .mnoteqz7k-ok { background: var(--mnoteqz7k-pin); border-color: var(--mnoteqz7k-pin); color: #2b2b2b; font-weight: 600; }
+  .mnoteqz7k-card--closed { border-left-color: #b8bdc2; opacity: .6; }
+  .mnoteqz7k-card--closed .mnoteqz7k-card__body { text-decoration: line-through; color: var(--mnoteqz7k-ink-muted); }
+
+  .mnoteqz7k-panel { position: fixed; right: 12px; width: 250px;
+    border: 1px solid var(--mnoteqz7k-border); border-radius: 6px; overflow: hidden; background: #fff;
+    z-index: 2147483000; color: var(--mnoteqz7k-ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .mnoteqz7k-panel__head { padding: .45rem .6rem; font-size: .74rem; font-weight: 700;
+    color: var(--mnoteqz7k-ink-muted); background: #f4f6f8; display: flex; align-items: center;
+    gap: .4rem; cursor: pointer; user-select: none; }
+  .mnoteqz7k-panel__head .mnoteqz7k-panel__title { flex: 1; }
+  .mnoteqz7k-panel__head .mnoteqz7k-panel__toggle { border: 0; background: transparent; color: inherit;
+    font: inherit; font-size: .75rem; cursor: pointer; padding: 0; line-height: 1;
+    transition: transform .15s; }
+  .mnoteqz7k-panel--collapsed .mnoteqz7k-panel__toggle { transform: rotate(-90deg); }
+  .mnoteqz7k-panel__list { max-height: 60vh; overflow-y: auto; }
+  .mnoteqz7k-panel--collapsed .mnoteqz7k-panel__list { display: none; }
+  .mnoteqz7k-panel__item { padding: .5rem .6rem; font-size: .8rem; border-top: 1px solid var(--mnoteqz7k-border);
+    border-left: 6px solid var(--mnoteqz7k-gen); }
+  .mnoteqz7k-panel__item--linked { border-left-color: var(--mnoteqz7k-pin); }
+  .mnoteqz7k-panel__item.mnoteqz7k-detached { border-left-color: #b3261e; }
+  .mnoteqz7k-panel__item.mnoteqz7k-closed { border-left-color: #b8bdc2; opacity: .6; }
+  .mnoteqz7k-panel__item.mnoteqz7k-closed .mnoteqz7k-panel__text { text-decoration: line-through; color: var(--mnoteqz7k-ink-muted); }
+  .mnoteqz7k-panel__item .mnoteqz7k-meta { font-size: .68rem; color: var(--mnoteqz7k-ink-muted); margin-bottom: .15rem; }
+  .mnoteqz7k-panel__item .mnoteqz7k-panel__text { white-space: pre-wrap; word-break: break-word;
+    font-size: .92rem; line-height: 1.4; }
+  .mnoteqz7k-panel__item textarea { width: 100%; min-height: 54px; resize: vertical; font: inherit;
+    border: 1px solid var(--mnoteqz7k-border); border-radius: 4px; padding: .35rem; box-sizing: border-box; }
+  .mnoteqz7k-panel__item .mnoteqz7k-panel__acts { margin-top: .35rem; display: flex; gap: .6rem; }
+  .mnoteqz7k-panel__item .mnoteqz7k-panel__acts button { border: 0; background: transparent; color: var(--mnoteqz7k-ink-muted);
+    font: inherit; font-size: .72rem; cursor: pointer; padding: 0; }
+  .mnoteqz7k-panel__item .mnoteqz7k-panel__acts button:hover { color: var(--mnoteqz7k-ink); }
+
+  #mnoteqz7k-toast { position: fixed;
+    display: flex; align-items: center; gap: .6rem; background: #fff; color: var(--mnoteqz7k-ink);
+    border: 1px solid var(--mnoteqz7k-border); border-left: 6px solid var(--mnoteqz7k-gen);
+    font-size: .8rem; padding: .55rem .9rem; border-radius: 6px; box-shadow: 0 6px 18px rgba(0,0,0,.18);
+    z-index: 2147483003; max-width: 90vw; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #mnoteqz7k-toast.mnoteqz7k-toast--centered { left: 50%; bottom: 20px; transform: translateX(-50%); }
+  #mnoteqz7k-toast .mnoteqz7k-path { color: #b3261e; font-weight: 700; word-break: break-all; }
+  #mnoteqz7k-toast.mnoteqz7k-error { border-left-color: #b3261e; background: #fdf1f0; }
+  #mnoteqz7k-toast.mnoteqz7k-error strong { color: #b3261e; }
+  #mnoteqz7k-toast button { flex-shrink: 0; border: 1px solid var(--mnoteqz7k-border); background: #f7f8f9;
+    color: var(--mnoteqz7k-ink); font: inherit; font-size: .78rem; line-height: 1; cursor: pointer;
+    padding: .3rem .5rem; border-radius: 4px; }
+  #mnoteqz7k-toast button:hover { background: #eef0f2; }
+  #mnoteqz7k-toast .mnoteqz7k-close { border-color: transparent; background: transparent; color: var(--mnoteqz7k-ink-muted);
+    font-size: .9rem; padding: 0 .1rem; }
+  #mnoteqz7k-toast .mnoteqz7k-close:hover { background: transparent; color: var(--mnoteqz7k-ink); }
+  #mnoteqz7k-toast .mnoteqz7k-continue { background: var(--mnoteqz7k-pin); border-color: var(--mnoteqz7k-pin); color: #2b2b2b; font-weight: 700; }
+  #mnoteqz7k-toast .mnoteqz7k-continue:hover { background: var(--mnoteqz7k-pin); opacity: .9; }
+  #mnoteqz7k-toast[hidden] { display: none; }
+
+  #mnoteqz7k-watermark { position: fixed; bottom: 10px; right: 10px; z-index: 2147482999;
+    font: 600 .85rem/1 system-ui, -apple-system, "Segoe UI", sans-serif;
+    color: var(--mnoteqz7k-ink-muted); background: rgba(255,255,255,.85);
+    padding: .35rem .7rem; border-radius: 5px; text-decoration: none; opacity: .7; }
+  #mnoteqz7k-watermark:hover { opacity: 1; text-decoration: underline; }
+  html.mnoteqz7k-hidden #mnoteqz7k-watermark { opacity: .35; }
+</style>
+</head>
+<body>
+<!--
+  This is the real asset. pv-internal-mockups-html copies, verbatim, only the marker comment
+  above plus the two blocks that follow: <style id="mnoteqz7k-styles"> and <script id="mnoteqz7k-runtime">
+  (and an empty #mnoteqz7k-data if the target file doesn't have one yet). Never add demo content or
+  extra widgets to this body — this file has none on purpose. For manual browser testing against
+  a variety of widgets, use mockup-annotations.sandbox.html instead (its framework blocks are
+  injected from here, never hand-edited there).
+-->
+<script type="application/json" id="mnoteqz7k-data">[]</script>
+
+<script id="mnoteqz7k-runtime">
+/* mnoteqz7k-framework v1 — self-contained review-annotation runtime. No external deps. */
+(function () {
+  "use strict";
+
+  var IGNORE_SELECTOR = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-panel, .mnoteqz7k-card, #mnoteqz7k-data, #mnoteqz7k-toast, #mnoteqz7k-watermark";
+
+  var state = {
+    notes: [],           // [{id, kind:"linked"|"general", selector, text, createdAt, state:"open"|"closed"}]
+    selectedEl: null,
+    selectedSelector: null,
+    openCardId: null,
+    openCardAnchor: null,
+    hidden: false,
+    generalPanelCollapsed: false,
+    linkedPanelCollapsed: true
+  };
+
+  var bar, menu, generalPanel, linkedPanel, toast, toastTimer;
+
+  function qsIgnored(el) {
+    return el.closest && el.closest(IGNORE_SELECTOR);
+  }
+
+  function uid() {
+    return "n" + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function localFilePath() {
+    var p = decodeURIComponent(location.pathname);
+    return /^\/[A-Za-z]:\//.test(p) ? p.slice(1) : p;
+  }
+
+  function localFolderPath() {
+    var p = localFilePath();
+    var idx = p.lastIndexOf("/");
+    return idx === -1 ? p : p.slice(0, idx);
+  }
+
+  function wireCopyButton(btn, text) {
+    var original = btn.textContent;
+    btn.addEventListener("click", function () {
+      try { navigator.clipboard.writeText(text); } catch (e) {}
+      btn.textContent = "✅";
+      btn.disabled = true;
+      setTimeout(function () {
+        btn.textContent = original;
+        btn.disabled = false;
+      }, 1200);
+    });
+  }
+
+  function storageKey() {
+    return "mnoteqz7k-hidden:" + location.pathname;
+  }
+
+  function loadHidden() {
+    try {
+      state.hidden = localStorage.getItem(storageKey()) === "1";
+    } catch (e) { state.hidden = false; }
+    document.documentElement.classList.toggle("mnoteqz7k-hidden", state.hidden);
+  }
+
+  function saveHidden() {
+    try { localStorage.setItem(storageKey(), state.hidden ? "1" : "0"); } catch (e) {}
+  }
+
+  function loadData() {
+    var script = document.getElementById("mnoteqz7k-data");
+    if (!script) return [];
+    try {
+      var parsed = JSON.parse(script.textContent || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) { return []; }
+  }
+
+  function persistData() {
+    var script = document.getElementById("mnoteqz7k-data");
+    if (!script) {
+      script = document.createElement("script");
+      script.type = "application/json";
+      script.id = "mnoteqz7k-data";
+      document.body.appendChild(script);
+    }
+    script.textContent = JSON.stringify(state.notes);
+  }
+
+  function robustSelector(el) {
+    if (el.id) return "#" + el.id;
+    var path = [];
+    var node = el;
+    while (node && node.nodeType === 1 && node !== document.body) {
+      var tag = node.tagName.toLowerCase();
+      var siblings = Array.prototype.filter.call(
+        node.parentNode ? node.parentNode.children : [],
+        function (sib) { return sib.tagName === node.tagName; }
+      );
+      var idx = siblings.indexOf(node) + 1;
+      path.unshift(tag + ":nth-of-type(" + idx + ")");
+      node = node.parentNode;
+    }
+    return "body > " + path.join(" > ");
+  }
+
+  function resolveSelector(sel) {
+    if (!sel) return null;
+    try {
+      var el = document.querySelector(sel);
+      return (el && !qsIgnored(el)) ? el : null;
+    } catch (e) { return null; }
+  }
+
+  function openNotesCount() {
+    return state.notes.filter(function (n) { return n.state === "open"; }).length;
+  }
+
+  /* ---------- bar ---------- */
+
+  function buildBar() {
+    bar = document.createElement("div");
+    bar.id = "mnoteqz7k-bar";
+    bar.innerHTML =
+      '<button id="mnoteqz7k-add" title="New note" aria-label="New note">➕</button>' +
+      '<button id="mnoteqz7k-eye" title="Hide annotations" aria-label="Hide annotations">👁</button>' +
+      '<button id="mnoteqz7k-save" title="Save annotations" aria-label="Save annotations">💾</button>' +
+      '<span class="mnoteqz7k-total" title="Total open notes">0</span>';
+    document.body.appendChild(bar);
+    bar.querySelector("#mnoteqz7k-add").addEventListener("click", onAddClick);
+    bar.querySelector("#mnoteqz7k-eye").addEventListener("click", onEyeClick);
+    bar.querySelector("#mnoteqz7k-save").addEventListener("click", onSaveClick);
+    positionBarCorner();
+  }
+
+  function positionBarCorner() {
+    bar.style.top = "12px";
+    bar.style.left = "auto";
+    bar.style.right = "12px";
+  }
+
+  function positionBarNear(el) {
+    var r = el.getBoundingClientRect();
+    bar.style.left = Math.max(8, r.left) + "px";
+    bar.style.top = Math.max(8, r.bottom + 6) + "px";
+    bar.style.right = "auto";
+  }
+
+  function refreshBar() {
+    var eye = bar.querySelector("#mnoteqz7k-eye");
+    eye.setAttribute("aria-pressed", state.hidden ? "true" : "false");
+    eye.title = state.hidden ? "Show annotations" : "Hide annotations";
+    eye.setAttribute("aria-label", eye.title);
+    bar.querySelector(".mnoteqz7k-total").textContent = String(openNotesCount());
+    bar.querySelector("#mnoteqz7k-add").disabled = state.hidden;
+  }
+
+  /* ---------- selection ---------- */
+
+  function onDocumentClick(ev) {
+    if (state.hidden) return;
+    var el = ev.target;
+    if (qsIgnored(el)) return;
+
+    if (state.openCardId) closeCard();
+
+    if (el === state.selectedEl) return;
+
+    closeMenu();
+    selectElement(el);
+
+    var sel = state.selectedSelector;
+    var first = state.notes.find(function (n) { return n.kind === "linked" && n.selector === sel; });
+    if (first) openCard(first.id, false);
+  }
+
+  function selectElement(el) {
+    if (state.selectedEl) state.selectedEl.classList.remove("mnoteqz7k-sel");
+    state.selectedEl = el;
+    state.selectedSelector = robustSelector(el);
+    el.classList.add("mnoteqz7k-sel");
+    positionBarNear(el);
+  }
+
+  function deselect() {
+    if (state.selectedEl) state.selectedEl.classList.remove("mnoteqz7k-sel");
+    state.selectedEl = null;
+    state.selectedSelector = null;
+    closeMenu();
+    positionBarCorner();
+  }
+
+  document.addEventListener("keydown", function (ev) {
+    if (ev.key === "Escape") { deselect(); closeCard(); }
+  });
+
+  /* ---------- add note (+ mini-menu) ---------- */
+
+  function onAddClick(ev) {
+    ev.stopPropagation();
+    if (!state.selectedEl) {
+      createNote("general", null, "");
+      return;
+    }
+    openMenu();
+  }
+
+  function openMenu() {
+    closeMenu();
+    menu = document.createElement("div");
+    menu.id = "mnoteqz7k-menu";
+    menu.innerHTML =
+      '<button id="mnoteqz7k-menu-linked">📌 Note on <code>' + escapeHtml(state.selectedSelector) + '</code></button>' +
+      '<button id="mnoteqz7k-menu-general">➕ General note</button>';
+    document.body.appendChild(menu);
+    var r = bar.getBoundingClientRect();
+    menu.style.left = r.left + "px";
+    menu.style.top = (r.bottom + 6) + "px";
+    menu.querySelector("#mnoteqz7k-menu-linked").addEventListener("click", function () {
+      createNote("linked", state.selectedSelector, "");
+    });
+    menu.querySelector("#mnoteqz7k-menu-general").addEventListener("click", function () {
+      createNote("general", null, "");
+    });
+    bar.querySelector("#mnoteqz7k-add").setAttribute("aria-pressed", "true");
+  }
+
+  function closeMenu() {
+    if (menu) { menu.remove(); menu = null; }
+    if (bar) bar.querySelector("#mnoteqz7k-add").setAttribute("aria-pressed", "false");
+  }
+
+  document.addEventListener("click", function (ev) {
+    if (menu && !qsIgnored(ev.target)) closeMenu();
+  }, true);
+
+  /* ---------- notes CRUD ---------- */
+
+  function createNote(kind, selector, text) {
+    var note = {
+      id: uid(), kind: kind, selector: selector, text: text,
+      createdAt: new Date().toISOString(), state: "open"
+    };
+    state.notes.push(note);
+    closeMenu();
+    render();
+    openCard(note.id, true);
+  }
+
+  function updateNoteText(id, text) {
+    var note = state.notes.find(function (n) { return n.id === id; });
+    if (note) note.text = text;
+  }
+
+  function deleteNote(id) {
+    state.notes = state.notes.filter(function (n) { return n.id !== id; });
+    if (state.openCardId === id) closeCard();
+    render();
+  }
+
+  /* ---------- card ---------- */
+
+  function noteAnchorEl(note) {
+    if (note.kind !== "linked") return null;
+    return resolveSelector(note.selector);
+  }
+
+  function openCard(id, editing) {
+    closeCard();
+    var note = state.notes.find(function (n) { return n.id === id; });
+    if (!note) return;
+    state.openCardId = id;
+
+    var anchor = noteAnchorEl(note);
+    state.openCardAnchor = anchor;
+    var isDetached = note.kind === "linked" && !anchor;
+    var card = document.createElement("div");
+    card.className = "mnoteqz7k-card" + (note.kind === "general" || isDetached ? " mnoteqz7k-card--gen" : "") +
+      (note.state === "closed" ? " mnoteqz7k-card--closed" : "");
+    card.id = "mnoteqz7k-card-" + note.id;
+
+    var siblingNotes = note.kind === "linked" && note.selector
+      ? state.notes.filter(function (n) { return n.kind === "linked" && n.selector === note.selector; })
+      : [];
+    var navHtml = "";
+    if (siblingNotes.length > 1) {
+      var idx = siblingNotes.indexOf(note) + 1;
+      navHtml = '<span class="mnoteqz7k-card__nav">' +
+        '<button class="mnoteqz7k-prev" title="Previous">‹</button>' +
+        '<span>' + idx + ' / ' + siblingNotes.length + '</span>' +
+        '<button class="mnoteqz7k-next" title="Next">›</button>' +
+        '</span>';
+    }
+
+    var headLabel = note.kind === "general"
+      ? "General note"
+      : (isDetached ? "Detached note" : "Note on <code>" + escapeHtml(note.selector) + "</code>");
+
+    card.innerHTML =
+      '<div class="mnoteqz7k-card__head">' + headLabel + navHtml +
+        (note.state === "closed" ? '<span class="mnoteqz7k-badge">✓ resolved</span>' : "") +
+      '</div>' +
+      '<div class="mnoteqz7k-card__body"></div>' +
+      '<div class="mnoteqz7k-card__foot"></div>';
+
+    document.body.appendChild(card);
+    positionCard(card, anchor);
+
+    if (anchor) anchor.classList.add("mnoteqz7k-linked");
+
+    renderCardBody(card, note, !!editing);
+    renderCardFoot(card, note);
+
+    if (siblingNotes.length > 1) {
+      card.querySelector(".mnoteqz7k-prev").addEventListener("click", function () {
+        var i = siblingNotes.indexOf(note);
+        var prev = siblingNotes[(i - 1 + siblingNotes.length) % siblingNotes.length];
+        openCard(prev.id, false);
+      });
+      card.querySelector(".mnoteqz7k-next").addEventListener("click", function () {
+        var i = siblingNotes.indexOf(note);
+        var next = siblingNotes[(i + 1) % siblingNotes.length];
+        openCard(next.id, false);
+      });
+    }
+  }
+
+  function positionCard(card, anchor) {
+    if (anchor) {
+      var r = anchor.getBoundingClientRect();
+      card.style.left = Math.min(window.innerWidth - 260, r.right + 10) + "px";
+      card.style.top = Math.max(8, r.top) + "px";
+    } else {
+      var br = bar.getBoundingClientRect();
+      card.style.left = Math.max(8, br.left) + "px";
+      card.style.top = (br.bottom + 6) + "px";
+    }
+  }
+
+  function renderCardBody(card, note, editing) {
+    var body = card.querySelector(".mnoteqz7k-card__body");
+    if (editing && note.state !== "closed") {
+      body.innerHTML = "";
+      var ta = document.createElement("textarea");
+      ta.value = note.text;
+      body.appendChild(ta);
+      ta.focus();
+    } else {
+      body.textContent = note.text || "(empty)";
+    }
+  }
+
+  function renderCardFoot(card, note) {
+    var foot = card.querySelector(".mnoteqz7k-card__foot");
+    foot.innerHTML = "";
+
+    if (note.state === "closed") {
+      var del0 = document.createElement("button");
+      del0.className = "mnoteqz7k-del";
+      del0.textContent = "🗑 Delete";
+      del0.addEventListener("click", function () { confirmDelete(note.id); });
+      foot.appendChild(del0);
+      return;
+    }
+
+    var editing = card.querySelector("textarea") != null;
+    if (editing) {
+      var save = document.createElement("button");
+      save.className = "mnoteqz7k-ok";
+      save.textContent = "Save";
+      save.addEventListener("click", function () {
+        var ta = card.querySelector("textarea");
+        updateNoteText(note.id, ta.value);
+        closeCard();
+        render();
+      });
+      foot.appendChild(save);
+    } else {
+      var edit = document.createElement("button");
+      edit.textContent = "✏️ Edit";
+      edit.addEventListener("click", function () {
+        renderCardBody(card, note, true);
+        renderCardFoot(card, note);
+      });
+      foot.appendChild(edit);
+    }
+
+    var del = document.createElement("button");
+    del.className = "mnoteqz7k-del";
+    del.textContent = "🗑";
+    del.title = "Delete";
+    del.addEventListener("click", function () { confirmDelete(note.id); });
+    foot.appendChild(del);
+  }
+
+  function confirmDelete(id) {
+    if (window.confirm("Delete this note?")) deleteNote(id);
+  }
+
+  function closeCard() {
+    if (state.openCardId) {
+      document.querySelectorAll(".mnoteqz7k-linked").forEach(function (el) {
+        el.classList.remove("mnoteqz7k-linked");
+      });
+    }
+    var existing = document.querySelectorAll(".mnoteqz7k-card");
+    existing.forEach(function (c) { c.remove(); });
+    state.openCardId = null;
+    state.openCardAnchor = null;
+  }
+
+  /* ---------- counts on mockup elements ---------- */
+
+  var activeBadges = []; // [{badge, el}] — kept so scroll/resize can reposition them
+
+  function clearCounts() {
+    document.querySelectorAll(".mnoteqz7k-count").forEach(function (c) { c.remove(); });
+    activeBadges = [];
+  }
+
+  function renderCounts() {
+    clearCounts();
+    var bySelector = {};
+    state.notes.forEach(function (n) {
+      if (n.kind === "linked" && n.state === "open") {
+        bySelector[n.selector] = (bySelector[n.selector] || 0) + 1;
+      }
+    });
+    Object.keys(bySelector).forEach(function (sel) {
+      var el = resolveSelector(sel);
+      if (!el) return;
+      var badge = document.createElement("span");
+      badge.className = "mnoteqz7k-count";
+      badge.textContent = String(bySelector[sel]);
+      badge.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        var first = state.notes.find(function (n) { return n.kind === "linked" && n.selector === sel; });
+        if (first) openCard(first.id, false);
+      });
+      document.body.appendChild(badge);
+      activeBadges.push({ badge: badge, el: el });
+      positionCountBadge(badge, el);
+    });
+  }
+
+  function positionCountBadge(badge, el) {
+    var r = el.getBoundingClientRect();
+    badge.style.top = (r.top - 8) + "px";
+    badge.style.left = (r.right - 8) + "px";
+  }
+
+  function repositionBadges() {
+    activeBadges.forEach(function (b) { positionCountBadge(b.badge, b.el); });
+  }
+
+  /* Continuous rAF loop: badges and an open, anchored card must track their element even
+     when it moves for reasons the framework can't observe (drag-and-drop, CSS animation,
+     JS repositioning inside the mockup itself) — scroll/resize alone can't catch that. */
+  function trackingLoop() {
+    if (activeBadges.length) repositionBadges();
+    if (state.openCardId && state.openCardAnchor) {
+      var card = document.getElementById("mnoteqz7k-card-" + state.openCardId);
+      if (card) positionCard(card, state.openCardAnchor);
+    }
+    requestAnimationFrame(trackingLoop);
+  }
+
+  /* ---------- general / linked panels ---------- */
+
+  function renderPanelItemActs(item, n) {
+    var acts = item.querySelector(".mnoteqz7k-panel__acts");
+    acts.innerHTML = "";
+    if (n.state !== "closed") {
+      var editBtn = document.createElement("button");
+      editBtn.textContent = "✏️ Edit";
+      editBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        renderPanelItemEditing(item, n);
+      });
+      acts.appendChild(editBtn);
+    }
+    var delBtn = document.createElement("button");
+    delBtn.textContent = "🗑 Delete";
+    delBtn.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      confirmDelete(n.id);
+    });
+    acts.appendChild(delBtn);
+  }
+
+  function renderPanelItemEditing(item, n) {
+    var textEl = item.querySelector(".mnoteqz7k-panel__text");
+    var ta = document.createElement("textarea");
+    ta.value = n.text;
+    textEl.replaceWith(ta);
+    ta.addEventListener("click", function (ev) { ev.stopPropagation(); });
+    ta.focus();
+
+    var acts = item.querySelector(".mnoteqz7k-panel__acts");
+    acts.innerHTML = "";
+    var save = document.createElement("button");
+    save.textContent = "Save";
+    save.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      updateNoteText(n.id, ta.value);
+      render();
+    });
+    var cancel = document.createElement("button");
+    cancel.textContent = "Cancel";
+    cancel.addEventListener("click", function (ev) {
+      ev.stopPropagation();
+      render();
+    });
+    acts.appendChild(save);
+    acts.appendChild(cancel);
+  }
+
+  function buildPanelHead(title, count, collapsed, onToggle) {
+    var head = document.createElement("div");
+    head.className = "mnoteqz7k-panel__head";
+    head.innerHTML =
+      '<span class="mnoteqz7k-panel__title">' + title + ' · ' + count + '</span>' +
+      '<button class="mnoteqz7k-panel__toggle" title="' + (collapsed ? "Expand" : "Collapse") +
+      '" aria-label="' + (collapsed ? "Expand" : "Collapse") + '">▾</button>';
+    head.addEventListener("click", onToggle);
+    return head;
+  }
+
+  function renderGeneralPanel() {
+    if (generalPanel) { generalPanel.remove(); generalPanel = null; }
+    var items = state.notes.filter(function (n) {
+      return n.kind === "general" || (n.kind === "linked" && !resolveSelector(n.selector));
+    });
+
+    generalPanel = document.createElement("div");
+    generalPanel.className = "mnoteqz7k-panel" + (state.generalPanelCollapsed ? " mnoteqz7k-panel--collapsed" : "");
+    generalPanel.id = "mnoteqz7k-panel-general";
+    generalPanel.style.top = "56px";
+    generalPanel.appendChild(buildPanelHead("General notes", items.length, state.generalPanelCollapsed, function () {
+      state.generalPanelCollapsed = !state.generalPanelCollapsed;
+      render();
+    }));
+
+    var list = document.createElement("div");
+    list.className = "mnoteqz7k-panel__list";
+    items.forEach(function (n) {
+      var detached = n.kind === "linked";
+      var item = document.createElement("div");
+      item.className = "mnoteqz7k-panel__item" +
+        (detached ? " mnoteqz7k-detached" : "") +
+        (n.state === "closed" ? " mnoteqz7k-closed" : "");
+      var meta = detached ? "detached · its element no longer exists" : "general";
+      item.innerHTML =
+        '<div class="mnoteqz7k-meta">' + meta + (n.state === "closed" ? " · ✓ resolved" : "") + '</div>' +
+        '<div class="mnoteqz7k-panel__text"></div>' +
+        '<div class="mnoteqz7k-panel__acts"></div>';
+      item.querySelector(".mnoteqz7k-panel__text").textContent = n.text || "(empty)";
+      renderPanelItemActs(item, n);
+      list.appendChild(item);
+    });
+    generalPanel.appendChild(list);
+
+    document.body.appendChild(generalPanel);
+  }
+
+  function renderLinkedPanel() {
+    if (linkedPanel) { linkedPanel.remove(); linkedPanel = null; }
+    var items = state.notes.filter(function (n) {
+      return n.kind === "linked" && resolveSelector(n.selector);
+    });
+    if (items.length === 0) return;
+
+    linkedPanel = document.createElement("div");
+    linkedPanel.className = "mnoteqz7k-panel" + (state.linkedPanelCollapsed ? " mnoteqz7k-panel--collapsed" : "");
+    linkedPanel.id = "mnoteqz7k-panel-linked";
+    linkedPanel.appendChild(buildPanelHead("Linked notes", items.length, state.linkedPanelCollapsed, function () {
+      state.linkedPanelCollapsed = !state.linkedPanelCollapsed;
+      render();
+    }));
+
+    var list = document.createElement("div");
+    list.className = "mnoteqz7k-panel__list";
+    items.forEach(function (n) {
+      var item = document.createElement("div");
+      item.className = "mnoteqz7k-panel__item mnoteqz7k-panel__item--linked" + (n.state === "closed" ? " mnoteqz7k-closed" : "");
+      item.style.cursor = "pointer";
+      var meta = "on <code>" + escapeHtml(n.selector) + "</code>";
+      item.innerHTML =
+        '<div class="mnoteqz7k-meta">' + meta + (n.state === "closed" ? " · ✓ resolved" : "") + '</div>' +
+        '<div class="mnoteqz7k-panel__text"></div>' +
+        '<div class="mnoteqz7k-panel__acts"></div>';
+      item.querySelector(".mnoteqz7k-panel__text").textContent = n.text || "(empty)";
+      renderPanelItemActs(item, n);
+      item.addEventListener("click", function () { openCard(n.id, false); });
+      list.appendChild(item);
+    });
+    linkedPanel.appendChild(list);
+
+    document.body.appendChild(linkedPanel);
+    positionLinkedPanel();
+  }
+
+  function positionLinkedPanel() {
+    if (!linkedPanel || !generalPanel) return;
+    var r = generalPanel.getBoundingClientRect();
+    linkedPanel.style.top = (r.bottom + 8) + "px";
+  }
+
+  /* ---------- show/hide ---------- */
+
+  function onEyeClick(ev) {
+    ev.stopPropagation();
+    state.hidden = !state.hidden;
+    document.documentElement.classList.toggle("mnoteqz7k-hidden", state.hidden);
+    saveHidden();
+    render();
+  }
+
+  /* ---------- save ---------- */
+
+  function onSaveClick(ev) {
+    ev.stopPropagation();
+    persistData();
+    var html = "<!DOCTYPE html>\n" + serializeClean();
+    var filename = decodeURIComponent(location.pathname.split("/").pop() || "design.html");
+
+    if (window.showSaveFilePicker) {
+      showSaveConfirmToast(html, filename);
+    } else {
+      saveWithDownload(html, filename);
+    }
+  }
+
+  /* Serialize a snapshot of the document with none of the runtime-injected UI
+     (bar/menu/card/panel/toast/badges, selection outlines, hidden-mode class) —
+     only the mockup's own markup plus the static mnoteqz7k-* blocks and #mnoteqz7k-data. */
+  function serializeClean() {
+    var clone = document.documentElement.cloneNode(true);
+    clone.classList.remove("mnoteqz7k-hidden");
+    var junkSelectors = "#mnoteqz7k-bar, #mnoteqz7k-menu, .mnoteqz7k-card, .mnoteqz7k-panel, #mnoteqz7k-toast, .mnoteqz7k-count, #mnoteqz7k-watermark";
+    clone.querySelectorAll(junkSelectors).forEach(function (el) { el.remove(); });
+    clone.querySelectorAll(".mnoteqz7k-sel").forEach(function (el) { el.classList.remove("mnoteqz7k-sel"); });
+    clone.querySelectorAll(".mnoteqz7k-linked").forEach(function (el) { el.classList.remove("mnoteqz7k-linked"); });
+    return clone.outerHTML;
+  }
+
+  function showSaveConfirmToast(html, filename) {
+    hideToast();
+    var folderPath = localFolderPath();
+    toast = document.createElement("div");
+    toast.id = "mnoteqz7k-toast";
+    toast.innerHTML =
+      '<span>Ready to save. Pick this folder:<br><span class="mnoteqz7k-path"></span>' +
+      '<br>and confirm you’re replacing <strong></strong>.</span>' +
+      '<button class="mnoteqz7k-copy" title="Copy folder path" aria-label="Copy folder path">📋</button>' +
+      '<button class="mnoteqz7k-continue">Continue</button>' +
+      '<button class="mnoteqz7k-close" title="Cancel" aria-label="Cancel">✕</button>';
+    toast.querySelector(".mnoteqz7k-path").textContent = folderPath;
+    toast.querySelector("strong").textContent = filename;
+    wireCopyButton(toast.querySelector(".mnoteqz7k-copy"), folderPath);
+    document.body.appendChild(toast);
+    positionToastNearSaveButton(toast);
+    toast.querySelector(".mnoteqz7k-close").addEventListener("click", hideToast);
+    toast.querySelector(".mnoteqz7k-continue").addEventListener("click", function () {
+      hideToast();
+      saveWithPicker(html, filename);
+    });
+  }
+
+  function positionToastNearSaveButton(toastEl) {
+    var saveBtn = bar.querySelector("#mnoteqz7k-save");
+    var r = saveBtn.getBoundingClientRect();
+    var top = Math.min(window.innerHeight - toastEl.offsetHeight - 8, r.top);
+    var left = r.right + 8;
+    if (left + toastEl.offsetWidth > window.innerWidth - 8) {
+      left = Math.max(8, r.left - toastEl.offsetWidth - 8);
+    }
+    toastEl.style.top = Math.max(8, top) + "px";
+    toastEl.style.left = left + "px";
+  }
+
+  function saveWithPicker(html, filename) {
+    window.showSaveFilePicker({
+      suggestedName: filename,
+      types: [{ description: "HTML file", accept: { "text/html": [".html"] } }]
+    }).then(function (handle) {
+      return handle.createWritable().then(function (writable) {
+        return writable.write(html).then(function () { return writable.close(); });
+      });
+    }).then(function () {
+      showToast(false, true);
+    }).catch(function (err) {
+      if (err && err.name === "AbortError") return; // user cancelled the picker, no toast
+      saveWithDownload(html, filename);
+    });
+  }
+
+  function saveWithDownload(html, filename) {
+    try {
+      var blob = new Blob([html], { type: "text/html" });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      showToast(false, false, filename);
+    } catch (e) {
+      showToast(true);
+    }
+  }
+
+  function showToast(isError, pickedByUser, filename) {
+    hideToast();
+    toast = document.createElement("div");
+    toast.id = "mnoteqz7k-toast";
+    toast.classList.add("mnoteqz7k-toast--centered");
+    if (isError) {
+      toast.classList.add("mnoteqz7k-error");
+      toast.innerHTML =
+        '<span><strong>Your changes were not saved.</strong> The download failed — copy the HTML manually or try another browser.</span>' +
+        '<button class="mnoteqz7k-close" title="Close" aria-label="Close">✕</button>';
+    } else if (pickedByUser) {
+      toast.innerHTML =
+        '<span>Saved.</span>' +
+        '<button class="mnoteqz7k-close" title="Close" aria-label="Close">✕</button>';
+    } else {
+      var folderPath = localFolderPath();
+      toast.innerHTML =
+        '<span>Downloaded. Move it into:<br><span class="mnoteqz7k-path"></span>' +
+        '<br>and confirm you’re replacing <strong></strong>.</span>' +
+        '<button class="mnoteqz7k-copy" title="Copy folder path" aria-label="Copy folder path">📋</button>' +
+        '<button class="mnoteqz7k-close" title="Close" aria-label="Close">✕</button>';
+      toast.querySelector(".mnoteqz7k-path").textContent = folderPath;
+      toast.querySelector("strong").textContent = filename || "";
+      wireCopyButton(toast.querySelector(".mnoteqz7k-copy"), folderPath);
+    }
+    document.body.appendChild(toast);
+    toast.querySelector(".mnoteqz7k-close").addEventListener("click", hideToast);
+    if (!isError) {
+      toastTimer = setTimeout(hideToast, 6000);
+      toast.addEventListener("click", function (ev) {
+        if (ev.target === toast) hideToast();
+      });
+    }
+  }
+
+  function hideToast() {
+    if (toastTimer) { clearTimeout(toastTimer); toastTimer = null; }
+    if (toast) { toast.remove(); toast = null; }
+  }
+
+  /* ---------- render ---------- */
+
+  function render() {
+    renderCounts();
+    renderGeneralPanel();
+    renderLinkedPanel();
+    refreshBar();
+  }
+
+  function escapeHtml(s) {
+    var div = document.createElement("div");
+    div.textContent = String(s == null ? "" : s);
+    return div.innerHTML;
+  }
+
+  /* ---------- init ---------- */
+
+  function buildWatermark() {
+    var wm = document.createElement("a");
+    wm.id = "mnoteqz7k-watermark";
+    wm.href = "https://github.com/yeyopepe/previo-sdd";
+    wm.target = "_blank";
+    wm.rel = "noopener noreferrer";
+    wm.textContent = "Developed with Previo";
+    document.body.appendChild(wm);
+  }
+
+  function init() {
+    state.notes = loadData();
+    loadHidden();
+    buildBar();
+    buildWatermark();
+    render();
+    document.addEventListener("click", onDocumentClick, true);
+    requestAnimationFrame(trackingLoop);
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+</body>
+</html>
