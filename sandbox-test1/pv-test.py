@@ -210,7 +210,6 @@ RING_CHAR_COLORS = {
 
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
 VERSION_RE = re.compile(r"^\s*version:\s*(\S+)", re.MULTILINE)
-VERSION_RE = re.compile(r"^\s*version:\s*(\S+)", re.MULTILINE)
 IDEA_RE = re.compile(
     r"^##\s*Idea\s*\n+(.+?)(?=\n##\s|\Z)", re.IGNORECASE | re.MULTILINE | re.DOTALL
 )
@@ -742,6 +741,24 @@ def change_width() -> None:
     )
 
 
+TAG_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
+
+
+def _semver_tuple(tag: str) -> tuple[int, int, int] | None:
+    """(major, minor, patch) from a framework tag, ignoring any [suffix]
+    (e.g. "0.9.8b7" -> (0, 9, 8)) -- same ordering rule install-framework.py's
+    own parse_version() uses for its downgrade check, duplicated here so
+    install_previo_version() can filter out any tag older than the
+    installed one (install-framework.py rejects those unconditionally, even
+    with --yes, so offering them would just guarantee a later failure) and
+    detect an exact-version pick, without shelling out just to ask.
+    None if tag doesn't start with the expected X.Y.Z shape."""
+    match = TAG_VERSION_RE.match(tag.strip())
+    if not match:
+        return None
+    return tuple(int(g) for g in match.groups())
+
+
 def _available_previo_versions() -> tuple[str | None, str | None]:
     """Queries the official + pre-release tags via install-framework.py
     --list-only (capturing its stdout, never printed to the screen) --
@@ -764,21 +781,37 @@ def install_previo_version() -> None:
     to install, or go back. Doesn't use show_selection() for the choice --
     it needs to tell "empty input" (go back) apart from "typed something
     that isn't a listed number" (error, stay on this same screen), which
-    show_selection() doesn't distinguish (both return None). Every listed
-    tag is shown by name, and confirm(f"Install Previo {tag}?...") always
-    names that exact tag before anything runs -- install-framework.py
-    itself additionally refuses to install without --version <tag> --yes
-    (it only resolves/validates otherwise), so this confirm() is what
-    supplies that required, explicitly-named confirmation, never skipped.
-    The actual install is delegated entirely to install-framework.py
-    --version <tag> --yes, which is the only place that talks to GitHub --
-    including deleting and re-downloading install.sh/.ps1 fresh from
-    previo-sdd's main branch into a temp file every time (never trusting a
-    local copy, never leaving one behind), running it, then deleting it
-    again, all inside that script; pv.py itself stays unaware of any of
-    that. Under --testconfig, the actual install is skipped (it would
-    touch the real repo root, not the test fixture) -- the command that
-    would run is printed instead."""
+    show_selection() doesn't distinguish (both return None).
+
+    Either tag OLDER than the installed one (via _semver_tuple(), same
+    (major, minor, patch) comparison install-framework.py's own downgrade
+    check uses) is silently left out of the list -- e.g. an installed
+    pre-release ahead of the latest official release means only the
+    pre-release tag (equal to what's installed) gets listed, never the
+    older official one. This isn't just cosmetic: install-framework.py
+    hard-rejects an older tag unconditionally, even with --yes, with no
+    override -- so offering it here would let the user confirm an install
+    that's guaranteed to then fail. If every known tag ends up older than
+    or equal to what's installed and none is strictly newer, the "already
+    up to date" case (see below) covers it instead of an empty list.
+
+    Every remaining listed tag is shown by name, and
+    confirm(f"Install Previo {tag}?...") always names that exact tag before
+    anything runs. Right before that confirm(), an exact-tag match (picking
+    the already-installed version) additionally warns this reinstalls
+    everything from scratch -- informational only, doesn't block the pick.
+    install-framework.py itself additionally refuses to install without
+    --version <tag> --yes (it only resolves/validates otherwise), so this
+    confirm() is what supplies that required, explicitly-named
+    confirmation, never skipped. The actual install is delegated entirely
+    to install-framework.py --version <tag> --yes, which is the only place
+    that talks to GitHub -- including deleting and re-downloading
+    install.sh/.ps1 fresh from previo-sdd's main branch into a temp file
+    every time (never trusting a local copy, never leaving one behind),
+    running it, then deleting it again, all inside that script; pv.py
+    itself stays unaware of any of that. Under --testconfig, the actual
+    install is skipped (it would touch the real repo root, not the test
+    fixture) -- the command that would run is printed instead."""
     official_tag, prerelease_tag = _available_previo_versions()
     if not official_tag:
         show_info(
@@ -787,16 +820,38 @@ def install_previo_version() -> None:
         )
         return
 
-    options = [f"{official_tag} (latest official release)"]
-    tags = [official_tag]
-    if prerelease_tag:
+    installed = framework_version()
+    installed_parsed = _semver_tuple(installed)
+
+    def _is_older_than_installed(tag: str) -> bool:
+        tag_parsed = _semver_tuple(tag)
+        return (
+            tag_parsed is not None
+            and installed_parsed is not None
+            and tag_parsed < installed_parsed
+        )
+
+    options: list[str] = []
+    tags: list[str] = []
+    if not _is_older_than_installed(official_tag):
+        options.append(f"{official_tag} (latest official release)")
+        tags.append(official_tag)
+    if prerelease_tag and not _is_older_than_installed(prerelease_tag):
         options.append(f"{prerelease_tag} (pre-release, not recommended for normal use)")
         tags.append(prerelease_tag)
+
+    if not tags:
+        show_info(
+            [wrap(f"Previo {installed} is already up to date with (or ahead of) "
+                  f"every version GitHub currently reports -- nothing to install.")],
+            framed=False,
+        )
+        return
 
     while True:
         print()
         hr("-")
-        print("Available Previo versions:")
+        print("Allowed Previo versions:")
         for i, option in enumerate(options, start=1):
             print(wrap(f"{i}. {option}", indent="  "))
         hr("-")
@@ -811,6 +866,11 @@ def install_previo_version() -> None:
             continue
 
         tag = tags[index]
+        if tag == installed:
+            print(wrap(
+                f"Previo {tag} is already installed -- this will reinstall "
+                f"everything from scratch (same version, no upgrade)."
+            ))
         if not confirm(f"Install Previo {tag}? This modifies files in this project."):
             print("Cancelled.")
             continue

@@ -6,29 +6,29 @@ Note: within a section, entries may be grouped under a theme when at least two e
 
 - ⭐[New](#new)
   - 📂Maintenance skills (2 changes)
+  - 📂Installing and updating the framework itself (2 changes)
+  - Mockups now fall back to real code, and flag documentation gaps
+  - Mockup count shown in the status detail card
 - ✏️[Changed](#changed)
-  - Framework-installation check replaced with a single status-gate script
-  - `pv-update` can now install or update the framework itself
-  - Mockups and flow/data files reorganized into a dedicated `mockups/` subfolder
-  - Mockup generation now falls back to real code conventions when the style bible has gaps
-  - `pv-status` now shows the mockup count in the entry detail card
-- 🛠️[Fixed](#fixed)
-  - Template bracket markers no longer risk leaking into generated documents
+  - 📂Entry folder layout (2 changes)
+  - Framework version check is now a single shared script
+  - `pv.py` menu wording and navigation tweaks
 
 ## ⭐New
 
 - 📂**Maintenance skills**:
-  - **`/pv-review-doc-tech` reorganizes the technical documentation** — a new opt-in skill that rereads every folder under `docs.tech` in full and reorganizes it (moving, grouping, consolidating duplicate or misplaced content) without ever deleting a fact, rewriting a sentence, or adding new content.
-  - **`/pv-review-architecture` proposes code reorganizations** — a new opt-in skill that reviews the real source code against a fixed, language-agnostic checklist (separation of concerns, SOLID, DRY, KISS, coupling, naming) and produces a numbered list of structural reorganization proposals, which the user can turn into a noted idea (`pv-todo`) or a documented change (`pv-new`).
+  - **`/pv-review-doc-tech` reorganizes the technical documentation** — a new opt-in periodic pass that rereads every folder under `docs.tech` (architecture and style bible) in full and reorganizes it — moving, grouping or consolidating content — without ever rewriting, deleting, or adding facts. It regenerates the documentation index automatically and flags anything it can't safely fix (like a needed namespace change) for the user to decide.
+  - **`/pv-review-architecture` proposes code reorganizations** — a new opt-in pass that checks the real source code against a fixed checklist (separation of concerns, file/class size, SOLID, DRY, KISS, coupling, folder structure, naming) and returns a numbered list of reorganization proposals. It never changes behavior or writes code itself; for each proposal the user picks, it hands off to either the idea notebook or the standard change workflow.
+- 📂**Installing and updating the framework itself**:
+  - **`pv-update` can now install or update the framework** — a new `/pv-update install` mode resolves the requested version (latest official release, or a specific one), always shows the latest pre-release too, and only installs after the user explicitly confirms the exact resolved version by name. It refuses downgrades outright. On success it automatically re-verifies and repairs the project's configuration against the newly installed version.
+  - **`pv.py` can install a new Previo version directly from its menu** — a new "Install new Previo version" option under Configuration lists the available versions (latest official, and pre-release if newer) and installs the chosen one after explicit confirmation, without needing Claude Code.
+- **Mockups now fall back to real code, and flag documentation gaps** — when generating a visual mockup, if the style bible doesn't cover something needed, the mockup skill now looks for the real convention already used in the app's code before resorting to a neutral placeholder. Any such gap is reported back so it can be tracked as a pending documentation task instead of silently reused.
+- **Mockup count shown in the status detail card** — `pv-status`'s terminal detail view now shows how many mockup files an entry has, separately from its other extra files.
 
 ## ✏️Changed
 
-- **Framework-installation check replaced with a single status-gate script** — every `pv-*` skill's startup check now runs one shared script (`check-framework-status.py`) instead of comparing version fields itself. **Action needed when updating:** if that script is missing after updating, the framework must be reinstalled via `/pv-update install` before any skill will run.
-- **`pv-update` can now install or update the framework itself** — a new explicit `/pv-update install` mode resolves and installs a target version (latest by default), separate from its existing audit-only mode, which still never touches the network.
-- **Mockups and flow/data files reorganized into a dedicated `mockups/` subfolder** — `design_*.html`/`design_*.txt` mockups now live under each entry's `mockups/` subfolder instead of loose in its root, and `design_navigation_*.md`/`design_data_*.md` are renamed to `navigation_*.md`/`data_*.md`. **Action needed when updating:** run `/pv-update`, which detects and migrates any entry still using the old layout.
-- **Mockup generation now falls back to real code conventions when the style bible has gaps** — when `docs.tech.styleBibleDocDir` doesn't cover an element being mocked up, the mockup skills now look for the real convention in the source code instead of defaulting straight to a neutral placeholder, and report any such gap back to the caller as a documentation debt to track.
-- **`pv-status` now shows the mockup count in the entry detail card** — the terminal detail view reports how many files an entry's `mockups/` subfolder holds, alongside its existing extra-files count.
-
-## 🛠️Fixed
-
-- **Template bracket markers no longer risk leaking into generated documents** — every skill that fills in a `[[[...]]]`-marked template field now explicitly drops the triple brackets when writing the real file, and `pv-update`'s audit gained a dedicated check (`marker-literal:*`) to catch and repair any document where the raw brackets survived.
+- 📂**Entry folder layout**:
+  - **Mockups now live in their own `mockups/` subfolder** — visual mockup files (`design_*.html`/`design_*.txt`) for a change/fix entry are now kept under a dedicated `mockups/` subfolder instead of loose alongside the entry's other documents.
+  - **Navigation and data files dropped their `design_` prefix** — `design_navigation_*.md` and `design_data_*.md` are now named `navigation_*.md` and `data_*.md`. Existing entries in an older layout are migrated automatically the next time `pv-update` runs.
+- **Framework version check is now a single shared script** — every skill now verifies the framework is correctly installed and up to date through one shared check script instead of each doing its own inline comparison; if the framework isn't installed correctly, the user is now pointed to `pv-update`'s new install mode.
+- **`pv.py` menu wording and navigation tweaks** — "Check Previo versions" is now "Check product versions" and "Change max character width" is now "Change terminal max character width"; every menu's exit option is now selected with `X` instead of a trailing number.

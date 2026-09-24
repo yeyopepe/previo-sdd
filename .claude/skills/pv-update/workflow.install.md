@@ -14,7 +14,11 @@ flowchart TD
     S3RejectFormat --> EndReject([End: nothing installed])
     S3Compare -->|Older than installed, incl. when 'latest' itself resolves older than an installed pre-release| S3RejectDowngrade[INFO: pv-update install never downgrades, not installing]
     S3RejectDowngrade --> EndReject
-    S3Compare -->|Equal or newer| S3PrereleaseCheck{Target is a pre-release?}
+    S3Compare -->|Equal or newer| S3SameCheck{Resolved tag == installed version exactly?}
+
+    S3SameCheck -->|Yes| S3SameWarn[INFO: this reinstalls everything from scratch, same version, no upgrade]
+    S3SameWarn --> S3PrereleaseCheck{Target is a pre-release?}
+    S3SameCheck -->|No, strictly newer| S3PrereleaseCheck
 
     S3PrereleaseCheck -->|Yes| S3PrereleaseWarn[INFO: pre-release, not recommended for normal use]
     S3PrereleaseWarn --> S3Print

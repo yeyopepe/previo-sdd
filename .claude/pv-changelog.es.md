@@ -1,34 +1,34 @@
 # Changelog de Previo v0.9.8b8 (desde v0.9.7)
 
-Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando al menos dos entradas comparten asunto. En la sección de detalle, un tema es `- 📂**{Tema}**:` con sus entradas anidadas como sub-elementos indentados debajo (sin encabezado, sin enlace). En el índice, ese mismo tema se reduce a una única línea plana `📂{Tema} (N cambios)` sin listar sus entradas. Las entradas sueltas se listan como elementos normales en ambos sitios (título simple en el índice, elemento completo con título en negrita y resumen en el detalle).
+Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando al menos dos entradas comparten asunto. En la sección de detalle, un tema es `- 📂**{Tema}**:` con sus entradas anidadas como subelementos indentados debajo (sin encabezado, sin enlace). En el índice, ese mismo tema se colapsa en una única línea plana `📂{Tema} (N cambios)` sin listar sus entradas miembro. Las entradas sin agrupar se listan como elementos normales de primer nivel en ambos sitios (título simple en el índice, elemento completo con título en negrita más resumen en el detalle).
 
 ## Índice
 
-- ⭐[Nuevo](#nuevo)
+- ⭐[Novedades](#novedades)
   - 📂Skills de mantenimiento (2 cambios)
+  - 📂Instalar y actualizar el propio framework (2 cambios)
+  - Los mockups ahora recurren al código real y señalan huecos de documentación
+  - Recuento de mockups en la tarjeta de detalle del estado
 - ✏️[Cambios](#cambios)
-  - La comprobación de instalación del framework se sustituye por un único script de estado
-  - `pv-update` ahora puede instalar o actualizar el propio framework
-  - Los mockups y los ficheros de flujo/datos se reorganizan en una subcarpeta `mockups/` dedicada
-  - La generación de mockups ahora recurre a las convenciones reales del código cuando faltan en la guía de estilo
-  - `pv-status` ahora muestra el número de mockups en la ficha de detalle de la entrada
-- 🛠️[Arreglos](#arreglos)
-  - Los marcadores de corchetes de las plantillas ya no corren riesgo de filtrarse a los documentos generados
+  - 📂Estructura de carpetas de las entradas (2 cambios)
+  - La comprobación de versión del framework ahora es un único script compartido
+  - Ajustes de texto y navegación en el menú de `pv.py`
 
-## ⭐Nuevo
+## ⭐Novedades
 
 - 📂**Skills de mantenimiento**:
-  - **`/pv-review-doc-tech` reorganiza la documentación técnica** — una nueva skill opcional que relee por completo cada carpeta bajo `docs.tech` y la reorganiza (moviendo, agrupando y consolidando contenido duplicado o mal ubicado) sin borrar nunca un hecho, reescribir una frase ni añadir contenido nuevo.
-  - **`/pv-review-architecture` propone reorganizaciones de código** — una nueva skill opcional que revisa el código fuente real contra una checklist fija e independiente del lenguaje (separación de responsabilidades, SOLID, DRY, KISS, acoplamiento, naming) y genera una lista numerada de propuestas de reorganización estructural, que el usuario puede convertir en una idea anotada (`pv-todo`) o en un cambio documentado (`pv-new`).
+  - **`/pv-review-doc-tech` reorganiza la documentación técnica** — un nuevo pase periódico opcional que relee por completo cada carpeta bajo `docs.tech` (arquitectura y guía de estilo) y la reorganiza —moviendo, agrupando o consolidando contenido— sin reescribir, borrar ni añadir hechos en ningún momento. Regenera automáticamente el índice de la documentación y señala para que decida el usuario cualquier cosa que no pueda corregir de forma segura (como un cambio de espacio de nombres necesario).
+  - **`/pv-review-architecture` propone reorganizaciones de código** — un nuevo pase opcional que revisa el código fuente real frente a una checklist fija (separación de responsabilidades, tamaño de ficheros/clases, SOLID, DRY, KISS, acoplamiento, estructura de carpetas, naming) y devuelve una lista numerada de propuestas de reorganización. Nunca cambia el comportamiento ni escribe código por sí mismo; para cada propuesta que el usuario elija, la deriva al cuaderno de ideas o al flujo de cambios estándar.
+- 📂**Instalar y actualizar el propio framework**:
+  - **`pv-update` ahora puede instalar o actualizar el framework** — un nuevo modo `/pv-update install` resuelve la versión solicitada (la última versión oficial, o una concreta), muestra siempre también la última pre-release, y solo instala después de que el usuario confirme explícitamente por nombre la versión exacta resuelta. Rechaza cualquier downgrade de plano. Si tiene éxito, vuelve a verificar y reparar automáticamente la configuración del proyecto frente a la versión recién instalada.
+  - **`pv.py` puede instalar una nueva versión de Previo directamente desde su menú** — una nueva opción "Install new Previo version" dentro de Configuration lista las versiones disponibles (la última oficial, y la pre-release si es más reciente) e instala la elegida tras confirmación explícita, sin necesitar Claude Code.
+- **Los mockups ahora recurren al código real y señalan huecos de documentación** — al generar un mockup visual, si la guía de estilo no cubre algo necesario, la skill de mockups ahora busca la convención real ya usada en el código de la app antes de recurrir a un placeholder neutro. Cualquier hueco de este tipo se informa de vuelta para poder registrarlo como tarea de documentación pendiente en vez de reutilizarlo en silencio.
+- **Recuento de mockups en la tarjeta de detalle del estado** — la vista de detalle en terminal de `pv-status` ahora muestra cuántos ficheros de mockup tiene una entrada, por separado del resto de sus ficheros adicionales.
 
 ## ✏️Cambios
 
-- **La comprobación de instalación del framework se sustituye por un único script de estado** — la comprobación inicial de cada skill `pv-*` ahora ejecuta un único script compartido (`check-framework-status.py`) en vez de comparar los campos de versión por su cuenta. **Acción necesaria al actualizar:** si ese script no existe tras actualizar, hay que reinstalar el framework con `/pv-update install` antes de que ninguna skill pueda ejecutarse.
-- **`pv-update` ahora puede instalar o actualizar el propio framework** — un nuevo modo explícito `/pv-update install` resuelve e instala una versión objetivo (la última por defecto), independiente de su modo de auditoría existente, que sigue sin tocar la red en ningún momento.
-- **Los mockups y los ficheros de flujo/datos se reorganizan en una subcarpeta `mockups/` dedicada** — los mockups `design_*.html`/`design_*.txt` ahora viven en la subcarpeta `mockups/` de cada entrada en vez de sueltos en su raíz, y `design_navigation_*.md`/`design_data_*.md` pasan a llamarse `navigation_*.md`/`data_*.md`. **Acción necesaria al actualizar:** ejecutar `/pv-update`, que detecta y migra cualquier entrada que siga usando la organización antigua.
-- **La generación de mockups ahora recurre a las convenciones reales del código cuando faltan en la guía de estilo** — cuando `docs.tech.styleBibleDocDir` no cubre un elemento que se está maquetando, las skills de mockups ahora buscan la convención real en el código fuente en vez de recurrir directamente a un placeholder neutro, y reportan ese hueco al llamador como deuda de documentación pendiente de registrar.
-- **`pv-status` ahora muestra el número de mockups en la ficha de detalle de la entrada** — la vista de detalle en terminal indica cuántos ficheros contiene la subcarpeta `mockups/` de una entrada, junto a su recuento existente de ficheros adicionales.
-
-## 🛠️Arreglos
-
-- **Los marcadores de corchetes de las plantillas ya no corren riesgo de filtrarse a los documentos generados** — toda skill que rellena un campo de plantilla marcado con `[[[...]]]` ahora elimina explícitamente los triples corchetes al escribir el fichero real, y la auditoría de `pv-update` incorpora una comprobación dedicada (`marker-literal:*`) para detectar y reparar cualquier documento donde los corchetes hayan sobrevivido tal cual.
+- 📂**Estructura de carpetas de las entradas**:
+  - **Los mockups ahora viven en su propia subcarpeta `mockups/`** — los ficheros de mockup visual (`design_*.html`/`design_*.txt`) de una entrada de cambio/fix ahora se guardan en una subcarpeta dedicada `mockups/` en vez de sueltos junto al resto de documentos de la entrada.
+  - **Los ficheros de navegación y datos perdieron el prefijo `design_`** — `design_navigation_*.md` y `design_data_*.md` pasan a llamarse `navigation_*.md` y `data_*.md`. Las entradas existentes con la estructura anterior se migran automáticamente la próxima vez que se ejecute `pv-update`.
+- **La comprobación de versión del framework ahora es un único script compartido** — cada skill ahora verifica que el framework esté correctamente instalado y actualizado a través de un único script de comprobación compartido, en vez de que cada una haga su propia comparación interna; si el framework no está correctamente instalado, ahora se dirige al usuario al nuevo modo de instalación de `pv-update`.
+- **Ajustes de texto y navegación en el menú de `pv.py`** — "Check Previo versions" pasa a ser "Check product versions" y "Change max character width" pasa a ser "Change terminal max character width"; la opción de salir de cualquier menú ahora se selecciona con `X` en vez de con un número al final.
