@@ -6,7 +6,7 @@ model: claude-haiku-4-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b12
+  version: 0.9.8b13
   uses: []
 ---
 

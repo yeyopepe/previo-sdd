@@ -1,4 +1,4 @@
-# Previo v0.9.8b12 changelog (from v0.9.7)
+# Previo v0.9.8b13 changelog (from v0.9.7)
 
 Note: within a section, entries may be grouped under a theme when at least two entries share a topic. In the detail section, a theme is `- 📂**{Theme}**:` with its entries nested as indented sub-bullets beneath it (no heading, no link). In the Index, the same theme collapses to a single plain line `📂{Theme} (N changes)` with its member entries not listed. Ungrouped entries are listed as ordinary top-level bullets in both places (bare title in the Index, full bold-title-plus-summary bullet in the detail).
 

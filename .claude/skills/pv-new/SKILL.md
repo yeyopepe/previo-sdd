@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.8b12
+  version: 0.9.8b13
   uses: [pv-internal-workflow, pv-internal-tech-analysis, pv-internal-mockups-html, pv-internal-tech-mermaid, pv-how]
 ---
 
