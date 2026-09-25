@@ -358,6 +358,188 @@ framework's own click/selection handling.</p>
   });
 })();
 </script>
+
+<h2 style="margin-top:2rem;">HTML catalog — semantic, form and media elements</h2>
+<p>Remaining native tag types, packed two-per-row via CSS grid/columns so the sweep stays compact
+while still varying selection/robust-selector and badge/card positioning against each one.</p>
+
+<style>
+  .demo-catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; align-items: start; }
+
+  .demo-article { font-family: Georgia, serif; background: #fdfaf3; border: 1px solid #e8dfc8;
+    border-radius: 8px; padding: .8rem 1rem; font-size: .82rem; }
+  .demo-article header { border-bottom: 2px solid #c9a227; padding-bottom: .4rem; margin-bottom: .4rem; }
+  .demo-article header h3 { margin: 0; color: #7a5c00; font-size: .95rem; }
+  .demo-article nav { display: flex; gap: .6rem; font-size: .74rem; margin-bottom: .4rem; }
+  .demo-article nav a { color: #4a69bd; text-decoration: none; }
+  .demo-article nav a:hover { text-decoration: underline; }
+  .demo-article aside { float: right; width: 110px; margin: 0 0 .4rem .8rem; padding: .4rem;
+    background: #eef2ff; border-left: 3px solid #6a89cc; font-size: .68rem; }
+  .demo-article blockquote { margin: .4rem 0; padding: .3rem .6rem; border-left: 4px solid #c9a227;
+    background: #f7f0d8; font-style: italic; color: #5c4a12; font-size: .76rem; }
+  .demo-article footer { margin-top: .5rem; padding-top: .4rem; border-top: 1px dashed #d8cba0;
+    font-size: .68rem; color: #8a7a4a; }
+  .demo-article pre { background: #2b2b2b; color: #d4d4d4; padding: .4rem .6rem; border-radius: 6px;
+    font-size: .7rem; overflow-x: auto; }
+  .demo-article figcaption { font-size: .68rem; color: #8a7a4a; margin-top: .2rem; }
+
+  .demo-table-wrap { font-family: "Segoe UI", sans-serif; }
+  .demo-table { border-collapse: collapse; width: 100%; font-size: .76rem; }
+  .demo-table caption { caption-side: top; text-align: left; font-weight: 700; margin-bottom: .3rem; }
+  .demo-table th, .demo-table td { border: 1px solid #d0d5db; padding: .3rem .5rem; text-align: left; }
+  .demo-table thead th { background: #2c3e50; color: #fff; }
+  .demo-table tbody tr:nth-child(even) { background: #f4f6f8; }
+  .demo-table tfoot td { font-weight: 700; background: #eef1f4; }
+
+  .demo-form { font-family: "Trebuchet MS", sans-serif; background: #f3fff5; border: 1px solid #b7e4c7;
+    border-radius: 10px; padding: .8rem; font-size: .8rem; }
+  .demo-form fieldset { border: 2px solid #52b788; border-radius: 8px; margin-bottom: .5rem; padding: .5rem .6rem; }
+  .demo-form legend { padding: 0 .4rem; font-weight: 700; color: #2d6a4f; font-size: .82rem; }
+  .demo-form label { display: block; font-size: .74rem; margin: .3rem 0 .1rem; color: #1b4332; }
+  .demo-form textarea { width: 100%; min-height: 44px; font-family: inherit; padding: .3rem; }
+  .demo-form input[type="range"] { width: 100%; }
+  .demo-form .demo-form-row { display: flex; gap: .6rem; }
+  .demo-form .demo-form-row > div { flex: 1; }
+  .demo-form button[type="submit"] { background: #2d6a4f; color: #fff; border: 0; border-radius: 6px;
+    padding: .4rem .9rem; font-size: .8rem; cursor: pointer; }
+
+  .demo-details-wrap { font-family: monospace; font-size: .78rem; columns: 2; column-gap: 1rem; }
+  .demo-details-wrap details { border: 1px solid #999; border-radius: 6px; padding: .4rem .6rem; margin-bottom: .5rem;
+    background: #fafafa; break-inside: avoid; }
+  .demo-details-wrap summary { cursor: pointer; font-weight: 700; color: #333; }
+  .demo-details-wrap dl { margin: .3rem 0 0; }
+  .demo-details-wrap dt { font-weight: 700; color: #555; }
+  .demo-details-wrap dd { margin: 0 0 .3rem 1rem; color: #333; }
+
+  .demo-media-panel { display: grid; grid-template-columns: 1fr 1fr; gap: .8rem; font-family: system-ui, sans-serif; }
+  .demo-progress-box { background: #1e1e2f; color: #e0e0f0; border-radius: 8px; padding: .6rem .8rem; }
+  .demo-progress-box progress { width: 100%; accent-color: #7c3aed; }
+  .demo-progress-box meter { width: 100%; }
+  .demo-progress-box .demo-label { font-size: .7rem; margin-bottom: .2rem; display: flex; justify-content: space-between; }
+  .demo-ol-panel { background: #fff7ed; border: 1px solid #fdba74; border-radius: 8px; padding: .6rem .8rem; }
+  .demo-ol-panel ol { margin: 0; padding-left: 1.1rem; font-size: .76rem; color: #7c2d12; }
+  .demo-ol-panel ol li { margin-bottom: .2rem; }
+</style>
+
+<div class="demo-catalog-grid">
+  <article class="demo-article" id="demo-article">
+    <header id="demo-article-header"><h3>There and Back Again</h3></header>
+    <nav id="demo-article-nav">
+      <a href="#" id="demo-article-nav-1">Shire</a>
+      <a href="#" id="demo-article-nav-2">Mordor</a>
+      <a href="#" id="demo-article-nav-3">Appendices</a>
+    </nav>
+    <aside id="demo-article-aside">See also: the Red Book of Westmarch, kept by Bilbo and Frodo Baggins.</aside>
+    <section id="demo-article-section">
+      <p>"Not all those who wander are lost," Bilbo wrote, though Aragorn gets the credit.</p>
+      <blockquote id="demo-article-quote">"I will take the Ring," said Frodo, "though I do not know the way."</blockquote>
+      <pre id="demo-article-pre"><code>{ "bearer": "Frodo Baggins", "companions": 8 }</code></pre>
+      <figure id="demo-article-figure" style="margin:.4rem 0; text-align:center;">
+        <svg width="90" height="50" viewBox="0 0 90 50" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="0,40 15,20 30,30 45,8 60,18 75,4 90,12" fill="none" stroke="#c9a227" stroke-width="2.5"/>
+        </svg>
+        <figcaption>Fig. 1 — the road from Bag End to Rivendell</figcaption>
+      </figure>
+    </section>
+    <footer id="demo-article-footer">From the annals of Gondor, Third Age.</footer>
+  </article>
+
+  <div>
+    <div class="demo-table-wrap">
+      <table class="demo-table" id="demo-table">
+        <caption id="demo-table-caption">Fellowship roster</caption>
+        <thead><tr><th id="demo-table-th-name">Name</th><th>Race</th><th>Weapon</th></tr></thead>
+        <tbody>
+          <tr><td id="demo-table-cell-1">Aragorn</td><td>Man</td><td>Andúril</td></tr>
+          <tr><td>Legolas</td><td>Elf</td><td>Bow</td></tr>
+          <tr><td>Gimli</td><td>Dwarf</td><td>Axe</td></tr>
+        </tbody>
+        <tfoot><tr><td colspan="2">Total</td><td id="demo-table-total">9</td></tr></tfoot>
+      </table>
+    </div>
+
+    <div class="demo-media-panel" style="margin-top:.8rem;">
+      <div class="demo-progress-box" id="demo-progress-box">
+        <div class="demo-label"><span>Mount Doom</span><span>72%</span></div>
+        <progress id="demo-progress" value="72" max="100"></progress>
+        <div class="demo-label" style="margin-top:.4rem;"><span>Towel rating</span><span>4.2 / 5</span></div>
+        <meter id="demo-meter" min="0" max="5" value="4.2"></meter>
+      </div>
+      <div class="demo-ol-panel" id="demo-ol-panel">
+        <ol id="demo-ol">
+          <li>Don't panic</li>
+          <li>Bring a towel</li>
+          <li>Find the question</li>
+          <li>42</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns: 1fr 1fr; gap: 1.2rem; margin-top:1rem; align-items:start;">
+  <form class="demo-form" id="demo-form">
+    <fieldset id="demo-form-fieldset">
+      <legend>Message to Gandalf</legend>
+      <label for="demo-form-textarea">Message</label>
+      <textarea id="demo-form-textarea" placeholder="A wizard is never late…"></textarea>
+      <div class="demo-form-row">
+        <div>
+          <label for="demo-form-range">Ring temptation</label>
+          <input id="demo-form-range" type="range" min="0" max="100" value="40">
+        </div>
+        <div>
+          <label for="demo-form-color">Cloak color</label>
+          <input id="demo-form-color" type="color" value="#2d6a4f">
+        </div>
+      </div>
+      <div class="demo-form-row">
+        <div>
+          <label for="demo-form-date">Departure</label>
+          <input id="demo-form-date" type="date">
+        </div>
+        <div>
+          <label for="demo-form-file">Map</label>
+          <input id="demo-form-file" type="file">
+        </div>
+      </div>
+    </fieldset>
+    <button type="submit" id="demo-form-submit">Send by eagle</button>
+  </form>
+
+  <div class="demo-details-wrap">
+    <details id="demo-details-1">
+      <summary id="demo-details-1-summary">Who is Zaphod Beeblebrox?</summary>
+      <p>Two-headed, three-armed, ex-President of the Galaxy, and generally not to be trusted.</p>
+    </details>
+    <details id="demo-details-2">
+      <summary>Glossary</summary>
+      <dl id="demo-details-dl">
+        <dt>Babel fish</dt>
+        <dd>Small, yellow, leech-like — and the answer to universal translation.</dd>
+        <dt>Palantír</dt>
+        <dd>A seeing-stone; do not use unsupervised, especially not Pippin.</dd>
+      </dl>
+    </details>
+  </div>
+</div>
+
+<h3 style="margin-top:1.5rem;">Native dialog</h3>
+<div style="display:flex; gap:1rem; align-items:flex-start; flex-wrap:wrap;">
+  <button id="demo-native-dialog-open" style="padding:.5rem .9rem;">Consult the Palantír</button>
+  <dialog id="demo-native-dialog" style="border-radius:8px; border:1px solid #ccc; padding:1rem; width:260px;">
+    <p style="margin:0 0 .8rem; font-size:.85rem;">"Far, far below the deepest delvings of the Dwarves, the world is gnawed by nameless things."</p>
+    <button id="demo-native-dialog-close" style="padding:.4rem .8rem;">Close</button>
+  </dialog>
+</div>
+
+<script>
+(function () {
+  var nd = document.getElementById("demo-native-dialog");
+  document.getElementById("demo-native-dialog-open").addEventListener("click", function () { nd.showModal(); });
+  document.getElementById("demo-native-dialog-close").addEventListener("click", function () { nd.close(); });
+})();
+</script>
 """
 
 sandbox = """<!--

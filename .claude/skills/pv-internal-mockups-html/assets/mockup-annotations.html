@@ -290,14 +290,19 @@
 
   function positionBarCorner() {
     bar.style.top = "12px";
-    bar.style.left = "auto";
-    bar.style.right = "12px";
+    bar.style.right = "auto";
+    bar.style.left = "12px";
   }
 
   function positionBarNear(el) {
     var r = el.getBoundingClientRect();
+    var barH = bar.getBoundingClientRect().height;
     bar.style.left = Math.max(8, r.left) + "px";
-    bar.style.top = Math.max(8, r.bottom + 6) + "px";
+    if (r.bottom + 6 + barH > window.innerHeight) {
+      bar.style.top = Math.max(8, r.top - 6 - barH) + "px";
+    } else {
+      bar.style.top = Math.max(8, r.bottom + 6) + "px";
+    }
     bar.style.right = "auto";
   }
 
@@ -353,10 +358,6 @@
 
   function onAddClick(ev) {
     ev.stopPropagation();
-    if (!state.selectedEl) {
-      createNote("general", null, "");
-      return;
-    }
     openMenu();
   }
 
@@ -365,15 +366,24 @@
     menu = document.createElement("div");
     menu.id = "mnoteqz7k-menu";
     menu.innerHTML =
-      '<button id="mnoteqz7k-menu-linked">📌 Note on <code>' + escapeHtml(state.selectedSelector) + '</code></button>' +
+      (state.selectedEl
+        ? '<button id="mnoteqz7k-menu-linked">📌 Note on <code>' + escapeHtml(state.selectedSelector) + '</code></button>'
+        : "") +
       '<button id="mnoteqz7k-menu-general">➕ General note</button>';
     document.body.appendChild(menu);
     var r = bar.getBoundingClientRect();
     menu.style.left = r.left + "px";
-    menu.style.top = (r.bottom + 6) + "px";
-    menu.querySelector("#mnoteqz7k-menu-linked").addEventListener("click", function () {
-      createNote("linked", state.selectedSelector, "");
-    });
+    var menuH = menu.getBoundingClientRect().height;
+    if (r.bottom + 6 + menuH > window.innerHeight) {
+      menu.style.top = Math.max(8, r.top - 6 - menuH) + "px";
+    } else {
+      menu.style.top = (r.bottom + 6) + "px";
+    }
+    if (state.selectedEl) {
+      menu.querySelector("#mnoteqz7k-menu-linked").addEventListener("click", function () {
+        createNote("linked", state.selectedSelector, "");
+      });
+    }
     menu.querySelector("#mnoteqz7k-menu-general").addEventListener("click", function () {
       createNote("general", null, "");
     });
