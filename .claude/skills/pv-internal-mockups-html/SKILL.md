@@ -1,6 +1,6 @@
 ---
 name: pv-internal-mockups-html
-description: Shared, project-agnostic procedure to create or edit static visual mockups in HTML (`design_*.html`) for a change/fix, each embedding a standard review-annotation framework (floating toolbar, pin-to-element notes, general/linked notes panels, show/hide, save). Actions: `create`/`edit` (destination folder + list of visual elements + optional style_context/language as input; paths of the resulting files as output), `ensure-closed` (resolves any pending annotation on given design_*.html paths, applying the requested change and asking the reviewer directly if a note is ambiguous, returning OK once none are left open), and `describe` (read-only plain-text description of a mockup's visual content, for a caller that needs a reference without opening the file itself). Doesn't decide which elements need a mockup, doesn't resolve its own style-bible/language context (the caller supplies it), and doesn't validate anything with the user beyond `ensure-closed`'s own note-resolution questions. Internal use by the pv-new and pv-fix skills (directly or from extend-entry.md) and pv-how, invoked by the name configured in `.claude/pv-context.json`'s `framework.skills.mockups` (by default, this same skill).
+description: Shared, project-agnostic procedure to create or edit static visual mockups in HTML (`design_*.html`) for a change/fix, each embedding a standard review-annotation framework (floating toolbar, pin-to-element notes, general/linked notes panels, show/hide, save). Actions: `create`/`edit` (destination folder + list of visual elements + optional style_context/language as input; paths of the resulting files plus `style_gaps` as output), `ensure-closed` (resolves any pending annotation on given design_*.html paths, applying the requested change and asking the reviewer directly if a note is ambiguous, returning OK plus `style_gaps` once none are left open), and `describe` (read-only plain-text description of a mockup's visual content, for a caller that needs a reference without opening the file itself). `style_gaps` lists any explicit style value it had to apply (from the caller or a note) that wasn't already covered by `style_context`, so the caller can flag it as a possible style-bible gap or correction. Doesn't decide which elements need a mockup, doesn't resolve its own style-bible/language context (the caller supplies it), and doesn't validate anything with the user beyond `ensure-closed`'s own note-resolution questions. Internal use by the pv-new and pv-fix skills (directly or from extend-entry.md) and pv-how, invoked by the name configured in `.claude/pv-context.json`'s `framework.skills.mockups` (by default, this same skill).
 user-invocable: false
 model: claude-sonnet-5
 effort: medium
@@ -36,7 +36,7 @@ This skill is specifically for **HTML** mockups. If a project configures another
   - **What it should show**: look, layout, sample content relevant to illustrate the result (the caller doesn't need to give low-level detail — exact colors, measurements — if it doesn't have it yet).
   - **Sub-action**: `create` (new file) or `edit` (a `design_*.html` with that name already exists in the destination folder and needs modifying) — in this second case, what changes relative to what's already there.
 - **`style_context`** (optional, only for `create`/`edit`): plain text — already-resolved excerpts of the project's style bible (tokens/colors, typography, spacing, relevant conventions) that the caller gathered itself, normally already in hand from its own `pv-internal-tech-analysis` call before reaching this skill. If given, this skill reuses those concrete values verbatim instead of inventing them. If omitted (or empty), this skill never tries to resolve a style bible on its own — see "Rules for each mockup" below.
-- **`language`** (optional, only for `create`/`edit`): plain text naming the language for the mockup's sample text/content (e.g. `"English"`, `"Spanish"`). Defaults to English if omitted.
+- **`language`** (optional, only for `create`/`edit`): plain text naming the language for the mockup's sample text/content (e.g. `"English"`, `"Spanish"`). Defaults to English if omitted. **Caller note**: this skill never resolves the project's language itself (see "Language" above) — if the caller has one (e.g. `framework.changes.language`) but forgets to pass it here, the mockup silently falls back to English instead of the project's actual language. Pass it explicitly whenever the caller already knows it.
 
 ## Rules for each mockup
 
@@ -49,6 +49,12 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
     values, token names) verbatim — don't approximate or invent alternatives.
   - If it didn't (or passed it empty), use sober neutral styling and note it at the top of
     the file: `<!-- No documented visual identity for <element>; neutral placeholder styling. -->`.
+  - If the caller (via the element's "what it should show") or a mockup annotation explicitly
+    asks for a concrete style value — a hex code, a `rem`/`px` measurement, a named token —
+    that isn't already covered by `style_context`, apply it as asked (it's the most specific
+    instruction available), but record it — see "Reporting style-bible gaps" below. This is
+    distinct from the generic neutral-styling case above: it's not "no style given", it's
+    "a real value given, but it didn't come from the documented style bible".
 
   The mockup stays self-contained (existing rule): copy the styling inline replicating the
   documented appearance — never link the real stylesheet or a CDN.
@@ -62,6 +68,29 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
   - The mockup stays self-contained either way — the framework is embedded inline, never linked externally.
   - See "Steps" below for the exact three sub-cases this follows on `edit` (new file, older framework, embedded-and-current).
 
+## Reporting style-bible gaps
+
+Whenever this skill applies a concrete style value that didn't come from `style_context` —
+because the caller's element description or a mockup annotation asked for it explicitly (see
+"Rules for each mockup" above) — it tracks that as a **style gap**: a plain-text entry saying
+which element/note asked for it, what value was applied, and (if inferable) what it seems to be
+missing or contradicting in the style bible (e.g. "no documented token for this shade of green;
+applied `#2ecc71` as requested for the confirm button" or "requested `12px` radius on cards,
+style_context's `--radius-card` documents `8px` — possible correction needed").
+
+This never happens for the generic neutral-placeholder case (no value was given at all, so
+there's nothing to reconcile against the style bible) — only when a real, specific value was
+supplied outside of `style_context`.
+
+`create`/`edit` return this list as `style_gaps` alongside the file paths (empty list if none).
+`ensure-closed` returns it the same way alongside its OK summary, scoped to gaps introduced
+while resolving notes in that call. This skill never edits the style bible itself, never asks
+the user about it, and never decides whether a gap is worth fixing — it only surfaces what it
+noticed so the caller (or whoever owns `docs.tech.styleBibleDocDir`) can act on it. **Caller
+note**: a non-empty `style_gaps` is only useful if the caller actually does something with
+it — surface it to the user or pass it along to whoever maintains the style bible. Silently
+discarding it defeats the entire point of tracking gaps in the first place.
+
 ## Steps
 
 ### `action: create` / `action: edit`
@@ -69,10 +98,16 @@ Every `design_*.html` file is only a visual mockup, not a functional prototype:
 1. For each element in the received list:
    - **`create`**: no ID collision guard needed here — `design_<description>.html` doesn't exist yet by definition (if it does, that's an `edit`). Run `scripts/scaffold-mockup.py` first (see "Embed the annotation framework" above) to get the file with the framework already in place, byte-identical, at no token cost — it fails on its own, without writing anything, if the file somehow already exists, which surfaces the same "this shouldn't be a `create`" problem without needing a separate check. Then edit that same file, replacing only its placeholder comment with the mockup's own markup (HTML + CSS + SVG inline, no JS of its own), following the rules above (`style_context` if given, else neutral styling) — never touch the framework blocks or `#mnoteqz7k-data` the script already wrote.
    - **ID collision guard** (`edit` only). Before deciding which of the three `edit` sub-cases below applies, check whether the existing file has any element with `id="mnoteqz7k-styles"`, `id="mnoteqz7k-runtime"`, or `id="mnoteqz7k-data"`. If one exists, verify its **content shape** — not just the id's presence — is recognizable as the asset (the style block starts with the same rule set, the script starts with a `/* mnoteqz7k-framework vN — self-contained review-annotation runtime. */`-shaped header, matching the marker comment). If an id exists with unrecognized content (a `design_*.html` predating this framework that happens to reuse the same namespace), **stop and return the conflict to the caller** (which id, and that it holds unrecognized content) **without writing anything** — never silently overwrite it, and never treat it as "no framework present".
-   - **`edit`** with no recognizable framework blocks present (older mockup predating this framework, or one that just failed the collision guard with no conflict — i.e. genuinely absent): edit the mockup's own markup for the requested change, then embed the framework the same way `edit`-with-newer-marker does below (read the two blocks from the asset, splice them in verbatim) — the scaffold script doesn't apply here, it's `create`-only (it refuses to overwrite an existing file).
-   - **`edit`** with a recognizable framework already present, and the asset's `<!-- mnoteqz7k-framework vN -->` marker is **not newer** than the file's: edit only the mockup's own markup for the requested change, preserving the rest of the file unrelated to it. **Never touch `mnoteqz7k-*` or `#mnoteqz7k-data` in this case** — not the framework blocks, not any note's state or content. A plain `edit` from a caller never changes or removes a note; resolving annotations is the exclusive job of `action: ensure-closed` below.
-   - **`edit`** with a recognizable framework already present, and the asset's marker **is newer**: edit the mockup's own markup for the requested change, **and** replace only the `<style id="mnoteqz7k-styles">` and `<script id="mnoteqz7k-runtime">` blocks with the asset's current ones (same verbatim-copy rule) — keep `#mnoteqz7k-data` exactly as it was, with no exceptions.
-2. Return to the caller, in the same turn: the list of created/edited file paths, one per element. Don't present anything to the user or ask for confirmation — that's the caller's job.
+   - **`edit` sub-cases**, once the collision guard has cleared — what to touch depends on whether a recognizable framework is present and, if so, whether the asset's version is newer:
+
+     | Framework in target file | Asset marker vs. target's | Mockup markup | Framework blocks (`#mnoteqz7k-styles`/`#mnoteqz7k-runtime`) | `#mnoteqz7k-data` |
+     |---|---|---|---|---|
+     | Absent (older mockup, or guard found nothing) | — | Edit for the requested change | Splice in verbatim from the asset (scaffold script doesn't apply — `create`-only) | Left as-is / created empty |
+     | Present | Not newer | Edit for the requested change | Untouched | Untouched |
+     | Present | Newer | Edit for the requested change | Replaced verbatim with the asset's current blocks | Untouched, no exceptions |
+
+     A plain `edit` from a caller never changes or removes a note — resolving annotations is the exclusive job of `action: ensure-closed` below, regardless of which row applies.
+2. Return to the caller, in the same turn: the list of created/edited file paths, one per element, plus `style_gaps` (see "Reporting style-bible gaps" below). Don't present anything to the user or ask for confirmation — that's the caller's job.
 
 ### `action: ensure-closed`
 
@@ -85,7 +120,7 @@ For each path:
    - If a linked note's stored selector no longer resolves ("detached"), treat it as a general note for this purpose.
    - If the skill can confidently decide what change the note is asking for, apply it directly to the mockup's own markup (same mechanism as an internal `edit` — no round-trip to the caller for this), then set that note's `state` to `"closed"` in `#mnoteqz7k-data` (nothing else in that note, or in the rest of the block, changes).
    - If the note is ambiguous enough that the skill can't confidently decide, **ask the user directly** — see "Talking to the user" below — before applying anything for that note; once answered, apply the change and close the note the same way.
-4. Once every given path has zero `open` notes left, return **OK** plus a plain-text summary of what was changed per resolved note — no selectors, no raw JSON, no mention of `mnoteqz7k-*` or note ids.
+4. Once every given path has zero `open` notes left, return **OK** plus a plain-text summary of what was changed per resolved note — no selectors, no raw JSON, no mention of `mnoteqz7k-*` or note ids — plus `style_gaps` (see "Reporting style-bible gaps" below) for any note resolved in step 3 that asked for an explicit style value outside `style_context`.
 
 ### `action: describe`
 
