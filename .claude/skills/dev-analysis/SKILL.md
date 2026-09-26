@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: high
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.9.0
+  version: 0.9.1
   uses: [dev-onescript]
 ---
 
@@ -18,10 +18,16 @@ Critically reviews a plan or any document handed to it — **never modifies code
 
 ## 1. Get the target document
 
-- If the user passed a path (`argument-hint`) or pasted the plan directly, use that as the target. A path to a plan folder means `PLAN.md` inside it (plus its sibling `TASKS.md`, if present); a path straight to a `PLAN.md` or `TASKS.md` file means that folder's pair.
+- If the user passed a path (`argument-hint`) or pasted the plan directly, use that as the target. A path to a plan folder means `PLAN.md` inside it, plus its sibling `TASKS.md` (or, if the plan is phased — see below — every `TASKS-*.md` its index lists); a path straight to `PLAN.md` or to a `TASKS.md`/`TASKS-*.md` file means that folder's `PLAN.md` together with the relevant `TASKS` file(s).
 - If the target isn't clear, **ask the user which document to analyze** — don't guess, don't pick the most recently modified file in `.claude/plans/`, don't assume.
 
-Read the full target document before doing anything else — and if a sibling `TASKS.md`/`PLAN.md` exists alongside it, read that too, since together they're the plan.
+Read the full target document before doing anything else — and if a sibling `TASKS.md`/`PLAN.md` exists alongside it, read that too, since together they're the plan. If the plan is phased (see below), read every `TASKS-*.md` the index lists.
+
+**Phased plans.** There is always exactly one `PLAN.md` per plan folder — it never splits. What can split is the implementation plan: instead of a single `TASKS.md`, a plan whose implementation is broken into phases holds several free-named `TASKS-*.md` files (e.g. `TASKS-fase1.md`, `TASKS-migracion.md`), one per phase, with `PLAN.md` itself containing an explicit index of which `TASKS-*.md` corresponds to which phase and in what order. When `PLAN.md`'s index lists multiple `TASKS-*.md` files instead of one `TASKS.md`:
+
+- Treat each `TASKS-*.md` as that phase's own checkable breakdown — step 3's `TASKS.md` requirements apply to each one independently (task-level detail, covering every element `PLAN.md`'s analysis assigned to that phase).
+- `PLAN.md` stays a single document with its normal full structure (title, index, objective, content, Reviews); its index just links to each `TASKS-*.md` in place of the single "Implementation plan" entry, in phase order.
+- If the user's target is the plan folder or `PLAN.md` without naming a phase, analyze `PLAN.md` plus every `TASKS-*.md` its index lists; if the user names one specific `TASKS-*.md`, analyze `PLAN.md` together with just that phase's file.
 
 ## 2. Build ground truth from the repo, not from the document
 
@@ -45,14 +51,14 @@ If the target is a single flat file rather than this folder shape (e.g. an older
 `PLAN.md` must carry this minimum set of sections, in this order:
 
 1. **Title** — a top-level heading naming the plan.
-2. **Index** — a table of contents with a link to each of `PLAN.md`'s own section headings, plus a link to the sibling `TASKS.md` file (in place of where an inline "Implementation plan" entry would go).
+2. **Index** — a table of contents with a link to each of `PLAN.md`'s own section headings, plus a link to the sibling `TASKS.md` file (in place of where an inline "Implementation plan" entry would go) — or, for a phased plan (see step 1), a link to each `TASKS-*.md` in phase order instead of the single entry.
 3. **Objective** (or "Plan objective"/"Goal" if the document is in English — match the document's own language) — states what the plan achieves and why, up front.
 4. *(the plan's own content — analysis, scope, technical sections, whatever the plan needs; not fixed by this rule)*
 5. **Reviews** — history of reviews with the date and a brief list of findings with brief descriptions. Findings disappear from this section as they're resolved, but the date of each review stays for history. It must always be the last section of `PLAN.md`.
 
-`TASKS.md` must hold a concrete, ordered, checkable breakdown of what to actually do to execute the plan. It must go down to task-level detail and cover every element `PLAN.md`'s own analysis raised, not just a high-level summary — in particular, a task per document that needs changing (each `SKILL.md`, each workflow/hook/template file, each design/architecture doc, each translation twin) naming that exact file, plus a task for every other concrete element the analysis identified (scripts, config keys, data migrations, etc.). If `PLAN.md`'s analysis names a file or element as affected and `TASKS.md` doesn't turn it into its own task, that's a gap.
+`TASKS.md` (or, for a phased plan, each `TASKS-*.md`) must hold a concrete, ordered, checkable breakdown of what to actually do to execute the plan (or that phase of it). It must go down to task-level detail and cover every element `PLAN.md`'s own analysis raised for that scope, not just a high-level summary — in particular, a task per document that needs changing (each `SKILL.md`, each workflow/hook/template file, each design/architecture doc, each translation twin) naming that exact file, plus a task for every other concrete element the analysis identified (scripts, config keys, data migrations, etc.). If `PLAN.md`'s analysis names a file or element as affected and no `TASKS.md`/`TASKS-*.md` turns it into its own task, that's a gap; for a phased plan, an element assigned to the wrong phase's file, or covered by none of them, is also a gap.
 
-This checklist is used twice: now, in step 5, as one more dimension to hunt for findings in (a missing section, a stale index, a missing `TASKS.md`, "Reviews" not being last, a task-less element, are each their own finding) — and again at the very end, in step 8, to confirm the final document actually satisfies it. Don't apply or fix anything against this checklist right now; just keep it in mind for step 5.
+This checklist is used twice: now, in step 5, as one more dimension to hunt for findings in (a missing section, a stale index, a missing `TASKS.md`/`TASKS-*.md`, "Reviews" not being last, a task-less element, are each their own finding) — and again at the very end, in step 8, to confirm the final document actually satisfies it. Don't apply or fix anything against this checklist right now; just keep it in mind for step 5.
 
 ## 4. When the document is a framework change plan
 
@@ -66,7 +72,7 @@ If the document plans a change to the `pv-*` framework itself, its technical sec
 
 Go through the document section by section and actively look for, specifically:
 
-- **Structural deviations** — the target against the step 3 checklist: missing/misordered sections in `PLAN.md`, a stale or missing index, a missing `TASKS.md`, `TASKS.md` omitting a task for something the analysis identified.
+- **Structural deviations** — the target against the step 3 checklist: missing/misordered sections in `PLAN.md`, a stale or missing index, a missing `TASKS.md`/`TASKS-*.md`, a `TASKS.md`/`TASKS-*.md` omitting a task for something the analysis identified.
 - **Bugs** — logic that's wrong, off-by-one conditions, incorrect assumptions about data shape or control flow, race conditions, state that isn't reset/cleaned up.
 - **Inconsistencies** — the document contradicting itself across sections, or contradicting the repo's actual current behavior/conventions/naming.
 - **Gaps** — steps or pieces implied as necessary (by the goal stated) but never actually specified: missing error paths, missing rollback/undo, missing tests, missing doc updates, missing config wiring.
@@ -79,7 +85,7 @@ Don't stop at the first pass per section — a document can look complete on a s
 
 Decide the destination first:
 
-- **Target was a file or a plan folder** (an existing file/folder the user handed you or referenced) → append the report as a new section directly onto `PLAN.md` (even for findings that are actually about `TASKS.md` — the report always lives in one place, `PLAN.md`), don't create a separate report file. Use a clear heading such as `## Critical analysis` (or `## Análisis crítico` if the plan itself is in Spanish — match the document's own language), dated if the plan file already uses dates elsewhere. If the file already has a prior "Critical analysis" section from an earlier run, add a new dated section rather than overwriting the old one, so review history isn't lost.
+- **Target was a file or a plan folder** (an existing file/folder the user handed you or referenced) → append the report as a new section directly onto `PLAN.md` (even for findings that are actually about `TASKS.md`/`TASKS-*.md` — the report always lives in one place, `PLAN.md`), don't create a separate report file. Use a clear heading such as `## Critical analysis` (or `## Análisis crítico` if the plan itself is in Spanish — match the document's own language), dated if the plan file already uses dates elsewhere. If the file already has a prior "Critical analysis" section from an earlier run, add a new dated section rather than overwriting the old one, so review history isn't lost. For a phased plan, findings about a specific `TASKS-*.md` should say which phase file they concern, since the report itself still lives in the single `PLAN.md`.
 - **Target wasn't a file** (pasted text, or the user is unsure where it should live) → **ask the user where to write the report** before writing anything — don't invent a location or default to a scratch file silently.
 
 Report the structural findings from step 5 first, under their own "Structure" heading. Then structure the rest of the report by section, mirroring the target document's own sections (or, if it has none, group findings by area/topic). Under each section heading, list its findings as a table with three columns:
@@ -99,8 +105,8 @@ Ask the user (❓ prefix, bold question) whether they want to go through the fin
 - **No** → skip straight to step 8. Nothing else is touched — "Proposed improvement" columns stay as `—`, and the plan document itself is untouched except for whatever step 8 finds.
 - **Yes** → walk the report's findings in order, section by section, row by row, one at a time. This is a genuine collaboration, not a rubber-stamp pass — bring your own judgment on what a good fix looks like, disagree with the user's first instinct when the repo evidence says otherwise, and don't settle for a fix that papers over the finding without resolving it:
   1. Present the finding's explanation.
-  2. Discuss it with the user — they may accept it as-is, reject it, refine the explanation, or work out a proposed improvement with you. Push back if a proposed fix is vague, contradicts something verified in step 2, or only partially addresses the finding. If the finding is a structural one, the "fix" is adding or moving that section in `PLAN.md`, or creating/populating `TASKS.md`, following the step 3 checklist.
-  3. Once a fix is agreed, **apply it to the plan itself** — edit the relevant section of `PLAN.md`, or the relevant task in `TASKS.md`, whichever the finding actually concerns, so the plan reads correctly going forward, not just a description of what to do. This is the one case where this skill writes outside the report; it still never touches code, only the plan's own files. If the target wasn't a file (step 1 was pasted text), there's no document to edit — keep the agreed fix in the report's "Proposed improvement" column only, and tell the user the updated plan text lives there since no source file exists to hold it.
+  2. Discuss it with the user — they may accept it as-is, reject it, refine the explanation, or work out a proposed improvement with you. Push back if a proposed fix is vague, contradicts something verified in step 2, or only partially addresses the finding. If the finding is a structural one, the "fix" is adding or moving that section in `PLAN.md`, or creating/populating `TASKS.md`/the relevant `TASKS-*.md`, following the step 3 checklist.
+  3. Once a fix is agreed, **apply it to the plan itself** — edit the relevant section of `PLAN.md`, or the relevant task in `TASKS.md`/the relevant `TASKS-*.md`, whichever the finding actually concerns, so the plan reads correctly going forward, not just a description of what to do. This is the one case where this skill writes outside the report; it still never touches code, only the plan's own files. If the target wasn't a file (step 1 was pasted text), there's no document to edit — keep the agreed fix in the report's "Proposed improvement" column only, and tell the user the updated plan text lives there since no source file exists to hold it.
   4. Fill in the **Proposed improvement** column for that row in the report too, describing what was changed and where, then update the row's status (resolved/dismissed/refined) before moving to the next finding.
   5. Don't jump ahead or batch multiple findings together — sequential, one at a time, until every row has been through this. If two findings turn out to be entangled (fixing one changes how another should be read), say so, resolve them together, and note both rows accordingly rather than forcing a strict sequence.
 
@@ -111,8 +117,8 @@ Ask the user (❓ prefix, bold question) whether they want to go through the fin
 Run this step every time, whether the user said yes or no in step 7, and whether or not the target is a file at all.
 
 - **Target isn't a file** (pasted text) → the checklist can't be applied to anything on disk. Tell the user which structural gaps from step 5 remain open and stop; there's nothing to re-verify on disk.
-- **Target is a file/folder** → re-read the current `PLAN.md` and `TASKS.md` from disk (they may have changed during step 7) and check them again, fresh, against the full step 3 checklist — section presence and order, index completeness, `TASKS.md` existing and covering every element the analysis raised. Don't rely on which structural findings were marked resolved in the report; verify the actual document state.
+- **Target is a file/folder** → re-read the current `PLAN.md` and `TASKS.md`/every `TASKS-*.md` its index lists from disk (they may have changed during step 7) and check them again, fresh, against the full step 3 checklist — section presence and order, index completeness, each `TASKS.md`/`TASKS-*.md` existing and covering every element the analysis raised for its scope. Don't rely on which structural findings were marked resolved in the report; verify the actual document state. For a phased plan, report compliance per `TASKS-*.md`, not as one pooled verdict — a compliant phase 1 and a non-compliant phase 2 both get said plainly.
   - **Fully compliant** → tell the user plainly that the final document meets the required structure.
-  - **Still non-compliant** (because the user rejected the relevant fix in step 7, or step 7 never ran) → do **not** silently fix it. List exactly what's still missing/misordered and ask the user (❓ prefix, bold question) whether to fix the remaining structural gaps now. If yes, apply only those structural fixes directly to `PLAN.md`/`TASKS.md`, following step 3, then confirm compliance again. If no, leave it as-is and say plainly that the plan does not currently meet the required structure.
+  - **Still non-compliant** (because the user rejected the relevant fix in step 7, or step 7 never ran) → do **not** silently fix it. List exactly what's still missing/misordered and ask the user (❓ prefix, bold question) whether to fix the remaining structural gaps now. If yes, apply only those structural fixes directly to `PLAN.md`/`TASKS.md`/the relevant `TASKS-*.md`, following step 3, then confirm compliance again. If no, leave it as-is and say plainly that the plan does not currently meet the required structure.
 
-When finished, tell the user plainly which of the plan's own files were edited (`PLAN.md`, `TASKS.md`, or both — not just the report) across steps 7 and 8, and summarize what changed, so they aren't surprised by a diff they didn't expect.
+When finished, tell the user plainly which of the plan's own files were edited (`PLAN.md`, `TASKS.md`/the specific `TASKS-*.md` files, or both — not just the report) across steps 7 and 8, and summarize what changed, so they aren't surprised by a diff they didn't expect.
