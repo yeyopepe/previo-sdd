@@ -1,10 +1,21 @@
+<div align="center">
+
 # **Previo**
 
-*Read this in [English](README.md).*
+![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-GPLv3-red)
+![Static Badge](https://img.shields.io/badge/Supports-Claude-orange)
 
-**Previo** es un framework de desarrollo creado y dirigido por IA para [Claude Code](https://claude.com/claude-code): define cambios, valida el diseño sobre maquetas y diagramas, gestiona el estado de cada cambio y prepara entregas — todo de forma conversacional, sin plantillas rígidas ni herramientas adicionales.
+_You can read this also in [English](README.md)_
+</div>
 
-Aporta el control y la trazabilidad del *spec-driven development* sin la sobrecarga de proceso que ese enfoque suele exigir en proyectos grandes. Pensado para proyectos de cualquier tamaño y gestionados por una sola persona.
+
+**Previo** es un framework de desarrollo creado y dirigido por IA con el que puedes **analizar y documentar cambios**, **validar el diseño sobre maquetas** y diagramas, **implementarlos de manera rápida y segura**, gestionar el estado de cada cambio y preparar entregas; todo de forma **rápida**, **conversacional**, **multi-idioma**, y con múltiples opciones de **personalización** en lugar de tener que seguir rígidas plantillas.
+
+Aporta el control y la trazabilidad del *spec-driven development* **sin la sobrecarga** de proceso que ese enfoque suele exigir en proyectos grandes, **sin herramientas ni CLI adicionales** (solo tu IDE favorito y python 3). Pensado para **proyectos de cualquier tamaño**, gestionados por una o varias personas, **sean o no programadores** de software.
+
+De momento solo está disponible para [Claude Code](https://claude.com/claude-code), pero todo llegará. 😁
+
+
 
 ## Índice
 

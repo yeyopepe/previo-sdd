@@ -1,10 +1,21 @@
+<div align="center">
+
 # **Previo**
 
-*Read this in [Spanish](README.es.md).*
+![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-GPLv3-red)
+![Static Badge](https://img.shields.io/badge/Supports-Claude-orange)
 
-****Previo**** is a development framework created and driven by AI for [Claude Code](https://claude.com/claude-code): it defines changes, validates design through mockups and diagrams, tracks the state of each change, and prepares releases — all conversationally, without rigid templates or extra tooling.
+_Puedes leer esto también en [Spanish](README.es.md)_
+</div>
 
-It brings the control and traceability of *spec-driven development* without the process overhead that approach usually demands in large projects. Built for projects of any size run by a single person.
+
+**Previo** is a development framework created and driven by AI that lets you **analyze and document changes**, **validate design through mockups** and diagrams, and **implement them quickly and safely**, while tracking the state of each change and preparing releases — all **fast**, **conversational**, and with plenty of **customization** options instead of forcing you into rigid templates.
+
+It brings the control and traceability of *spec-driven development* **without the process overhead** that approach usually demands on large projects, and **with no extra tools or CLI** — just your favorite IDE and Python 3. Built for **projects of any size**, run by one person or a whole team, **whether or not they're developers**.
+
+Currently only available for [Claude Code](https://claude.com/claude-code), but everything else is coming. 😁
+
+
 
 ## Table of contents
 
@@ -31,7 +42,7 @@ It brings the control and traceability of *spec-driven development* without the 
 |<u>**Documentation always up to date**</u>|**Previo** keeps the project's technical and functional documentation up to date at all times, along with the changelog between versions. You can start the project with an initial technical design, by analyzing an existing project, or let **Previo** build it up on its own as the project progresses.|
 |<u>**Adaptable and versatile**</u>| Great for projects of any size, and adapts to each project's stack.|
 |<u>**No extra tooling**</u> |Requires nothing beyond Claude Code and Python on the development machine — no installs on your machine, external services, databases, or other headaches.|
-|<u>**100% built by AI, for AI**</u> |The whole cycle (from idea to delivery) is a 100% AI-guided process, for any kind of profile. A few more tokens, much less complexity.|
+|<u>**100% built by AI, for AI**</u> |The whole cycle, from idea to delivery, is a 100% AI-guided process, no matter your background. A few more tokens, much less complexity.|
 |<u>**Everything under control**</u>| **Previo** also provides tools to ensure the quality of your code and your documentation. |
 |<u>**One script**</u>| One terminal to manage your changes quickly and easily. |
 |<u>**And plenty more**</u>| Tracking and traceability for every change, release generation (changelogs included), a prompt history tied to each change, fast changes, security reviews, an autonomous update-checking system, and more.|
@@ -42,7 +53,7 @@ It brings the control and traceability of *spec-driven development* without the 
 | What you can customize | How |
 |---|---|
 |<u>**Custom pieces and hooks**</u>|Many of the built-in processes expose customization points (*hooks*) where you can add tasks of your own to the workflow, and you can swap some framework skills for your own to change how certain tasks are done.|
-|<u>**Language**</u>|Talk to **Previo** in your language while each type of document (changes, changelog, functional and technical documentation) is written in its own — configurable point by point in `.claude/pv-context.json`.|
+|<u>**Use whatever language you want, for each thing**</u>|Talk to **Previo** in your language while each type of document (changes, changelog, functional and technical documentation) is written in its own: speak in Spanish, write the technical documentation in English, and draft the changelog in French, for example.|
 |<u>**Folder structure and documentation**</u>|Define where everything lives — the changes folder, source code, architecture documentation, style, and features — to fit **Previo** into the structure your project already has.|
 |<u>**Model per skill**</u>|Assign whichever model and effort level you prefer to each skill (for example, a lighter one for lookup tasks and a more capable one for technical analysis).|
 
@@ -167,7 +178,7 @@ See the [changelog](.claude/pv-changelog.en.md) for the current version.
 See the [user guide](.claude/pv-doc/pv-guide.en.md) for everything you can do with **Previo**.
 
 ## 📐How it's built, in detail
-If you want to see how it's built (the framework's skill map, how they invoke each other, the reasoning behind its architecture, etc), you can check out them in [design documents](.claude/pv-doc/).
+If you want to see how it's built (the framework's skill map, how they invoke each other, the reasoning behind its architecture, etc), you can check it out in the [design documents](.claude/pv-doc/).
 
 ## ⚖️License
 
