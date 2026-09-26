@@ -8,8 +8,8 @@
 
 ### Después de implementar un plan...
 - Después de implementar un plan tienes que revisar y actualizar cada documentación afectada (o preguntar si tienes dudas):
-    - .claude/pv-doc/pv-design
-    - .claude/pv-doc/pv-design-onescript
-    - .claude/pv-doc/pv-install-scripts
-    - .claude/pv-guide.es.md -> traducir con /en-translate
+    - .claude/pv-doc/pv-design.md
+    - .claude/pv-doc/pv-design-onescript.md
+    - .claude/pv-doc/pv-install-scripts.md
+    - .claude/pv-guide/pv-guide.es.md -> traducir con /en-translate
     - README.es.md -> traducir con /en-translate
