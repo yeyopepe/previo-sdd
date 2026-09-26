@@ -68,9 +68,10 @@ try {
                 $bar = ' ' * $width
             }
         }
+        $sizeInfo = "{0:N1} MB" -f ($ReadTotal / 1MB)
         Write-Host -NoNewline ("`r[")
         Write-Host -NoNewline $bar -ForegroundColor Blue
-        Write-Host -NoNewline ("] {0,3}% {1}  " -f $pct, $speedInfo)
+        Write-Host -NoNewline ("] {0,3}% ({1}, {2})  " -f $pct, $sizeInfo, $speedInfo)
     }
 
     Add-Type -AssemblyName System.Net.Http
@@ -109,6 +110,33 @@ try {
     $DestSkills = ".claude\skills"
     New-Item -ItemType Directory -Path $DestSkills -Force | Out-Null
 
+    Write-Host "[ ] Skills"
+    Write-Host "[ ] Resto"
+    $ChecklistTop = $null
+    try { $ChecklistTop = $host.UI.RawUI.CursorPosition.Y - 2 } catch {}
+
+    function Set-ChecklistLine {
+        param([int]$Offset, [string]$Text)
+        if ($null -eq $ChecklistTop) {
+            Write-Host $Text
+            return
+        }
+        try {
+            $Pos = $host.UI.RawUI.CursorPosition
+            $Pos.Y = $ChecklistTop + $Offset
+            $Pos.X = 0
+            $host.UI.RawUI.CursorPosition = $Pos
+            Write-Host $Text
+            $Pos.Y = $ChecklistTop + 2
+            $Pos.X = 0
+            $host.UI.RawUI.CursorPosition = $Pos
+        }
+        catch {
+            Write-Host $Text
+        }
+    }
+
+    $RemovedSkills = @()
     # Syncs only the framework's own skills (pv- prefix), without touching the user's own skills.
     Get-ChildItem -Path $SrcSkills -Directory -Filter "pv-*" | ForEach-Object {
         $Dest = Join-Path $DestSkills $_.Name
@@ -122,11 +150,13 @@ try {
         Get-ChildItem -Path $DestSkills -Directory -Filter "pv-*" | ForEach-Object {
             $SrcDir = Join-Path $SrcSkills $_.Name
             if (-not (Test-Path $SrcDir)) {
-                Write-Host "Removing obsolete skill: $($_.Name)"
+                $RemovedSkills += $_.Name
                 Remove-Item -Recurse -Force $_.FullName
             }
         }
     }
+
+    Set-ChecklistLine -Offset 0 -Text "[x] Skills"
 
     # Syncs the framework's documentation.
     $DestDocDir = Join-Path ".claude" "pv-doc"
@@ -155,6 +185,12 @@ try {
     $SrcPvPy = Join-Path $SrcSkills "pv-init\assets\pv.py"
     if (Test-Path $SrcPvPy) {
         Copy-Item -Path $SrcPvPy -Destination "pv.py" -Force
+    }
+
+    Set-ChecklistLine -Offset 1 -Text "[x] Resto"
+
+    if ($RemovedSkills.Count -gt 0) {
+        Write-Host "Removed obsolete skills: $($RemovedSkills -join ', ')"
     }
 
     Write-Host "Previo installed/updated in .claude/skills."

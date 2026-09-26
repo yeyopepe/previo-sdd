@@ -168,7 +168,7 @@ Consulta en la [guía de usuario](.claude/pv-doc/pv-guide.es.md) todo lo que pue
 
 
 ## 📐Cómo está hecho, al detalle
-Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), aquí tienes el [documento de diseño](.claude/pv-doc/pv-design/pv-design.es.md).
+Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), lo puedes consultar en los [documentos de diseño](.claude/pv-doc/).
 
 ## ⚖️Licencia
 

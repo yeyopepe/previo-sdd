@@ -167,7 +167,7 @@ See the [changelog](.claude/pv-changelog.en.md) for the current version.
 See the [user guide](.claude/pv-doc/pv-guide.en.md) for everything you can do with **Previo**.
 
 ## 📐How it's built, in detail
-If you want to see how it's built (the framework's skill map, how they invoke each other, the reasoning behind its architecture, etc), here's the [design document](.claude/pv-doc/pv-design/pv-design.en.md).
+If you want to see how it's built (the framework's skill map, how they invoke each other, the reasoning behind its architecture, etc), you can check out them in [design documents](.claude/pv-doc/).
 
 ## ⚖️License
 

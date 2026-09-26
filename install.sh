@@ -51,7 +51,8 @@ WIDTH=40
 
 draw_progress_bar() {
   read_total=$1
-  done=$2
+  elapsed=$2
+  done=$3
   if [ "$done" = "1" ]; then
     pct=100
     filled=$WIDTH
@@ -67,18 +68,28 @@ draw_progress_bar() {
   fi
   pad=$((WIDTH - filled))
   spaces=$(printf '%*s' "$pad" '')
-  printf '\r[\033[34m%s%s\033[0m] %3d%%  ' "$bar" "$spaces" "$pct"
+  size_mb=$(awk -v b="$read_total" 'BEGIN { printf "%.1f", b / 1048576 }')
+  if [ "$elapsed" -gt 0 ]; then
+    speed_mb=$(awk -v b="$read_total" -v s="$elapsed" 'BEGIN { printf "%.1f", (b / 1048576) / s }')
+  else
+    speed_mb="0.0"
+  fi
+  printf '\r[\033[34m%s%s\033[0m] %3d%% (%s MB, %s MB/s)  ' "$bar" "$spaces" "$pct" "$size_mb" "$speed_mb"
 }
 
+START_TIME=$(date +%s)
 curl -fL "$TARBALL" -o "$TAR_PATH" &
 CURL_PID=$!
 while kill -0 "$CURL_PID" 2>/dev/null; do
   READ_TOTAL=$(wc -c < "$TAR_PATH" 2>/dev/null || echo 0)
-  draw_progress_bar "$READ_TOTAL" 0
+  ELAPSED=$(($(date +%s) - START_TIME))
+  draw_progress_bar "$READ_TOTAL" "$ELAPSED" 0
   sleep 0.2
 done
 wait "$CURL_PID"
-draw_progress_bar 0 1
+FINAL_TOTAL=$(wc -c < "$TAR_PATH" 2>/dev/null || echo 0)
+FINAL_ELAPSED=$(($(date +%s) - START_TIME))
+draw_progress_bar "$FINAL_TOTAL" "$FINAL_ELAPSED" 1
 echo ""
 
 tar -xzf "$TAR_PATH" -C "$TMP" --strip-components=1
@@ -87,6 +98,10 @@ SRC_SKILLS="$TMP/.claude/skills"
 DEST_SKILLS=".claude/skills"
 mkdir -p "$DEST_SKILLS"
 
+echo "[ ] Skills"
+echo "[ ] Resto"
+
+REMOVED_SKILLS=""
 # Syncs only the framework's own skills (pv- prefix), without touching the user's own skills.
 for dir in "$SRC_SKILLS"/pv-*; do
   name=$(basename "$dir")
@@ -100,10 +115,12 @@ for dir in "$DEST_SKILLS"/pv-*; do
   [ -d "$dir" ] || continue
   name=$(basename "$dir")
   if [ ! -d "$SRC_SKILLS/$name" ]; then
-    echo "Removing obsolete skill: $name"
+    REMOVED_SKILLS="${REMOVED_SKILLS:+$REMOVED_SKILLS, }$name"
     rm -rf "$dir"
   fi
 done
+
+printf '\033[2A\r[x] Skills\033[1B\r' 2>/dev/null || true
 
 # Syncs the framework's documentation.
 mkdir -p ".claude/pv-doc"
@@ -126,6 +143,12 @@ done
 # Syncs the pv.py launcher at the repo root (generated file, always overwritten).
 if [ -f "$SRC_SKILLS/pv-init/assets/pv.py" ]; then
   cp "$SRC_SKILLS/pv-init/assets/pv.py" "pv.py"
+fi
+
+printf '\r[x] Resto\033[1B\r' 2>/dev/null || true
+
+if [ -n "$REMOVED_SKILLS" ]; then
+  echo "Removed obsolete skills: $REMOVED_SKILLS"
 fi
 
 echo "Previo installed/updated in .claude/skills."
