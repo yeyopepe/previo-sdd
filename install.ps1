@@ -71,7 +71,9 @@ try {
         $sizeInfo = "{0:N1} MB" -f ($ReadTotal / 1MB)
         Write-Host -NoNewline ("`r[")
         Write-Host -NoNewline $bar -ForegroundColor Blue
-        Write-Host -NoNewline ("] {0,3}% ({1}, {2})  " -f $pct, $sizeInfo, $speedInfo)
+        Write-Host -NoNewline ("] {0,3}% ({1}, " -f $pct, $sizeInfo)
+        Write-Host -NoNewline $speedInfo -ForegroundColor DarkGray
+        Write-Host -NoNewline ")  "
     }
 
     Add-Type -AssemblyName System.Net.Http
@@ -110,8 +112,8 @@ try {
     $DestSkills = ".claude\skills"
     New-Item -ItemType Directory -Path $DestSkills -Force | Out-Null
 
-    Write-Host "[ ] Skills"
-    Write-Host "[ ] Resto"
+    Write-Host "[ ] Previo skills"
+    Write-Host "[ ] Other stuff"
     $ChecklistTop = $null
     try { $ChecklistTop = $host.UI.RawUI.CursorPosition.Y - 2 } catch {}
 
@@ -156,7 +158,7 @@ try {
         }
     }
 
-    Set-ChecklistLine -Offset 0 -Text "[x] Skills"
+    Set-ChecklistLine -Offset 0 -Text "[x] Previo skills"
 
     # Syncs the framework's documentation.
     $DestDocDir = Join-Path ".claude" "pv-doc"
@@ -187,13 +189,14 @@ try {
         Copy-Item -Path $SrcPvPy -Destination "pv.py" -Force
     }
 
-    Set-ChecklistLine -Offset 1 -Text "[x] Resto"
+    Set-ChecklistLine -Offset 1 -Text "[x] Other stuff"
 
     if ($RemovedSkills.Count -gt 0) {
         Write-Host "Removed obsolete skills: $($RemovedSkills -join ', ')"
     }
 
-    Write-Host "Previo installed/updated in .claude/skills."
+    Write-Host ""
+    Write-Host "Previo installed/updated successfully. Ready to go!"
     Write-Host ""
     if ($ChangelogMissing) {
         Write-Host "==========================================================" -ForegroundColor Yellow

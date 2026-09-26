@@ -74,7 +74,7 @@ draw_progress_bar() {
   else
     speed_mb="0.0"
   fi
-  printf '\r[\033[34m%s%s\033[0m] %3d%% (%s MB, %s MB/s)  ' "$bar" "$spaces" "$pct" "$size_mb" "$speed_mb"
+  printf '\r[\033[34m%s%s\033[0m] %3d%% (%s MB, \033[90m%s MB/s\033[0m)  ' "$bar" "$spaces" "$pct" "$size_mb" "$speed_mb"
 }
 
 START_TIME=$(date +%s)
@@ -98,8 +98,8 @@ SRC_SKILLS="$TMP/.claude/skills"
 DEST_SKILLS=".claude/skills"
 mkdir -p "$DEST_SKILLS"
 
-echo "[ ] Skills"
-echo "[ ] Resto"
+echo "[ ] Previo skills"
+echo "[ ] Other stuff"
 
 REMOVED_SKILLS=""
 # Syncs only the framework's own skills (pv- prefix), without touching the user's own skills.
@@ -120,7 +120,7 @@ for dir in "$DEST_SKILLS"/pv-*; do
   fi
 done
 
-printf '\033[2A\r[x] Skills\033[1B\r' 2>/dev/null || true
+printf '\033[2A\r[x] Previo skills\033[1B\r' 2>/dev/null || true
 
 # Syncs the framework's documentation.
 mkdir -p ".claude/pv-doc"
@@ -145,13 +145,14 @@ if [ -f "$SRC_SKILLS/pv-init/assets/pv.py" ]; then
   cp "$SRC_SKILLS/pv-init/assets/pv.py" "pv.py"
 fi
 
-printf '\r[x] Resto\033[1B\r' 2>/dev/null || true
+printf '\r[x] Other stuff\033[1B\r' 2>/dev/null || true
 
 if [ -n "$REMOVED_SKILLS" ]; then
   echo "Removed obsolete skills: $REMOVED_SKILLS"
 fi
 
-echo "Previo installed/updated in .claude/skills."
+echo ""
+echo "Previo installed/updated successfully. Ready to go!"
 echo ""
 if [ "$CHANGELOG_MISSING" = "1" ]; then
   printf '\033[33m'
