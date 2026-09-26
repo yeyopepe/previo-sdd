@@ -40,9 +40,47 @@ trap 'rm -rf "$TMP"' EXIT
 
 TAR_PATH="$TMP/previo.tar.gz"
 echo "Downloading Previo (${TAG})..."
-printf '\033[34m'
-curl -fL --progress-bar "$TARBALL" -o "$TAR_PATH"
-printf '\033[0m'
+
+# GitHub's codeload tarball endpoint never sends Content-Length, so there's no
+# real total to compute a bar/percentage against. Assume 3 MB (typical size of
+# this repo's tarball) so the bar still moves instead of sitting empty at 0%:
+# capped at 99% while still downloading (in case the real file is bigger),
+# then forced to a full 100% bar once the download actually ends.
+ASSUMED_TOTAL_BYTES=3145728
+WIDTH=40
+
+draw_progress_bar() {
+  read_total=$1
+  done=$2
+  if [ "$done" = "1" ]; then
+    pct=100
+    filled=$WIDTH
+  else
+    pct=$((read_total * 100 / ASSUMED_TOTAL_BYTES))
+    [ "$pct" -gt 99 ] && pct=99
+    filled=$((WIDTH * read_total / ASSUMED_TOTAL_BYTES))
+    [ "$filled" -gt "$WIDTH" ] && filled=$WIDTH
+  fi
+  bar=$(printf '%*s' "$filled" '' | tr ' ' '=')
+  if [ "$filled" -lt "$WIDTH" ] && [ "$filled" -gt 0 ]; then
+    bar="${bar%=}>"
+  fi
+  pad=$((WIDTH - filled))
+  spaces=$(printf '%*s' "$pad" '')
+  printf '\r[\033[34m%s%s\033[0m] %3d%%  ' "$bar" "$spaces" "$pct"
+}
+
+curl -fL "$TARBALL" -o "$TAR_PATH" &
+CURL_PID=$!
+while kill -0 "$CURL_PID" 2>/dev/null; do
+  READ_TOTAL=$(wc -c < "$TAR_PATH" 2>/dev/null || echo 0)
+  draw_progress_bar "$READ_TOTAL" 0
+  sleep 0.2
+done
+wait "$CURL_PID"
+draw_progress_bar 0 1
+echo ""
+
 tar -xzf "$TAR_PATH" -C "$TMP" --strip-components=1
 
 SRC_SKILLS="$TMP/.claude/skills"

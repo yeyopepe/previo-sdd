@@ -44,30 +44,33 @@ try {
     Write-Host "Downloading Previo ($Tag)..."
     $TarPath = Join-Path $Tmp "previo.tar.gz"
 
+    # GitHub's codeload tarball endpoint never sends Content-Length, so there's
+    # no real total to compute a bar/percentage against. Assume 3 MB (typical
+    # size of this repo's tarball) so the bar still moves instead of sitting
+    # empty at 0%: capped at 99% while still reading (in case the real file is
+    # bigger), then forced to a full 100% bar once the download actually ends.
+    $AssumedTotalBytes = 3MB
+
     function Write-ProgressBar {
-        param([long]$ReadTotal, [long]$TotalBytes, [double]$SpeedBps)
+        param([long]$ReadTotal, [long]$TotalBytes, [double]$SpeedBps, [bool]$Done)
 
         $width = 40
-        if ($TotalBytes -gt 0) {
-            $pct = [int](($ReadTotal / $TotalBytes) * 100)
-            $filled = [int]($width * $ReadTotal / $TotalBytes)
-            if ($filled -ge $width) {
-                $bar = ('=' * $width)
-            } elseif ($filled -gt 0) {
+        $speedInfo = "{0:N1} MB/s" -f ($SpeedBps / 1MB)
+        if ($Done) {
+            $pct = 100
+            $bar = ('=' * $width)
+        } else {
+            $pct = [Math]::Min(99, [int](($ReadTotal / $TotalBytes) * 100))
+            $filled = [Math]::Min($width, [int]($width * $ReadTotal / $TotalBytes))
+            if ($filled -gt 0) {
                 $bar = ('=' * ($filled - 1)) + '>' + (' ' * ($width - $filled))
             } else {
                 $bar = ' ' * $width
             }
-            $sizeInfo = "{0:N1}/{1:N1} MB" -f ($ReadTotal / 1MB), ($TotalBytes / 1MB)
-        } else {
-            $pct = 0
-            $bar = ' ' * $width
-            $sizeInfo = "{0:N1} MB" -f ($ReadTotal / 1MB)
         }
-        $speedInfo = "{0:N1} MB/s" -f ($SpeedBps / 1MB)
         Write-Host -NoNewline ("`r[")
         Write-Host -NoNewline $bar -ForegroundColor Blue
-        Write-Host -NoNewline ("] {0,3}% {1} {2}  " -f $pct, $sizeInfo, $speedInfo)
+        Write-Host -NoNewline ("] {0,3}% {1}  " -f $pct, $speedInfo)
     }
 
     Add-Type -AssemblyName System.Net.Http
@@ -76,6 +79,7 @@ try {
         $response = $httpClient.GetAsync($Tarball, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
         $response.EnsureSuccessStatusCode() | Out-Null
         $totalBytes = $response.Content.Headers.ContentLength
+        if (-not $totalBytes -or $totalBytes -le 0) { $totalBytes = $AssumedTotalBytes }
 
         $inStream = $response.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
         $outStream = [System.IO.File]::Create($TarPath)
@@ -88,6 +92,8 @@ try {
             $speed = if ($sw.Elapsed.TotalSeconds -gt 0) { $readTotal / $sw.Elapsed.TotalSeconds } else { 0 }
             Write-ProgressBar -ReadTotal $readTotal -TotalBytes $totalBytes -SpeedBps $speed
         }
+        $speed = if ($sw.Elapsed.TotalSeconds -gt 0) { $readTotal / $sw.Elapsed.TotalSeconds } else { 0 }
+        Write-ProgressBar -ReadTotal $readTotal -TotalBytes $totalBytes -SpeedBps $speed -Done $true
         Write-Host ""
         $outStream.Close()
         $inStream.Close()
