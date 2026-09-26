@@ -1,11 +1,11 @@
-# Previo v0.9.8b15 changelog (from v0.9.7)
+# Previo v0.9.8rc1 changelog (from v0.9.7)
 
 Note: within a section, entries may be grouped under a theme when at least two entries share a topic. In the detail section, a theme is `- 📂**{Theme}**:` with its entries nested as indented sub-bullets beneath it (no heading, no link). In the Index, the same theme collapses to a single plain line `📂{Theme} (N changes)` with its member entries not listed. Ungrouped entries are listed as ordinary top-level bullets in both places (bare title in the Index, full bold-title-plus-summary bullet in the detail).
 
 ## Index
 
 - ⭐[New](#new)
-  - HTML mockups now support inline reviewer annotations
+  - New reviewer-annotation framework for HTML mockups
   - 📂Framework self-install (2 changes)
   - 📂`pv-update`'s self-healing audit (2 changes)
   - 📂New maintenance skills (2 changes)
@@ -18,7 +18,7 @@ Note: within a section, entries may be grouped under a theme when at least two e
 
 ## ⭐New
 
-- **HTML mockups now support inline reviewer annotations** — reviewers can pin notes to specific elements or leave general notes, and the framework resolves them automatically before presenting the mockup again.
+- **New reviewer-annotation framework for HTML mockups** — every mockup now embeds a self-contained runtime that lets the reviewer pin a note to a specific element or leave a general note, without leaving the mockup itself. Before presenting the mockup again, the framework automatically resolves every open note: when it can confidently tell what change is being asked for, it applies it directly to the mockup and closes the note; when a note is ambiguous, or its linked element no longer exists in the mockup ("detached" note), it asks the reviewer before touching anything. No `pv-*` skill (`pv-new`, `pv-fix`, `pv-how`) reads or edits a mockup file directly anymore — they all go exclusively through the configured mockups skill's `describe` action (plain-text visual reference) and `ensure-closed` action (annotation resolution), which also means the built-in HTML mockups skill can be swapped for a custom one (Figma, a component library, etc.) without touching the rest of the framework.
 - 📂**Framework self-install**:
   - **`pv-update` gained an explicit install mode (`/pv-update install`)** to install or update the `pv-*` framework itself (not just audit its configuration) to a version equal to or newer than what's installed, via a strict resolve-then-confirm-then-install protocol that never silently downgrades and always names the exact target version before touching anything; on success it automatically chains into the existing audit/repair mode to verify the newly installed version.
   - **`pv.py`'s settings menu gained an "Install new Previo version" option**, wired to the same install mechanism as `/pv-update install`, letting a user upgrade/reinstall the framework without going through Claude Code.

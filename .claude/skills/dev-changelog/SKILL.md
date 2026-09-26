@@ -6,7 +6,7 @@ model: claude-sonnet-5
 effort: medium
 metadata:
   author: Sergio José Martínez Primiani
-  version: 0.5.0
+  version: 0.6.0
   uses: [en-translate, es-translate]
 ---
 
@@ -64,6 +64,10 @@ Base every entry on what the diff shows — not on commit messages (commit histo
 - **Deleted** — a `pv-*` skill directory is removed, or a capability/step present at the base ref is removed.
 
 **Informational focus: functional changes only, by default.** An entry qualifies only if it affects the user-facing interface (a new/changed skill, command, or `pv.py` behavior), appearance, or the way something is worked (a flow that used to do one thing and now does another), or is otherwise functional in nature. Write from that functional perspective (what the framework now does differently for someone using/interacting with it), not a technical one — no file paths, function names, script internals, or line-level detail. A purely technical change (e.g. new scripts added, existing scripts refactored/modified internally, with no observable effect on interface, appearance, or workflow) must not appear at all, in any section. One or two sentences per entry, changelog tone, past tense.
+
+**Don't mention internal machinery that merely implements an already-listed functional change.** If a diff touches flows, files, internal wiring, or scripts purely to make a functionality that's already getting its own entry work, that internal detail isn't a separate thing to report — it's how the entry above was built, not something new for the user. Only surface internal/technical detail when it independently meets the exception below (needs user action on update); otherwise fold it silently into the functional entry it serves, or drop it if the functional entry already covers the observable effect.
+
+**Tone: lead with what matters.** This is a changelog, not a diff summary — write it to make new capabilities and major changes stand out, not to enumerate everything evenly. Give real weight (more detail, higher position within its section) to genuinely new or notable functionality; keep minor/incremental entries short and unobtrusive. Don't flatten a big new capability and a small tweak to the same length and tone just because both are "Changed".
 
 **Stay at the main-concept level, not the fine detail.** If a skill's `SKILL.md` changed, describe the overall capability/flow that changed, not step-by-step wording tweaks, exact thresholds/numbers, or internal field names. If a change was implemented in a script, describe the general functional effect (what the framework now does differently for the user), not the implementation detail (parsing logic, internal function/field names, exact regex or data shape). Before finalizing an entry, ask "would a consumer of this framework care about this exact detail, or just that this capability/behavior changed?" — keep only the latter.
 

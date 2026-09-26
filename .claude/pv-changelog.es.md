@@ -1,11 +1,11 @@
-# Changelog de Previo v0.9.8b15 (desde v0.9.7)
+# Changelog de Previo v0.9.8rc1 (desde v0.9.7)
 
 Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando al menos dos entradas comparten un mismo asunto. En la sección de detalle, un tema se representa como `- 📂**{Tema}**:` con sus entradas anidadas como sub-viñetas indentadas debajo (sin encabezado, sin enlace). En el índice, ese mismo tema se reduce a una única línea simple `📂{Tema} (N cambios)`, sin listar sus entradas miembro. Las entradas no agrupadas aparecen como viñetas normales de primer nivel en ambos sitios (título simple en el índice, viñeta completa con título en negrita y resumen en el detalle).
 
 ## Índice
 
 - ⭐[Novedades](#novedades)
-  - Los mockups HTML ahora admiten anotaciones de revisor en línea
+  - Nuevo framework de anotaciones de revisor sobre mockups HTML
   - 📂Autoinstalación del framework (2 cambios)
   - 📂Autorreparación de la auditoría de `pv-update` (2 cambios)
   - 📂Nuevas skills de mantenimiento (2 cambios)
@@ -18,7 +18,7 @@ Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando 
 
 ## ⭐Novedades
 
-- **Los mockups HTML ahora admiten anotaciones de revisor en línea** — el revisor puede fijar notas sobre elementos concretos o dejar notas generales, y el framework las resuelve automáticamente antes de volver a presentar el mockup.
+- **Nuevo framework de anotaciones de revisor sobre mockups HTML** — cada mockup incorpora ahora un runtime autocontenido que permite al revisor fijar notas sobre un elemento concreto o dejar notas generales, sin salir del propio mockup. Antes de volver a presentarlo, el framework resuelve automáticamente cada nota abierta: si detecta con confianza qué cambio pide, lo aplica directamente sobre el mockup y cierra la nota; si la nota es ambigua, o si su elemento vinculado ya no existe en el mockup ("nota huérfana"), pregunta al revisor antes de tocar nada. Ninguna skill `pv-*` (`pv-new`, `pv-fix`, `pv-how`) lee ni edita ya un fichero de mockup directamente: todas pasan exclusivamente por las acciones `describe` (referencia visual en texto) y `ensure-closed` (resolución de anotaciones) de la skill de mockups configurada, lo que además permite sustituir la skill de mockups HTML por una propia (Figma, librería de componentes, etc.) sin tocar el resto del framework.
 - 📂**Autoinstalación del framework**:
   - **`pv-update` incorpora un modo de instalación explícito (`/pv-update install`)** para instalar o actualizar el propio framework `pv-*` (no solo auditar su configuración) a una versión igual o posterior a la instalada, mediante un protocolo estricto de resolución, confirmación e instalación que nunca degrada la versión de forma silenciosa y siempre indica el nombre exacto de la versión de destino antes de tocar nada; si tiene éxito, encadena automáticamente con el modo de auditoría/reparación existente para verificar la versión recién instalada.
   - **El menú de configuración de `pv.py` incorpora la opción "Instalar nueva versión de Previo"**, conectada al mismo mecanismo de instalación que `/pv-update install`, que permite actualizar o reinstalar el framework sin pasar por Claude Code.
