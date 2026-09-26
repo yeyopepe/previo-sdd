@@ -12,12 +12,20 @@ REQUESTED_TAG="$1"
 WAS_ALREADY_INSTALLED=0
 [ -d ".claude/skills/pv-init" ] && WAS_ALREADY_INSTALLED=1
 
+INSTALLED_FROM_RAW_TAG=0
 if [ -n "$REQUESTED_TAG" ]; then
-  RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/tags/${REQUESTED_TAG}") || {
-    echo "Version '${REQUESTED_TAG}' doesn't exist in Previo's releases." >&2
-    exit 1
-  }
-  TAG=$(echo "$RELEASE_JSON" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+  RELEASE_JSON=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/tags/${REQUESTED_TAG}") || RELEASE_JSON=""
+  if [ -n "$RELEASE_JSON" ]; then
+    TAG=$(echo "$RELEASE_JSON" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
+  else
+    if curl -fsSL -o /dev/null "https://api.github.com/repos/${REPO}/git/refs/tags/${REQUESTED_TAG}"; then
+      TAG="$REQUESTED_TAG"
+      INSTALLED_FROM_RAW_TAG=1
+    else
+      echo "Version '${REQUESTED_TAG}' doesn't exist in Previo's releases." >&2
+      exit 1
+    fi
+  fi
 else
   TAG=$(curl -fsSL "https://api.github.com/repos/${REPO}/releases/latest" | grep -m1 '"tag_name"' | sed -E 's/.*"tag_name": *"([^"]+)".*/\1/')
 fi
@@ -30,8 +38,12 @@ TARBALL="https://github.com/${REPO}/archive/refs/tags/${TAG}.tar.gz"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
+TAR_PATH="$TMP/previo.tar.gz"
 echo "Downloading Previo (${TAG})..."
-curl -fsSL "$TARBALL" | tar -xz -C "$TMP" --strip-components=1
+printf '\033[34m'
+curl -fL --progress-bar "$TARBALL" -o "$TAR_PATH"
+printf '\033[0m'
+tar -xzf "$TAR_PATH" -C "$TMP" --strip-components=1
 
 SRC_SKILLS="$TMP/.claude/skills"
 DEST_SKILLS=".claude/skills"
@@ -81,11 +93,22 @@ fi
 echo "Previo installed/updated in .claude/skills."
 echo ""
 if [ "$CHANGELOG_MISSING" = "1" ]; then
+  printf '\033[33m'
   echo "=========================================================="
   echo " Warning: the new version was installed, but something"
   echo " went wrong and the changelog for this release is missing."
   echo " You won't have information about what changed."
   echo "=========================================================="
+  printf '\033[0m'
+  echo ""
+fi
+if [ "$INSTALLED_FROM_RAW_TAG" = "1" ]; then
+  printf '\033[33m'
+  echo "=========================================================="
+  echo " Warning: '${TAG}' is not a published release, it was"
+  echo " installed as a raw git tag. It may be untested/unstable."
+  echo "=========================================================="
+  printf '\033[0m'
   echo ""
 fi
 if [ "$WAS_ALREADY_INSTALLED" = "1" ]; then

@@ -12,18 +12,27 @@ $Repo = "yeyopepe/previo-sdd"
 # framework installed -- used at the end to show the right next-step message.
 $WasAlreadyInstalled = Test-Path ".claude\skills\pv-init"
 
+$InstalledFromRawTag = $false
 if ($Version) {
     try {
         $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/tags/$Version"
+        $Tag = $Release.tag_name
     }
     catch {
-        throw "Version '$Version' doesn't exist in Previo's releases."
+        try {
+            Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/git/refs/tags/$Version" | Out-Null
+            $Tag = $Version
+            $InstalledFromRawTag = $true
+        }
+        catch {
+            throw "Version '$Version' doesn't exist in Previo's releases."
+        }
     }
 }
 else {
     $Release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest"
+    $Tag = $Release.tag_name
 }
-$Tag = $Release.tag_name
 if (-not $Tag) {
     throw "Couldn't determine which version of Previo to install."
 }
@@ -34,7 +43,58 @@ New-Item -ItemType Directory -Path $Tmp -Force | Out-Null
 try {
     Write-Host "Downloading Previo ($Tag)..."
     $TarPath = Join-Path $Tmp "previo.tar.gz"
-    Invoke-WebRequest -Uri $Tarball -OutFile $TarPath
+
+    function Write-ProgressBar {
+        param([long]$ReadTotal, [long]$TotalBytes, [double]$SpeedBps)
+
+        $width = 40
+        if ($TotalBytes -gt 0) {
+            $pct = [int](($ReadTotal / $TotalBytes) * 100)
+            $filled = [int]($width * $ReadTotal / $TotalBytes)
+            if ($filled -ge $width) {
+                $bar = ('=' * $width)
+            } elseif ($filled -gt 0) {
+                $bar = ('=' * ($filled - 1)) + '>' + (' ' * ($width - $filled))
+            } else {
+                $bar = ' ' * $width
+            }
+            $sizeInfo = "{0:N1}/{1:N1} MB" -f ($ReadTotal / 1MB), ($TotalBytes / 1MB)
+        } else {
+            $pct = 0
+            $bar = ' ' * $width
+            $sizeInfo = "{0:N1} MB" -f ($ReadTotal / 1MB)
+        }
+        $speedInfo = "{0:N1} MB/s" -f ($SpeedBps / 1MB)
+        Write-Host -NoNewline ("`r[")
+        Write-Host -NoNewline $bar -ForegroundColor Blue
+        Write-Host -NoNewline ("] {0,3}% {1} {2}  " -f $pct, $sizeInfo, $speedInfo)
+    }
+
+    Add-Type -AssemblyName System.Net.Http
+    $httpClient = [System.Net.Http.HttpClient]::new()
+    try {
+        $response = $httpClient.GetAsync($Tarball, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).GetAwaiter().GetResult()
+        $response.EnsureSuccessStatusCode() | Out-Null
+        $totalBytes = $response.Content.Headers.ContentLength
+
+        $inStream = $response.Content.ReadAsStreamAsync().GetAwaiter().GetResult()
+        $outStream = [System.IO.File]::Create($TarPath)
+        $buffer = New-Object byte[] 81920
+        $readTotal = 0
+        $sw = [System.Diagnostics.Stopwatch]::StartNew()
+        while (($read = $inStream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+            $outStream.Write($buffer, 0, $read)
+            $readTotal += $read
+            $speed = if ($sw.Elapsed.TotalSeconds -gt 0) { $readTotal / $sw.Elapsed.TotalSeconds } else { 0 }
+            Write-ProgressBar -ReadTotal $readTotal -TotalBytes $totalBytes -SpeedBps $speed
+        }
+        Write-Host ""
+        $outStream.Close()
+        $inStream.Close()
+    }
+    finally {
+        $httpClient.Dispose()
+    }
 
     tar -xzf $TarPath -C $Tmp --strip-components=1
     if ($LASTEXITCODE -ne 0) { throw "Failed to extract the downloaded package." }
@@ -94,11 +154,18 @@ try {
     Write-Host "Previo installed/updated in .claude/skills."
     Write-Host ""
     if ($ChangelogMissing) {
-        Write-Host "=========================================================="
-        Write-Host " Warning: the new version was installed, but something"
-        Write-Host " went wrong and the changelog for this release is missing."
-        Write-Host " You won't have information about what changed."
-        Write-Host "=========================================================="
+        Write-Host "==========================================================" -ForegroundColor Yellow
+        Write-Host " Warning: the new version was installed, but something" -ForegroundColor Yellow
+        Write-Host " went wrong and the changelog for this release is missing." -ForegroundColor Yellow
+        Write-Host " You won't have information about what changed." -ForegroundColor Yellow
+        Write-Host "==========================================================" -ForegroundColor Yellow
+        Write-Host ""
+    }
+    if ($InstalledFromRawTag) {
+        Write-Host "==========================================================" -ForegroundColor Yellow
+        Write-Host " Warning: '$Tag' is not a published release, it was" -ForegroundColor Yellow
+        Write-Host " installed as a raw git tag. It may be untested/unstable." -ForegroundColor Yellow
+        Write-Host "==========================================================" -ForegroundColor Yellow
         Write-Host ""
     }
     if ($WasAlreadyInstalled) {
