@@ -13,8 +13,8 @@ For each entry in the state folder, five columns are computed:
     field); in any other state, description.md's '**Type**' field
     ('change'/'fix'/'fast'); 'unknown' if not found or there's no
     description.md.
-  - description: the first 250 characters of description.md's '## Full
-    description' section (with "..." at the end if truncated); None if
+  - description: description.md's '## Full description' section, full text
+    with whitespace collapsed (not truncated here -- see below); None if
     that section is empty or missing. history.md is never used as a
     fallback: it's prompt history for the exclusive use of pv-new/pv-fix,
     no other skill (including pv-status) should read it.
@@ -157,19 +157,26 @@ DESCRIPTION_MAX_CHARS = 250
 TERMINAL_FRAMEWORK_FILES = {"description.md", "plan.md", "history.md"}
 
 
-def summarize(text: str) -> str:
-    # Collapses repeated line breaks/whitespace before truncating, so the
-    # summary doesn't drag along markdown formatting.
-    collapsed = re.sub(r"\s+", " ", text).strip()
-    if len(collapsed) <= DESCRIPTION_MAX_CHARS:
-        return collapsed
-    return collapsed[:DESCRIPTION_MAX_CHARS].rstrip() + "..."
+def collapse_whitespace(text: str) -> str:
+    # Collapses repeated line breaks/whitespace so the description doesn't
+    # drag along markdown formatting. Truncation is the caller's job:
+    # render_report() (markdown table) truncates at DESCRIPTION_MAX_CHARS,
+    # render_terminal() (detail card) truncates at its own --details-width --
+    # so the full, untruncated text has to survive past this point for the
+    # terminal card to have anything to truncate beyond 250 characters.
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "..."
 
 
 def extract_description(text: str) -> str | None:
     match = DESCRIPTION_FULL_RE.search(text)
     if match and match.group(1).strip():
-        return summarize(match.group(1))
+        return collapse_whitespace(match.group(1))
 
     return None
 
@@ -410,7 +417,7 @@ def render_report(result: dict) -> str:
             row_template.format(
                 code=entry["code"],
                 type=TYPE_LABELS.get(entry["type"], entry["type"]),
-                description=entry["description"] or "—",
+                description=truncate(entry["description"], DESCRIPTION_MAX_CHARS) if entry["description"] else "—",
                 risk=f"{entry['risk']}/10" if entry["risk"] is not None else "?",
                 date=entry["date"] or "—",
                 # Chat/markdown: always emoji. Own leading "Flags" column.
@@ -434,7 +441,11 @@ TERMINAL_DESCRIPTION_MAX_CHARS = 500
 SEARCH_KIND_LABELS = {"id": "id", "content": "content", "flag": "flag"}
 
 
-def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
+def render_terminal(
+    result: dict,
+    width: int = term.DEFAULT_WIDTH,
+    details_width: int = TERMINAL_DESCRIPTION_MAX_CHARS,
+) -> str:
     is_search = "query" in result
     if not is_search:
         title = f"PROJECT STATUS — {result['state']}"
@@ -482,9 +493,7 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
             continue
 
         risk = f"{entry['risk']}/10" if entry["risk"] is not None else "?"
-        description = entry["description"] or "—"
-        if len(description) > TERMINAL_DESCRIPTION_MAX_CHARS:
-            description = description[:TERMINAL_DESCRIPTION_MAX_CHARS].rstrip() + "..."
+        description = truncate(entry["description"], details_width) if entry["description"] else "—"
         extra_files = entry["extra_files"] or 0
         lines.append(f"{prefix}{entry['code']}  [{type_}]  ({entry['state']})  Risk: {risk}")
         lines.append(f"created: {entry['date'] or '—'}, planned: {planned}")
@@ -556,6 +565,15 @@ def main() -> None:
         "already). The caller decides this -- pv.py passes its own WIDTH "
         f"so delegated screens match its menu's width. Default {term.DEFAULT_WIDTH}.",
     )
+    parser.add_argument(
+        "--details-width",
+        type=int,
+        default=TERMINAL_DESCRIPTION_MAX_CHARS,
+        help="Max characters of a change/fix's description shown in the "
+        "--terminal detail card's description line, before truncating with "
+        "'...'. The caller decides this -- pv.py passes its own persisted "
+        f"setting. Default {TERMINAL_DESCRIPTION_MAX_CHARS}.",
+    )
     args = parser.parse_args()
 
     exclusive = [bool(args.search_id), bool(args.search_content), bool(args.flag)]
@@ -584,21 +602,25 @@ def main() -> None:
 
     if args.search_id:
         result = collect_search_by_id(changes_dir, args.search_id)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     if args.search_content:
         result = collect_search_by_content(changes_dir, args.search_content)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     if args.flag:
         result = collect_by_flag(changes_dir, args.flag)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     result = collect(changes_dir, args.state)
-    print(render_terminal(result, width=args.width) if args.terminal else render_report(result))
+    print(
+        render_terminal(result, width=args.width, details_width=args.details_width)
+        if args.terminal
+        else render_report(result)
+    )
 
 
 if __name__ == "__main__":

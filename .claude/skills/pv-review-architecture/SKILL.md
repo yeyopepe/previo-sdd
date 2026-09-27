@@ -2,7 +2,7 @@
 name: pv-review-architecture
 description: Analyzes the project's real source code architecture (`framework.sourcecodeDir`) against a fixed checklist of language-agnostic software design principles (separation of concerns, file/class size, SOLID, KISS, DRY, coupling/cohesion, naming, layering) and produces a numbered list of reorganization proposals — pure structural moves (splitting/merging/relocating/renaming files or classes), never adding or removing functional code. For each proposal the user confirms, asks whether to turn it into a noted idea (`pv-todo`) or directly into a documented change (`pv-new`) and creates it accordingly. Trigger: /pv-review-architecture, or when the user asks to review/audit the project's architecture or code organization.
 model: claude-sonnet-5
-effort: high
+effort: medium
 metadata:
   author: Sergio José Martínez Primiani
   version: 0.9.8rc1

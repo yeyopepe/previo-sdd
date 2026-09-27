@@ -41,14 +41,23 @@ Five options modify something:
   submenu): delegates to pv-init's sync-skill-models.py, which propagates
   pv-context.json's skillModels to each 'pv-*' SKILL.md's frontmatter
   (model/effort).
-- "Change terminal max character width" (inside the "Configuration" submenu): the
-  only place pv.py *writes* pv-context.json -- it stores a single integer
-  at framework.onescript.width (>= 40; empty input keeps the current
-  value), read back on every launch to set this file's WIDTH. A minimal
-  read-modify-write that preserves every other field and key order; still
-  gated behind a confirm(). Under --testconfig the same value is read from
-  / written to pv-config-test.json at the identical framework.onescript.width
-  path, so the exact same code handles both.
+- "Change terminal settings" (inside the "Configuration" submenu): opens a
+  submenu with the only two settings pv.py *writes* into pv-context.json --
+  "Max character width" (framework.onescript.terminal-width, >= 40; empty
+  input keeps the current value), read back on every launch to set this
+  file's WIDTH, and "Max character in change details"
+  (framework.onescript.details-width, >= 1; empty input keeps the current
+  value), forwarded to filter_status.py's --details-width so it truncates
+  the detail card's description line at that length instead of its own
+  500-character default. Both are minimal read-modify-writes that preserve
+  every other field and key order; both still gated behind a confirm().
+  Under --testconfig the same values are read from / written to
+  pv-config-test.json at the identical framework.onescript.* path, so the
+  exact same code handles both. A project on an older pv-* version may
+  still carry the field's original name (framework.onescript.width, before
+  it was renamed to terminal-width) -- migrate_onescript_width_key() renames
+  it in place silently at startup, no confirm(), before either setting is
+  read for the first time.
 
 "Changes info" opens a submenu with five options: "Search by id" (exact
 id match, cheap -- doesn't read description.md except the match's),
@@ -111,7 +120,8 @@ CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
 # CONTEXT_PATH normally, or the --testconfig file when that flag is passed
 # (set in main()). Both carry pv.py's settings at the same nested path
 # (framework.onescript.*), so load_onescript_width()/save_onescript_width()
-# don't branch on which one it is.
+# and load_details_width()/save_details_width() don't branch on which one
+# it is.
 ACTIVE_CONFIG_PATH = CONTEXT_PATH
 
 # Set by main() when --testconfig is passed: the workFolder value to use
@@ -148,6 +158,13 @@ SCRIPTS_ACCEPTING_WIDTH = {
     "read-flags.py",
 }
 
+# The only script whose detail card description gets truncated at a caller-
+# supplied length (--details-width, forwarded alongside --width). None of
+# the other pv-status scripts render that description line.
+SCRIPTS_ACCEPTING_DETAILS_WIDTH = {
+    "filter_status.py",
+}
+
 # Canonical flag catalogue -- kept in sync BY HAND with
 # pv-status/scripts/terminal_output.py's FLAG_* maps and
 # pv-internal-workflow/metadata.schema.json's enum. pv.py imports nothing,
@@ -172,8 +189,14 @@ FLAG_ICONS_ASCII = {"priority": "[P]", "workinprogress": "[W]"}
 # See .claude/pv-doc/pv-design-onescript/pv-design-onescript.es.md > "Estilo por Tipo de Pantalla" for
 # the full rationale and exact mockups.
 
-WIDTH = 80  # default; overridden at startup by framework.onescript.width if set
+WIDTH = 80  # default; overridden at startup by framework.onescript.terminal-width if set
 MIN_WIDTH = 40  # below this, RING_ART and the delegated detail cards break
+
+# Detail card description truncation length, forwarded to filter_status.py's
+# --details-width -- see change_details_width() in the Configuration submenu.
+# Matches filter_status.py's own TERMINAL_DESCRIPTION_MAX_CHARS default.
+DETAILS_WIDTH = 500  # default; overridden at startup by framework.onescript.details-width if set
+MIN_DETAILS_WIDTH = 1
 COLOR_RESET = "\033[0m"
 GOLD = "\033[38;5;220m"
 DARK_GRAY = "\033[38;5;238m"
@@ -404,6 +427,8 @@ def _script_args(script: Path, args: tuple[str, ...]) -> list[str]:
         full_args += ["--work-folder", TEST_WORK_FOLDER]
     if script.name in SCRIPTS_ACCEPTING_WIDTH:
         full_args += ["--width", str(WIDTH)]
+    if script.name in SCRIPTS_ACCEPTING_DETAILS_WIDTH:
+        full_args += ["--details-width", str(DETAILS_WIDTH)]
     return full_args
 
 
@@ -446,8 +471,31 @@ def work_root() -> Path:
     return ROOT / (work_folder_rel or "").lstrip("/")
 
 
+def migrate_onescript_width_key() -> None:
+    """One-time silent migration: a project that installed an older pv-*
+    version before "terminal-width" was renamed from "width" (and before
+    "details-width" existed) may still have framework.onescript.width in
+    its config file. Renames it to framework.onescript.terminal-width in
+    place, preserving its value, so load_onescript_width() finds it at the
+    new path -- run once at startup, before any load_*_width() call, no
+    confirm() (an internal key rename, not a setting the user is choosing).
+    A no-op if "width" is absent or "terminal-width" already exists (never
+    overwrites a value already migrated or set under the new key)."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    onescript = config.get("framework", {}).get("onescript", {})
+    if "width" not in onescript or "terminal-width" in onescript:
+        return
+    onescript["terminal-width"] = onescript.pop("width")
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
 def load_onescript_width() -> int:
-    """Reads framework.onescript.width from the active config file
+    """Reads framework.onescript.terminal-width from the active config file
     (ACTIVE_CONFIG_PATH -- pv-context.json, or the --testconfig file, both
     using the same nested path). Returns the module default WIDTH if the
     file, the section, or the field is absent, or if the value isn't an int
@@ -457,21 +505,46 @@ def load_onescript_width() -> int:
         config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return WIDTH
-    value = config.get("framework", {}).get("onescript", {}).get("width")
+    value = config.get("framework", {}).get("onescript", {}).get("terminal-width")
     if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_WIDTH:
         return value
     return WIDTH
 
 
 def save_onescript_width(width: int) -> None:
-    """Writes framework.onescript.width into the active config file,
-    preserving every other field and the existing key order (read-modify-
-    write with json.load + json.dump, indent=2). Creates the
+    """Writes framework.onescript.terminal-width into the active config
+    file, preserving every other field and the existing key order (read-
+    modify-write with json.load + json.dump, indent=2). Creates the
     framework/onescript objects if missing. This is the only place pv.py
     writes its config file -- a single validated integer, always confirmed
     by the caller first."""
     config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
-    config.setdefault("framework", {}).setdefault("onescript", {})["width"] = width
+    config.setdefault("framework", {}).setdefault("onescript", {})["terminal-width"] = width
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
+def load_details_width() -> int:
+    """Reads framework.onescript.details-width from the active config file,
+    same convention as load_onescript_width(). Returns the module default
+    DETAILS_WIDTH if the file, the section, or the field is absent, or if
+    the value isn't an int >= MIN_DETAILS_WIDTH."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return DETAILS_WIDTH
+    value = config.get("framework", {}).get("onescript", {}).get("details-width")
+    if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_DETAILS_WIDTH:
+        return value
+    return DETAILS_WIDTH
+
+
+def save_details_width(width: int) -> None:
+    """Writes framework.onescript.details-width into the active config
+    file, same read-modify-write convention as save_onescript_width()."""
+    config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    config.setdefault("framework", {}).setdefault("onescript", {})["details-width"] = width
     ACTIVE_CONFIG_PATH.write_text(
         json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -507,9 +580,9 @@ def load_test_config(path: Path) -> dict[str, str]:
       this file's own location, not the process cwd.
     - "workFolder" lives at framework.workFolder, the same path pv-context.json
       uses. framework.onescript.* (pv.py's persisted settings) is read/written
-      in place by load_onescript_width()/save_onescript_width(), which point
-      at this file via ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch
-      it.
+      in place by load_onescript_width()/save_onescript_width() and
+      load_details_width()/save_details_width(), which point at this file via
+      ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch it.
 
     Exits with a clear message (no raw traceback) if the file doesn't
     exist, isn't valid JSON, or is missing repoRoot / framework.workFolder --
@@ -701,14 +774,14 @@ def sync_skill_models() -> None:
 
 
 def change_width() -> None:
-    """Persists framework.onescript.width. Empty input keeps the current
-    value; anything under MIN_WIDTH is rejected without writing. Follows
-    the state-mutating pattern (show + confirm before writing) even though
-    the "mutation" is a single integer."""
+    """Persists framework.onescript.terminal-width. Empty input keeps the
+    current value; anything under MIN_WIDTH is rejected without writing.
+    Follows the state-mutating pattern (show + confirm before writing) even
+    though the "mutation" is a single integer."""
     global WIDTH
 
     show_info(
-        [wrap(f"Current max character width: {WIDTH} (minimum {MIN_WIDTH}).")],
+        [wrap(f"Max character width. Current: {WIDTH} (default: 80).")],
         framed=False,
     )
     answer = read_input(
@@ -739,6 +812,63 @@ def change_width() -> None:
         [wrap(f"Saved. Width is now {new_width}.")],
         framed=False,
     )
+
+
+def change_details_width() -> None:
+    """Persists framework.onescript.details-width, forwarded to
+    filter_status.py's --details-width to control how many characters of a
+    change/fix's description show in the detail card before truncating.
+    Empty input keeps the current value; anything under MIN_DETAILS_WIDTH
+    is rejected without writing. Same show + confirm pattern as
+    change_width()."""
+    global DETAILS_WIDTH
+
+    show_info(
+        [wrap(f"Max character in change details. Current: {DETAILS_WIDTH} (default: 500).")],
+        framed=False,
+    )
+    answer = read_input(
+        f"New value (Enter to keep {DETAILS_WIDTH}): "
+    ).strip()
+    if not answer:
+        print("Unchanged.")
+        return
+
+    if not answer.isdigit() or int(answer) < MIN_DETAILS_WIDTH:
+        print(f"Value must be a whole number >= {MIN_DETAILS_WIDTH}. Unchanged.")
+        return
+
+    new_details_width = int(answer)
+    if new_details_width == DETAILS_WIDTH:
+        print("Unchanged.")
+        return
+
+    if not confirm(
+        f"Set max character in change details to {new_details_width} in {ACTIVE_CONFIG_PATH.name}?"
+    ):
+        print("Cancelled.")
+        return
+
+    save_details_width(new_details_width)
+    DETAILS_WIDTH = new_details_width
+    show_info(
+        [wrap(f"Saved. Max character in change details is now {new_details_width}.")],
+        framed=False,
+    )
+
+
+def show_terminal_settings_menu() -> None:
+    run_menu(
+        "Previo: terminal settings",
+        [
+            ("Max character width", change_width),
+            ("Max character in change details", change_details_width),
+        ],
+        "Back",
+    )
+
+
+show_terminal_settings_menu.is_submenu = True
 
 
 TAG_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
@@ -907,7 +1037,7 @@ def show_settings_menu() -> None:
         "Previo: settings",
         [
             ("Sync skill models per pv-context.json", sync_skill_models),
-            ("Change terminal max character width", change_width),
+            ("Change terminal settings", show_terminal_settings_menu),
             ("Install new Previo version", install_previo_version),
         ],
         "Back",
@@ -1410,7 +1540,7 @@ def run_menu(
 
 def main() -> None:
     global ROOT, STATUS_SCRIPTS, WORKFLOW_SCRIPTS, INIT_SCRIPTS, INIT_SKILL_PATH, CONTEXT_PATH, TEST_WORK_FOLDER
-    global ACTIVE_CONFIG_PATH, WIDTH, UPDATE_SCRIPTS
+    global ACTIVE_CONFIG_PATH, WIDTH, DETAILS_WIDTH, UPDATE_SCRIPTS
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1453,7 +1583,9 @@ def main() -> None:
         print(wrap("Run /pv-init first from Claude Code."))
         return
 
+    migrate_onescript_width_key()
     WIDTH = load_onescript_width()
+    DETAILS_WIDTH = load_details_width()
 
     print(colorize_ring_art(RING_ART))
 
