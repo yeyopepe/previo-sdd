@@ -2,7 +2,7 @@
 
 # **Previo**
 
-![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-GPLv3-red)
+![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-AGPLv3-red)
 ![Static Badge](https://img.shields.io/badge/Supports-Claude-orange)
 
 _Puedes leer esto también en [Spanish](README.es.md)_
@@ -21,7 +21,7 @@ Currently only available for [Claude Code](https://claude.com/claude-code), but 
 
 - 🔑[Key features](#key-features)
 - 🛠️[Configurable and extensible](#configurable-and-extensible)
-- ⚠️[Weaker points and what's coming next](#weaker-points-and-whats-coming-next)
+- ⚠️[What we're focusing on](#what-were-focusing-on)
 - 🛜[Installation](#installation)
   - [Full folder structure](#full-folder-structure)
 - 💻[Workflow](#workflow)
@@ -57,12 +57,12 @@ Currently only available for [Claude Code](https://claude.com/claude-code), but 
 |<u>**Folder structure and documentation**</u>|Define where everything lives — the changes folder, source code, architecture documentation, style, and features — to fit **Previo** into the structure your project already has.|
 |<u>**Model per skill**</u>|Assign whichever model and effort level you prefer to each skill (for example, a lighter one for lookup tasks and a more capable one for technical analysis).|
 
-See the [user guide](.claude/pv-doc/pv-guide.en.md#more-ways-to-customize-previo) for the detail on each option.
+See the [user guide](.claude/pv-doc/pv-guide/pv-guide.en.md#more-ways-to-customize-previo) for the detail on each option.
 
-## ⚠️Weaker points and what's coming next
+## ⚠️What we're focusing on
 
-- <u>**Large contexts.**</u> As the project grows, the context **Previo** needs to do its job grows too (and token usage along with it). We've prioritized the quality of results over the assumed token savings (though we haven't forgotten about those) because our experience tells us that rework always costs more than a good upfront analysis.
-- <u>**Better with better models.**</u> **Previo** can run on any model, though results will vary accordingly, of course. Think of it like deciding what profile to hire for a job: a junior (e.g. Haiku) will go faster and cost you less, but the risk of mistakes and rework is high. You could even run several in parallel if you want, but then it's no longer that cheap. A senior (e.g. Sonnet) will cost you a bit more, but will think things through better and the risk will be much lower. We've tested **Previo** with both approaches (Sonnet is already senior enough) and using a senior for everything has always paid off for us (rework rate on our last project: 5%) over trying to save with juniors (rework on the same project: 40%). These are just our numbers, we know, so try it yourself.
+- <u>**Large contexts.**</u> As the project grows, the context **Previo** needs to do its job grows too (and token usage along with it). We're prioritizing a balance between the quality of results and token usage, because our experience tells us that rework always costs more than a good upfront analysis.
+- <u>**Better with better models.**</u> Although **Previo** can run on any model, the best results come from mid-sized models (Sonnet 5+, GPT-Luna, and equivalents). For the most complex analysis tasks, models like Opus or GPT-Sol may do somewhat better, but their cost usually isn't worth it, at least in our experience.
 
 ## 🛜Installation
 
@@ -76,7 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh
 ```
 Specific version:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.5b6
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.8
 ```
 
 **Windows (PowerShell):**
@@ -88,7 +88,7 @@ irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 
 Specific version:
 ```
-$env:PREVIO_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
+$env:PREVIO_VERSION = "0.9.8"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 > ❗**REMEMBER**:
@@ -136,7 +136,7 @@ Here's what your repo will look like after installation, ready to start working 
 
 Each change lives in a numbered folder inside `changes/` that travels between subfolders as its state progresses: `inProgress/` → `implemented/` → `closed/`.
 
-See the [design document](.claude/pv-doc/pv-design/pv-design.en.md) for the full detail.
+See the [design document](.claude/pv-doc/pv-design.md) for the full detail.
 
 ### Minimal flow
 
@@ -175,7 +175,7 @@ Optional skills that complement the minimal cycle: jotting down ideas before com
 
 ## ⭐The full experience
 See the [changelog](.claude/pv-changelog.en.md) for the current version.
-See the [user guide](.claude/pv-doc/pv-guide.en.md) for everything you can do with **Previo**.
+See the [user guide](.claude/pv-doc/pv-guide/pv-guide.en.md) for everything you can do with **Previo**.
 
 ## 📐How it's built, in detail
 If you want to see how it's built (the framework's skill map, how they invoke each other, the reasoning behind its architecture, etc), you can check it out in the [design documents](.claude/pv-doc/).

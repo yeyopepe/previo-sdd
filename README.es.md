@@ -2,7 +2,7 @@
 
 # **Previo**
 
-![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-GPLv3-red)
+![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-AGPLv3-red)
 ![Static Badge](https://img.shields.io/badge/Supports-Claude-orange)
 
 _You can read this also in [English](README.md)_
@@ -21,7 +21,7 @@ De momento solo está disponible para [Claude Code](https://claude.com/claude-co
 
 - 🔑[Puntos fuertes](#puntos-fuertes)
 - 🛠️[Configurable y extensible](#configurable-y-extensible)
-- ⚠️[Puntos menos fuertes y lo que está por llegar](#puntos-menos-fuertes-y-lo-que-está-por-llegar)
+- ⚠️[En qué estamos poniendo el foco](#en-qué-estamos-poniendo-el-foco)
 - 🛜[Instalación](#instalación)
   - [Estructura completa de carpetas](#estructura-completa-de-carpetas)
 - 💻[Flujo de trabajo](#flujo-de-trabajo)
@@ -37,9 +37,9 @@ De momento solo está disponible para [Claude Code](https://claude.com/claude-co
 |---|---|
 |<u>**Rápido y sin complicaciones**</u>|Prioriza la velocidad y el trabajo secuencial frente al trabajo en paralelo, evitando la complejidad de coordinar varios cambios a la vez, resolver conflictos entre PRs o gestionar ramas simultáneas.|
 |<u>**Especificación completa, formato libre**</u>|Cada entrada exige la estructura mínima necesaria para ser útil (intención, plan, estado), sin formatos de *spec* complejos que haya que aprender o mantener a mano.|
-|<u>**Valida siempre sobre diseños**</u>|Visualiza y valida los cambios visuales y los flujos de trabajo con maquetas estáticas (HTML/CSS o personalizado) antes implementar nada, evitando el ciclo de "implementar → ver que no convence → rehacer".|
+|<u>**Valida siempre sobre diseños**</u>|Visualiza y valida los cambios visuales y los flujos de trabajo con maquetas HTML que te permien visualizar, probar e incluso anotar los cambios que quieras antes de implementar nada, evitando el ciclo de "implementar → ver que no convence → rehacer".|
 |<u>**Riesgos claros**</u>|Cada cambio se analiza para calcular el riesgo que conlleva de generar potenciales efectos secundarios: 9 factores de riesgo que dan una puntuación de 0 (sin riesgo) a 10 (riesgo extremo).|
-|<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación  del proyecto de forma autónoma, tanto técnica como funcional, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial, analizando un proyecto ya existente o dejar que **Previo** la vaya generando según avance el proyecto.|
+|<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación del proyecto de forma autónoma, tanto técnica como funcional, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial, analizando un proyecto ya existente o dejar que **Previo** la vaya generando según avance el proyecto.|
 |<u>**Adaptable y versátil**</u> | Ideal para proyectos de cualquier tamaño y se adapta al stack de cada uno.|
 |<u>**Sin otros productos adicionales**</u> |No requiere más que Claude Code y Python en la máquina de desarrollo — sin instalaciones en tu máquina, servicios externos, bases de datos ni otros quebraderos de cabeza.|
 |<u>**100% construido con IA y para IA**</u> |Todo el ciclo (desde la idea hasta su realización) es un proceso 100% guiado por IA, para cualquier tipo de perfil. Unos pocos tokens más, mucha complejidad menos.|
@@ -57,11 +57,11 @@ De momento solo está disponible para [Claude Code](https://claude.com/claude-co
 |<u>**Estructura de carpetas y documentación**</u>|Define dónde vive cada cosa — carpeta de cambios, código fuente, documentación de arquitectura, estilo y funcionalidades — para encajar **Previo** en la estructura que ya tiene tu proyecto.|
 |<u>**Modelo por skill**</u>|Asigna el modelo y el nivel de esfuerzo que prefieras a cada skill (por ejemplo, uno más ligero para tareas de consulta y uno más potente para el análisis técnico).|
 
-Consulta la [`Guía de usuario`](.claude/pv-doc/pv-guide.es.md#más-formas-de-personalizar-previo) para el detalle de cada opción.
+Consulta la [`Guía de usuario`](.claude/pv-doc/pv-guide/pv-guide.es.md#más-formas-de-personalizar-previo) para el detalle de cada opción.
 
-## ⚠️Puntos menos fuertes y lo que está por llegar
-- <u>**Contextos grandes.**</u> A medida que el proyecto crezca, el contexto necesario para que **Previo** haga su trabajo también crecerá (y el consumo de tokens). Hemos priorizado la calidad de los resultados frente al supuesto ahorro de tokens (aunque no los hemos olvidado) porque nuestra experiencia nos dice que el retrabajo siempre sale más caro que un buen análisis **Previo**.
-- <u>**Mejor con mejores modelos.**</u> **Previo** puede funcionar con cualquier modelo, aunque los resultados irán en consonancia, claro. Esto es como decidir qué perfil quieres contratar para hacer un trabajo: un junior (ej: Haiku) irá más rápido y te costará menos, pero el riesgo de errores y retrabajo es grande. Incluso puedes tener varios en paralelo si quieres, pero entonces ya no te sale tan barato. Un senior (ej: Sonnet) te costará un poco más, pero se lo pensará mejor y el riesgo será mucho menor. Hemos probado **Previo** con ambos enfoques (Sonnet ya es lo bastante senior) y siempre nos ha compensado el uso de un senior (porcentaje de retrabajo en el último proyecto: 5%) para todo, en lugar de intentar ahorrar con juniors (retrabajo en el mismo proyecto: 40%). Son solo nuestros números, lo sabemos, así que pruébalo tú mismo.
+## ⚠️En qué estamos poniendo el foco
+- <u>**Contextos grandes.**</u> A medida que el proyecto crezca, el contexto necesario para que **Previo** haga su trabajo también crecerá (y el consumo de tokens). Estamos priorizando un equilibrio entre la calidad de los resultados y el consumo de tokens porque nuestra experiencia nos dice que el retrabajo siempre sale más caro que un buen análisis.
+- <u>**Mejor con mejores modelos.**</u> Aunque **Previo** puede funcionar con cualquier modelo, los mejores resultados se dan con modelos de tamaño medio (Sonnet 5+, GPT-Luna y equivalentes). Para las tareas de análisis más complicadas modelos como Opus o GPT-Sol pueden resultar algo mejores, pero los costes de su uso no suelen compensar, al menos en nuestra experiencia.
 
 ## 🛜Instalación
 
@@ -76,7 +76,7 @@ curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh
 
 Versión específica:
 ```
-curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.5b6
+curl -fsSL https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.sh | sh -s -- 0.9.8
 ```
 
 **Windows (PowerShell):**
@@ -88,7 +88,7 @@ irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 
 Versión específica:
 ```
-$env:PREVIO_VERSION = "0.9.5b6"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
+$env:PREVIO_VERSION = "0.9.8"; irm https://raw.githubusercontent.com/yeyopepe/previo-sdd/main/install.ps1 | iex
 ```
 
 > ❗**RECUERDA**:
@@ -99,7 +99,7 @@ Esto instala (o actualiza) `.claude/skills` y la documentación (`pv-guide.md` y
 Después, desde la raíz de ese proyecto, ejecuta según tu caso ```/pv-init``` si es primera instalación o ```/pv-update``` si estás actualizando desde una versión anterior.
 
 > ❗**IMPORTANTE:**
-> A partir de aquí el framework te guiará en el proceso de configuración comprobando las herramientas necesarias (Git, Python 3 y las condicionales según el stack del proyecto) y genera el fichero de configuración del que dependen el resto de skills `.claude/pv-context.json`, preguntándote qué idioma/s quieres usar para cada cosa, dónde se guardarán los cambios, dónde está o estará tú código fuente, si quieres aportar ya información de tu proyecto para que empiece a documentarlo, etc.
+> A partir de aquí el framework te guiará en el proceso de configuración comprobando las herramientas necesarias (Git, Python 3 y las condicionales según el stack del proyecto) y genera el fichero de configuración del que dependen el resto de skills `.claude/pv-context.json`, preguntándote qué idioma/s quieres usar para cada cosa, dónde se guardarán los cambios, dónde está o estará tu código fuente, si quieres aportar ya información de tu proyecto para que empiece a documentarlo, etc.
 >
 > Cuando ejecutes `/pv-update` el framework se encargará de revisar y actualizar todo lo necesario para que puedas seguir trabajando.
 
@@ -136,7 +136,7 @@ Así es cómo quedará tu repo tras la instalación, listo para empezar a trabaj
 
 Cada cambio vive en una carpeta numerada dentro de `changes/` que va viajando entre subcarpetas según su estado: `inProgress/` → `implemented/` → `closed/`.
 
-Consulta el [documento de diseño](.claude/pv-doc/pv-design/pv-design.es.md) para el detalle completo.
+Consulta el [documento de diseño](.claude/pv-doc/pv-design.md) para el detalle completo.
 
 ### Flujo mínimo
 
@@ -174,8 +174,8 @@ Skills opcionales que complementan el ciclo mínimo: anotar ideas antes de compr
 
 
 ## ⭐La experiencia completa
-Consulta el [changelog](.claude/pv-changelog.es.md) de la vesión actual.
-Consulta en la [guía de usuario](.claude/pv-doc/pv-guide.es.md) todo lo que puedes hacer con **Previo**.
+Consulta el [changelog](.claude/pv-changelog.es.md) de la versión actual.
+Consulta en la [guía de usuario](.claude/pv-doc/pv-guide/pv-guide.es.md) todo lo que puedes hacer con **Previo**.
 
 
 ## 📐Cómo está hecho, al detalle

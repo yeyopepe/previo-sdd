@@ -1,38 +1,30 @@
-# Changelog de Previo v0.9.8rc1 (desde v0.9.7)
-
-Nota: dentro de una sección, las entradas pueden agruparse bajo un tema cuando al menos dos entradas comparten un mismo asunto. En la sección de detalle, un tema se representa como `- 📂**{Tema}**:` con sus entradas anidadas como sub-viñetas indentadas debajo (sin encabezado, sin enlace). En el índice, ese mismo tema se reduce a una única línea simple `📂{Tema} (N cambios)`, sin listar sus entradas miembro. Las entradas no agrupadas aparecen como viñetas normales de primer nivel en ambos sitios (título simple en el índice, viñeta completa con título en negrita y resumen en el detalle).
+# Changelog de Previo v0.9.8 (desde v0.9.7)
 
 ## Índice
 
 - ⭐[Novedades](#novedades)
-  - Nuevo framework de anotaciones de revisor sobre mockups HTML
-  - 📂Autoinstalación del framework (2 cambios)
-  - 📂Autorreparación de la auditoría de `pv-update` (2 cambios)
-  - 📂Nuevas skills de mantenimiento (2 cambios)
+  - 📂Autoactualización del framework (2 cambios)
+  - 📂Mantenimiento de arquitectura y documentación (2 cambios)
+  - Guía de usuario
+  - Framework de anotaciones de revisión en mockups
 - ✏️[Cambios](#cambios)
-  - Los mockups y sus ficheros de apoyo se trasladan a una nueva estructura de carpetas
-  - La guía propia del framework se traslada a su propia carpeta
-  - Ninguna skill `pv-*` lee ni edita ya un fichero de mockup directamente
-  - Se aclaran las etiquetas del menú de configuración de `pv.py`
-  - Los menús de `pv.py` ahora se cierran con la tecla "X"
+  - El ciclo de vida de los mockups ahora tiene acciones explícitas de cierre y descripción
+  - Todas las skills ahora verifican la instalación del framework antes de ejecutarse
+  - El número máximo de caracteres de la descripción del cambio ahora es configurable
 
 ## ⭐Novedades
 
-- **Nuevo framework de anotaciones de revisor sobre mockups HTML** — cada mockup incorpora ahora un runtime autocontenido que permite al revisor fijar notas sobre un elemento concreto o dejar notas generales, sin salir del propio mockup. Antes de volver a presentarlo, el framework resuelve automáticamente cada nota abierta: si detecta con confianza qué cambio pide, lo aplica directamente sobre el mockup y cierra la nota; si la nota es ambigua, o si su elemento vinculado ya no existe en el mockup ("nota huérfana"), pregunta al revisor antes de tocar nada. Ninguna skill `pv-*` (`pv-new`, `pv-fix`, `pv-how`) lee ni edita ya un fichero de mockup directamente: todas pasan exclusivamente por las acciones `describe` (referencia visual en texto) y `ensure-closed` (resolución de anotaciones) de la skill de mockups configurada, lo que además permite sustituir la skill de mockups HTML por una propia (Figma, librería de componentes, etc.) sin tocar el resto del framework.
-- 📂**Autoinstalación del framework**:
-  - **`pv-update` incorpora un modo de instalación explícito (`/pv-update install`)** para instalar o actualizar el propio framework `pv-*` (no solo auditar su configuración) a una versión igual o posterior a la instalada, mediante un protocolo estricto de resolución, confirmación e instalación que nunca degrada la versión de forma silenciosa y siempre indica el nombre exacto de la versión de destino antes de tocar nada; si tiene éxito, encadena automáticamente con el modo de auditoría/reparación existente para verificar la versión recién instalada.
-  - **El menú de configuración de `pv.py` incorpora la opción "Instalar nueva versión de Previo"**, conectada al mismo mecanismo de instalación que `/pv-update install`, que permite actualizar o reinstalar el framework sin pasar por Claude Code.
-- 📂**Autorreparación de la auditoría de `pv-update`**:
-  - **La auditoría de `pv-update` ahora detecta y corrige sintaxis de plantilla que haya quedado sin resolver** — si un `description.md`/`plan.md` generado todavía muestra la marca de plantilla `[[[Etiqueta]]]` en bruto en lugar de la etiqueta ya resuelta, la auditoría elimina automáticamente los corchetes.
-  - **La auditoría de `pv-update` ahora migra los ficheros antiguos de mockups/datos a la convención actual de carpetas y nombres** — los mockups sueltos en la raíz de una entrada (previos a la subcarpeta `mockups/`) se trasladan a `mockups/`, y los ficheros `design_navigation_*.md`/`design_data_*.md` que aún conservan el prefijo retirado `design_` se renombran a `navigation_*.md`/`data_*.md`, ambos casos de forma automática.
-- 📂**Nuevas skills de mantenimiento**:
-  - **`pv-review-doc-tech`** vuelve a leer por completo cada carpeta `docs.tech` configurada y la reorganiza — trasladando o fusionando contenido, corrigiendo contenido archivado bajo el Área incorrecta — sin añadir, eliminar ni reescribir nunca un dato.
-  - **`pv-review-architecture`** revisa el código fuente real del proyecto frente a una checklist estructural fija (separación de responsabilidades, tamaño, SOLID, DRY, KISS, acoplamiento, nomenclatura) y produce una lista numerada de propuestas de reorganización pura (mover/dividir/fusionar/renombrar, nunca funcionalidad nueva o eliminada); para cada propuesta que el usuario acepta, la enruta a `pv-todo` o `pv-new` según lo que elija.
+- 📂**Autoactualización del framework**:
+  - **`/pv-update install` instala o actualiza el propio framework** — un nuevo modo explícito que resuelve la última versión oficial de GitHub (o la que se le pida), avisa sobre pre-releases y sobre reinstalaciones de la misma versión, se niega a hacer downgrade, y solo instala después de que el usuario confirme por su nombre la versión exacta resuelta. Si tiene éxito, ejecuta automáticamente la auditoría de configuración habitual contra la versión recién instalada.
+  - **`pv.py` puede instalar una nueva versión de Previo desde su propio menú** — una nueva opción "Instalar nueva versión de Previo" reproduce el mismo flujo de resolución-confirmación-instalación que `/pv-update install`, sin necesidad de abrir Claude Code.
+- 📂**Mantenimiento de arquitectura y documentación**:
+  - **Nueva skill: `/pv-review-architecture`** — analiza el código fuente real del proyecto contra una checklist de principios de diseño agnósticos del lenguaje (separación de responsabilidades, SOLID, tamaño de fichero, nomenclatura, capas, DRY/KISS) y genera una lista numerada de propuestas de reorganización puras (dividir, fusionar, reubicar, renombrar), sin añadir ni eliminar nunca funcionalidad. Para cada propuesta aceptada, puede convertirla en una idea anotada (`pv-todo`) o en un cambio documentado (`pv-new`).
+  - **Nueva skill: `/pv-review-doc-tech`** — reorganiza las carpetas de documentación técnica del proyecto (`architectureDocDir`, `styleBibleDocDir`) solo a nivel de estructura: mueve contenido mal ubicado al fichero/categoría correcto, fusiona duplicados y corrige agrupaciones incorrectas, sin borrar, reescribir ni añadir contenido en ningún caso.
+- **Nueva guía de usuario** — un documento completo de incorporación (`pv-guide`) que recorre la configuración inicial, el flujo natural de definición-planificación-implementación de un cambio, la preparación de versiones y las skills de mantenimiento, pensado para alguien nuevo en el framework.
+- **Framework de anotaciones de revisión en mockups** — los mockups HTML (`design_*.html`) ahora incorporan una barra de herramientas de revisión estándar y autocontenida (notas fijadas a elementos, notas generales, mostrar/ocultar, guardar), que permite a quien revisa dejar comentarios directamente sobre el mockup en lugar de solo en el chat.
 
 ## ✏️Cambios
 
-- **Los mockups y sus ficheros de datos/navegación de apoyo se trasladan a una nueva estructura de carpetas** — los mockups `design_*.html`/`design_*.txt` ahora residen en una subcarpeta `mockups/` dentro de cada entrada de cambio/fix en lugar de estar sueltos en su raíz, y `design_navigation_*.md`/`design_data_*.md` se renombran a `navigation_*.md`/`data_*.md` (siguen sueltos en la raíz de la entrada). `pv-new`, `pv-fix`, `pv-how`, `pv-todo` y `pv-status` se actualizaron todos a esta convención. **Acción requerida tras actualizar**: ejecuta `/pv-update` — detecta y migra automáticamente cualquier entrada que aún esté en la estructura antigua.
-- **La guía propia del framework se traslada a su propia carpeta** — `pv-guide.en.md`/`pv-guide.es.md` ahora residen en `.claude/pv-doc/pv-guide/` en lugar de directamente en `.claude/pv-doc/`. **Acción requerida tras actualizar**: vuelve a ejecutar `/pv-update` o reinstala, para que se actualice cualquier referencia del proyecto a la ruta plana antigua.
-- **Ninguna skill `pv-*` lee ni edita ya un fichero de mockup directamente** — `pv-new`, `pv-fix` y `pv-how` pasan ahora exclusivamente por la acción `describe` de la skill de mockups configurada para obtener una referencia visual en texto plano, y por su acción `ensure-closed` para resolver las anotaciones de revisor pendientes; un proyecto que aporte una implementación propia de `framework.skills.mockups` debe soportar ahora ambas acciones (además de las entradas `style_context`/`language`) para seguir siendo un sustituto directo válido.
-- **Se aclaran dos etiquetas del menú de configuración de `pv.py`** — "Change max character width" pasa a ser "Change terminal max character width", y "Check Previo versions" pasa a ser "Check product versions".
-- **Los menús de `pv.py` ahora se cierran con la tecla "X" en lugar de una opción numerada al final**, de modo que la opción de salir ya no cambia de número al añadir o quitar elementos del menú.
+- **El ciclo de vida de los mockups ahora tiene acciones explícitas de cierre y descripción** — tanto la skill de mockups HTML como la de ASCII incorporan una acción `ensure-closed` (que resuelve cualquier anotación pendiente en un mockup antes de considerarlo definitivo) y una acción `describe` (un resumen en texto plano del contenido visual de un mockup para que otra skill lo use como referencia, sin leer el fichero en bruto). `pv-new`, `pv-fix` y `pv-how` ahora pasan por estas acciones en los puntos correspondientes de su flujo en lugar de leer los ficheros de mockup directamente.
+- **Todas las skills ahora verifican la instalación del framework antes de ejecutarse** — `pv-fix`, `pv-how`, `pv-do`, `pv-new`, `pv-todo`, `pv-status` y el resto de skills `pv-*` comprueban ahora el estado de la instalación del framework como primer paso, y se detienen con un mensaje claro que señala `/pv-update install` si algo falla, en lugar de dar un error menos claro más adelante en su propio flujo.
+- **El número máximo de caracteres de la descripción del cambio ahora es configurable** — la vista de detalle de `pv.py` incorpora un nuevo ajuste para cambiar cuántos caracteres de la descripción de un cambio se muestran, junto al ajuste ya existente de ancho de terminal.
