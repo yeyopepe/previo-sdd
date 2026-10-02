@@ -3,7 +3,8 @@
   "framework": {
     "workFolder": "/sandbox-test1/previo-sdd",
     "onescript": {
-      "width": 80
+      "terminal-width": 80,
+      "details-width": 500
     }
   }
 }

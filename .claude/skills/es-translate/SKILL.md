@@ -5,6 +5,7 @@ argument-hint: <texto a traducir/revisar, o ruta a un fichero>
 model: claude-sonnet-5
 effort: medium
 metadata:
+  author: Sergio José Martínez Primiani
   version: 0.9.5-beta3
   uses: []
 ---

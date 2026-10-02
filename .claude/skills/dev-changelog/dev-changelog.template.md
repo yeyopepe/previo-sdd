@@ -11,6 +11,9 @@ Note: within a section, entries may be grouped under a theme when at least two e
 - ✏️[Changed](#link-to-changed-section)
   - {Title describing the change}
   - ...
+- 🛠️[Fixed](#link-to-fixed-section)
+  - {Title describing the fix}
+  - ...
 - ❌[Deleted](#link-to-deleted-section)
   - {Title describing the change}
   - ...
@@ -25,6 +28,10 @@ Note: within a section, entries may be grouped under a theme when at least two e
 ## ✏️Changed
 
 - **{Title describing the change}** — {functional summary}.
+
+## 🛠️Fixed
+
+- **{Title describing the fix}** — {functional summary}.
 
 ## ❌Deleted
 

@@ -2,7 +2,11 @@
 flowchart TD
     Start([Invocation of pv-version])
 
-    Start --> S02Intent
+    Start --> S0Check[Check framework initialized and version verified]
+    S0Check --> S0Ok{Initialized, verified, not blocked?}
+    S0Ok -->|No| S0Info[INFO: run pv-init/pv-update first]
+    S0Info --> End0([End: stopped])
+    S0Ok -->|Yes| S02Intent
 
     S02Intent{Purely informational invocation about the build process?}
     S02Intent -->|Yes| S02Update[Update stuff/how-to-compile.md]

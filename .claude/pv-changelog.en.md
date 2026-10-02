@@ -1,34 +1,30 @@
-# Previo v0.9.7 changelog (from v0.9.6)
+# Previo v0.9.8 changelog (from v0.9.7)
 
 ## Index
 
 - ⭐[New](#new)
-  - 📂Project hook system (6 changes)
+  - 📂Framework self-update (2 changes)
+  - 📂Architecture and documentation maintenance (2 changes)
+  - User guide
+  - Mockup review-annotation framework
 - ✏️[Changed](#changed)
-  - 📂Project hook system (4 changes)
-  - `pv-init`'s scaffolding now seeds the hooks folder
-- ❌[Deleted](#deleted)
-  - `pv-version`'s old single-file custom pipeline removed
+  - Mockup lifecycle now has explicit close and describe actions
+  - Every skill now verifies the framework installation before running
+  - Maximum characters for change descriptions is now configurable
 
 ## ⭐New
 
-- 📂**Project hook system**:
-  - **Per-flow hook insertion points added across the framework** — `pv-do`, `pv-how`, `pv-new`, `pv-fix`, and `pv-version` each now expose fixed customization points as individual files under `{workFolder}/stuff/hooks/<flow>/<NN>-<slug>.md`, one file per insertion point, holding zero or more steps (command, expected output, notes). A hook with no steps is skipped silently; a step that fails stops the flow and explains why. `stuff/` gains a `hooks/` subfolder with one subdirectory per hook-exposing skill — running `pv-init` on a new project or `pv-update` on an existing one seeds the new files automatically, without overwriting any existing project-authored content.
-  - **`pv-how` gains two hook points** — one before technical analysis starts, to load or refresh context such as generated types, a DB schema dump, or external docs (skipped when the user chooses to implement an existing `plan.md` instead of re-analyzing), and one after `plan.md` and its risk score are written, before the user is asked to implement, to validate or publish the plan (e.g. open a ticket).
-  - **`pv-new` gains one hook point** — after the entry (and any mockups) are finished, right before handoff to `pv-how`, for registering the entry externally (e.g. a tracker issue, a channel post, an index row). In todo mode it runs after the originating idea is deleted.
-  - **`pv-fix` gains a hook point for the fast-track (trivial-change) path** — right after the entry is documented, before any code is touched, the only customization point available before a fast-tracked change lands since fast-track skips `plan.md`/`pv-how` entirely. The fast-track now also runs `pv-do`'s two hooks below, since it edits code the same way `pv-do` does.
-  - **`pv-version` gains a fifth, earliest hook point** — before even checking that `implemented/` is empty, for cheap abort checks (clean git tree, correct branch, CI green, release tag not already taken). Its three former "custom pipeline" sections become three separate hook files instead of sections in one shared file (see Changed, below).
-  - **`pv-do` gains two hook points** — before any code is edited, and after code/docs are done but before the folder moves to `implemented/`. Both also run from `pv-fix`'s fast-track.
+- 📂**Framework self-update**:
+  - **`/pv-update install` installs or updates the framework itself** — a new explicit mode that resolves the latest (or a requested) official release from GitHub, warns about pre-releases and same-version reinstalls, refuses to downgrade, and only installs after the user confirms the exact resolved version by name. On success it automatically runs the usual configuration audit against the newly installed version.
+  - **`pv.py` can install a new Previo version from its own menu** — a new "Install new Previo version" option mirrors the same resolve-confirm-install flow as `/pv-update install`, without needing to open Claude Code.
+- 📂**Architecture and documentation maintenance**:
+  - **New skill: `/pv-review-architecture`** — analyzes the project's real source code against a checklist of language-agnostic design principles (separation of concerns, SOLID, file size, naming, layering, DRY/KISS) and produces a numbered list of pure reorganization proposals (splitting, merging, relocating, renaming), never adding or removing functionality. For each proposal accepted, it can turn it into a noted idea (`pv-todo`) or a documented change (`pv-new`).
+  - **New skill: `/pv-review-doc-tech`** — reorganizes the project's technical documentation folders (`architectureDocDir`, `styleBibleDocDir`) for structure only: moving misplaced content to the right file/category, merging duplicates, and fixing wrong groupings, without ever deleting, rewriting, or adding content.
+- **New user guide** — a full onboarding document (`pv-guide`) walking through setup, the natural change-definition-planning-implementation flow, release preparation, and the maintenance skills, aimed at someone new to the framework.
+- **Mockup review-annotation framework** — HTML mockups (`design_*.html`) now embed a standard, self-contained review-annotation toolbar (pin notes to elements, general notes, show/hide, save), letting a reviewer leave feedback directly on the mockup instead of only in chat.
 
 ## ✏️Changed
 
-- 📂**Project hook system**:
-  - **`pv-version`'s old single-file, three-section custom pipeline is replaced by the new per-point hook files** — the former fixed sections ("Before starting" / "In the middle" / "At the end") are now three independent files, plus the new earliest guardrail hook. **Action required:** `pv-update` detects the legacy single file — if it's an untouched empty seed it's deleted and reseeded automatically; if it holds project-authored steps, it is **not** migrated automatically, and is reported with the section→file mapping so the user can move the steps by hand.
-  - **`pv-version`'s build-procedure file renamed from `how-to-compile-version.md` to `how-to-compile.md`** — same role and format, name only. **Action required:** `pv-update` renames the file automatically when only the old name is found; if both names exist, neither is touched and the user is asked to reconcile them manually.
-  - **`pv-update`'s audit/repair scope extended to the new hooks system** — it checks each hook file's presence, renames any file using an old/non-canonical name while preserving its content, and, since hook files are fixed technical English with no language option, automatically translates any project-authored step content found in another language in place, leaving commands and file paths untouched.
-  - **`pv-do`, `pv-how`, `pv-new`, `pv-fix`, and `pv-version` now explicitly document themselves as non-editable installed framework** — a request to change how one of these flows behaves is now answered by pointing to the relevant hook file instead of hand-editing the skill, since a hand-edited skill falls out of sync with `pv-update`'s version tracking. Each of these skills also gained an explicit workflow diagram file (`workflow.do.md`, alongside existing ones for the others) documenting the flow's full sequence including hook branch points.
-- **`pv-init`'s scaffolding now seeds the hooks folder** — project scaffolding now seeds `stuff/hooks/` and its per-skill subfolders/seed files instead of the old single custom-pipeline seed, as part of initializing a new project.
-
-## ❌Deleted
-
-- **`pv-version`'s old single-file custom pipeline removed** — the three-section, zero-step seed file is gone, superseded by the separate per-point hook template files described above.
+- **Mockup lifecycle now has explicit close and describe actions** — both the HTML and ASCII mockup skills gained an `ensure-closed` action (resolving any pending annotation on a mockup before it's treated as final) and a `describe` action (a plain-text summary of a mockup's visual content for another skill to use as reference, without reading the raw file). `pv-new`, `pv-fix` and `pv-how` now go through these actions at the right points of their flow instead of reading mockup files directly.
+- **Every skill now verifies the framework installation before running** — `pv-fix`, `pv-how`, `pv-do`, `pv-new`, `pv-todo`, `pv-status` and the other `pv-*` skills now check the framework's installation status as their first step and stop with a clear message pointing to `/pv-update install` if something is wrong, instead of surfacing a less clear failure deeper into their own flow.
+- **Maximum characters for change descriptions is now configurable** — `pv.py`'s details view has a new setting to change how many characters of a change's description are shown, alongside the existing terminal width setting.

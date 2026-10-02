@@ -11,7 +11,7 @@ changes without going through Claude Code or having to remember script
 names, paths, or parameters: run this file and choose a menu option.
 
 Most options are read-only and delegate to the pv-status skill's scripts.
-Four options modify something:
+Five options modify something:
 - "Close an implemented entry": moves the folder from
   changes/implemented/{xxxx} to changes/closed/{xxxx} (delegating to
   pv-internal-workflow's move-change.py, which doesn't touch any file's
@@ -41,14 +41,23 @@ Four options modify something:
   submenu): delegates to pv-init's sync-skill-models.py, which propagates
   pv-context.json's skillModels to each 'pv-*' SKILL.md's frontmatter
   (model/effort).
-- "Change max character width" (inside the "Configuration" submenu): the
-  only place pv.py *writes* pv-context.json -- it stores a single integer
-  at framework.onescript.width (>= 40; empty input keeps the current
-  value), read back on every launch to set this file's WIDTH. A minimal
-  read-modify-write that preserves every other field and key order; still
-  gated behind a confirm(). Under --testconfig the same value is read from
-  / written to pv-config-test.json at the identical framework.onescript.width
-  path, so the exact same code handles both.
+- "Change terminal settings" (inside the "Configuration" submenu): opens a
+  submenu with the only two settings pv.py *writes* into pv-context.json --
+  "Max character width" (framework.onescript.terminal-width, >= 40; empty
+  input keeps the current value), read back on every launch to set this
+  file's WIDTH, and "Max character in change details"
+  (framework.onescript.details-width, >= 1; empty input keeps the current
+  value), forwarded to filter_status.py's --details-width so it truncates
+  the detail card's description line at that length instead of its own
+  500-character default. Both are minimal read-modify-writes that preserve
+  every other field and key order; both still gated behind a confirm().
+  Under --testconfig the same values are read from / written to
+  pv-config-test.json at the identical framework.onescript.* path, so the
+  exact same code handles both. A project on an older pv-* version may
+  still carry the field's original name (framework.onescript.width, before
+  it was renamed to terminal-width) -- migrate_onescript_width_key() renames
+  it in place silently at startup, no confirm(), before either setting is
+  read for the first time.
 
 "Changes info" opens a submenu with five options: "Search by id" (exact
 id match, cheap -- doesn't read description.md except the match's),
@@ -61,7 +70,7 @@ chosen flag, across states). The searches scan every state; kept as
 separate options rather than one combined search so each stays as fast as
 the kind of lookup it's actually doing.
 
-"Check Previo versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
+"Check product versions" opens a submenu that lists {workFolder}/versions/{XXXX}/
 folders and prints the chosen one's changelog.md.
 
 Design notes (screen types, colors, how to extend this menu) live in
@@ -104,13 +113,15 @@ STATUS_SCRIPTS = ROOT / ".claude" / "skills" / "pv-status" / "scripts"
 WORKFLOW_SCRIPTS = ROOT / ".claude" / "skills" / "pv-internal-workflow" / "scripts"
 INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
 INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
+UPDATE_SCRIPTS = ROOT / ".claude" / "skills" / "pv-update" / "scripts"
 CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
 
 # The config file pv.py reads its own settings from and writes them back to:
 # CONTEXT_PATH normally, or the --testconfig file when that flag is passed
 # (set in main()). Both carry pv.py's settings at the same nested path
 # (framework.onescript.*), so load_onescript_width()/save_onescript_width()
-# don't branch on which one it is.
+# and load_details_width()/save_details_width() don't branch on which one
+# it is.
 ACTIVE_CONFIG_PATH = CONTEXT_PATH
 
 # Set by main() when --testconfig is passed: the workFolder value to use
@@ -147,6 +158,13 @@ SCRIPTS_ACCEPTING_WIDTH = {
     "read-flags.py",
 }
 
+# The only script whose detail card description gets truncated at a caller-
+# supplied length (--details-width, forwarded alongside --width). None of
+# the other pv-status scripts render that description line.
+SCRIPTS_ACCEPTING_DETAILS_WIDTH = {
+    "filter_status.py",
+}
+
 # Canonical flag catalogue -- kept in sync BY HAND with
 # pv-status/scripts/terminal_output.py's FLAG_* maps and
 # pv-internal-workflow/metadata.schema.json's enum. pv.py imports nothing,
@@ -171,8 +189,14 @@ FLAG_ICONS_ASCII = {"priority": "[P]", "workinprogress": "[W]"}
 # See .claude/pv-doc/pv-design-onescript/pv-design-onescript.es.md > "Estilo por Tipo de Pantalla" for
 # the full rationale and exact mockups.
 
-WIDTH = 80  # default; overridden at startup by framework.onescript.width if set
+WIDTH = 80  # default; overridden at startup by framework.onescript.terminal-width if set
 MIN_WIDTH = 40  # below this, RING_ART and the delegated detail cards break
+
+# Detail card description truncation length, forwarded to filter_status.py's
+# --details-width -- see change_details_width() in the Configuration submenu.
+# Matches filter_status.py's own TERMINAL_DESCRIPTION_MAX_CHARS default.
+DETAILS_WIDTH = 500  # default; overridden at startup by framework.onescript.details-width if set
+MIN_DETAILS_WIDTH = 1
 COLOR_RESET = "\033[0m"
 GOLD = "\033[38;5;220m"
 DARK_GRAY = "\033[38;5;238m"
@@ -208,7 +232,6 @@ RING_CHAR_COLORS = {
 }
 
 NAME_RE = re.compile(r"\*\*Name\*\*\s*[:—-]\s*(.+)")
-VERSION_RE = re.compile(r"^\s*version:\s*(\S+)", re.MULTILINE)
 VERSION_RE = re.compile(r"^\s*version:\s*(\S+)", re.MULTILINE)
 IDEA_RE = re.compile(
     r"^##\s*Idea\s*\n+(.+?)(?=\n##\s|\Z)", re.IGNORECASE | re.MULTILINE | re.DOTALL
@@ -404,6 +427,8 @@ def _script_args(script: Path, args: tuple[str, ...]) -> list[str]:
         full_args += ["--work-folder", TEST_WORK_FOLDER]
     if script.name in SCRIPTS_ACCEPTING_WIDTH:
         full_args += ["--width", str(WIDTH)]
+    if script.name in SCRIPTS_ACCEPTING_DETAILS_WIDTH:
+        full_args += ["--details-width", str(DETAILS_WIDTH)]
     return full_args
 
 
@@ -446,8 +471,31 @@ def work_root() -> Path:
     return ROOT / (work_folder_rel or "").lstrip("/")
 
 
+def migrate_onescript_width_key() -> None:
+    """One-time silent migration: a project that installed an older pv-*
+    version before "terminal-width" was renamed from "width" (and before
+    "details-width" existed) may still have framework.onescript.width in
+    its config file. Renames it to framework.onescript.terminal-width in
+    place, preserving its value, so load_onescript_width() finds it at the
+    new path -- run once at startup, before any load_*_width() call, no
+    confirm() (an internal key rename, not a setting the user is choosing).
+    A no-op if "width" is absent or "terminal-width" already exists (never
+    overwrites a value already migrated or set under the new key)."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return
+    onescript = config.get("framework", {}).get("onescript", {})
+    if "width" not in onescript or "terminal-width" in onescript:
+        return
+    onescript["terminal-width"] = onescript.pop("width")
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
 def load_onescript_width() -> int:
-    """Reads framework.onescript.width from the active config file
+    """Reads framework.onescript.terminal-width from the active config file
     (ACTIVE_CONFIG_PATH -- pv-context.json, or the --testconfig file, both
     using the same nested path). Returns the module default WIDTH if the
     file, the section, or the field is absent, or if the value isn't an int
@@ -457,21 +505,46 @@ def load_onescript_width() -> int:
         config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return WIDTH
-    value = config.get("framework", {}).get("onescript", {}).get("width")
+    value = config.get("framework", {}).get("onescript", {}).get("terminal-width")
     if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_WIDTH:
         return value
     return WIDTH
 
 
 def save_onescript_width(width: int) -> None:
-    """Writes framework.onescript.width into the active config file,
-    preserving every other field and the existing key order (read-modify-
-    write with json.load + json.dump, indent=2). Creates the
+    """Writes framework.onescript.terminal-width into the active config
+    file, preserving every other field and the existing key order (read-
+    modify-write with json.load + json.dump, indent=2). Creates the
     framework/onescript objects if missing. This is the only place pv.py
     writes its config file -- a single validated integer, always confirmed
     by the caller first."""
     config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
-    config.setdefault("framework", {}).setdefault("onescript", {})["width"] = width
+    config.setdefault("framework", {}).setdefault("onescript", {})["terminal-width"] = width
+    ACTIVE_CONFIG_PATH.write_text(
+        json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+
+
+def load_details_width() -> int:
+    """Reads framework.onescript.details-width from the active config file,
+    same convention as load_onescript_width(). Returns the module default
+    DETAILS_WIDTH if the file, the section, or the field is absent, or if
+    the value isn't an int >= MIN_DETAILS_WIDTH."""
+    try:
+        config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return DETAILS_WIDTH
+    value = config.get("framework", {}).get("onescript", {}).get("details-width")
+    if isinstance(value, int) and not isinstance(value, bool) and value >= MIN_DETAILS_WIDTH:
+        return value
+    return DETAILS_WIDTH
+
+
+def save_details_width(width: int) -> None:
+    """Writes framework.onescript.details-width into the active config
+    file, same read-modify-write convention as save_onescript_width()."""
+    config = json.loads(ACTIVE_CONFIG_PATH.read_text(encoding="utf-8"))
+    config.setdefault("framework", {}).setdefault("onescript", {})["details-width"] = width
     ACTIVE_CONFIG_PATH.write_text(
         json.dumps(config, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
@@ -507,9 +580,9 @@ def load_test_config(path: Path) -> dict[str, str]:
       this file's own location, not the process cwd.
     - "workFolder" lives at framework.workFolder, the same path pv-context.json
       uses. framework.onescript.* (pv.py's persisted settings) is read/written
-      in place by load_onescript_width()/save_onescript_width(), which point
-      at this file via ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch
-      it.
+      in place by load_onescript_width()/save_onescript_width() and
+      load_details_width()/save_details_width(), which point at this file via
+      ACTIVE_CONFIG_PATH -- load_test_config() doesn't touch it.
 
     Exits with a clear message (no raw traceback) if the file doesn't
     exist, isn't valid JSON, or is missing repoRoot / framework.workFolder --
@@ -701,14 +774,14 @@ def sync_skill_models() -> None:
 
 
 def change_width() -> None:
-    """Persists framework.onescript.width. Empty input keeps the current
-    value; anything under MIN_WIDTH is rejected without writing. Follows
-    the state-mutating pattern (show + confirm before writing) even though
-    the "mutation" is a single integer."""
+    """Persists framework.onescript.terminal-width. Empty input keeps the
+    current value; anything under MIN_WIDTH is rejected without writing.
+    Follows the state-mutating pattern (show + confirm before writing) even
+    though the "mutation" is a single integer."""
     global WIDTH
 
     show_info(
-        [wrap(f"Current max character width: {WIDTH} (minimum {MIN_WIDTH}).")],
+        [wrap(f"Max character width. Current: {WIDTH} (default: 80).")],
         framed=False,
     )
     answer = read_input(
@@ -741,12 +814,231 @@ def change_width() -> None:
     )
 
 
+def change_details_width() -> None:
+    """Persists framework.onescript.details-width, forwarded to
+    filter_status.py's --details-width to control how many characters of a
+    change/fix's description show in the detail card before truncating.
+    Empty input keeps the current value; anything under MIN_DETAILS_WIDTH
+    is rejected without writing. Same show + confirm pattern as
+    change_width()."""
+    global DETAILS_WIDTH
+
+    show_info(
+        [wrap(f"Max character in change details. Current: {DETAILS_WIDTH} (default: 500).")],
+        framed=False,
+    )
+    answer = read_input(
+        f"New value (Enter to keep {DETAILS_WIDTH}): "
+    ).strip()
+    if not answer:
+        print("Unchanged.")
+        return
+
+    if not answer.isdigit() or int(answer) < MIN_DETAILS_WIDTH:
+        print(f"Value must be a whole number >= {MIN_DETAILS_WIDTH}. Unchanged.")
+        return
+
+    new_details_width = int(answer)
+    if new_details_width == DETAILS_WIDTH:
+        print("Unchanged.")
+        return
+
+    if not confirm(
+        f"Set max character in change details to {new_details_width} in {ACTIVE_CONFIG_PATH.name}?"
+    ):
+        print("Cancelled.")
+        return
+
+    save_details_width(new_details_width)
+    DETAILS_WIDTH = new_details_width
+    show_info(
+        [wrap(f"Saved. Max character in change details is now {new_details_width}.")],
+        framed=False,
+    )
+
+
+def show_terminal_settings_menu() -> None:
+    run_menu(
+        "Previo: terminal settings",
+        [
+            ("Max character width", change_width),
+            ("Max character in change details", change_details_width),
+        ],
+        "Back",
+    )
+
+
+show_terminal_settings_menu.is_submenu = True
+
+
+TAG_VERSION_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)")
+
+
+def _semver_tuple(tag: str) -> tuple[int, int, int] | None:
+    """(major, minor, patch) from a framework tag, ignoring any [suffix]
+    (e.g. "0.9.8b7" -> (0, 9, 8)) -- same ordering rule install-framework.py's
+    own parse_version() uses for its downgrade check, duplicated here so
+    install_previo_version() can filter out any tag older than the
+    installed one (install-framework.py rejects those unconditionally, even
+    with --yes, so offering them would just guarantee a later failure) and
+    detect an exact-version pick, without shelling out just to ask.
+    None if tag doesn't start with the expected X.Y.Z shape."""
+    match = TAG_VERSION_RE.match(tag.strip())
+    if not match:
+        return None
+    return tuple(int(g) for g in match.groups())
+
+
+def _available_previo_versions() -> tuple[str | None, str | None]:
+    """Queries the official + pre-release tags via install-framework.py
+    --list-only (capturing its stdout, never printed to the screen) --
+    reuses its GitHub Releases logic rather than re-implementing it here.
+    Returns (official_tag, prerelease_tag), either None if unknown/absent."""
+    out = run_script_capture(UPDATE_SCRIPTS / "install-framework.py", "--list-only")
+    official = prerelease = None
+    for line in out.splitlines():
+        if line.startswith("OFFICIAL_TAG="):
+            official = line[len("OFFICIAL_TAG="):].strip() or None
+        elif line.startswith("PRERELEASE_TAG="):
+            prerelease = line[len("PRERELEASE_TAG="):].strip() or None
+    return official, prerelease
+
+
+def install_previo_version() -> None:
+    """"Install new Previo version": lists the latest official release and,
+    if newer, the latest pre-release (same two tags install-framework.py's
+    normal run reports, via --list-only above), then lets the user pick one
+    to install, or go back. Doesn't use show_selection() for the choice --
+    it needs to tell "empty input" (go back) apart from "typed something
+    that isn't a listed number" (error, stay on this same screen), which
+    show_selection() doesn't distinguish (both return None).
+
+    Either tag OLDER than the installed one (via _semver_tuple(), same
+    (major, minor, patch) comparison install-framework.py's own downgrade
+    check uses) is silently left out of the list -- e.g. an installed
+    pre-release ahead of the latest official release means only the
+    pre-release tag (equal to what's installed) gets listed, never the
+    older official one. This isn't just cosmetic: install-framework.py
+    hard-rejects an older tag unconditionally, even with --yes, with no
+    override -- so offering it here would let the user confirm an install
+    that's guaranteed to then fail. If every known tag ends up older than
+    or equal to what's installed and none is strictly newer, the "already
+    up to date" case (see below) covers it instead of an empty list.
+
+    Every remaining listed tag is shown by name, and
+    confirm(f"Install Previo {tag}?...") always names that exact tag before
+    anything runs. Right before that confirm(), an exact-tag match (picking
+    the already-installed version) additionally warns this reinstalls
+    everything from scratch -- informational only, doesn't block the pick.
+    install-framework.py itself additionally refuses to install without
+    --version <tag> --yes (it only resolves/validates otherwise), so this
+    confirm() is what supplies that required, explicitly-named
+    confirmation, never skipped. The actual install is delegated entirely
+    to install-framework.py --version <tag> --yes, which is the only place
+    that talks to GitHub -- including deleting and re-downloading
+    install.sh/.ps1 fresh from previo-sdd's main branch into a temp file
+    every time (never trusting a local copy, never leaving one behind),
+    running it, then deleting it again, all inside that script; pv.py
+    itself stays unaware of any of that. Under --testconfig, the actual
+    install is skipped (it would touch the real repo root, not the test
+    fixture) -- the command that would run is printed instead."""
+    official_tag, prerelease_tag = _available_previo_versions()
+    if not official_tag:
+        show_info(
+            [wrap("Couldn't reach GitHub to check for available Previo versions. Try again later.")],
+            framed=False,
+        )
+        return
+
+    installed = framework_version()
+    installed_parsed = _semver_tuple(installed)
+
+    def _is_older_than_installed(tag: str) -> bool:
+        tag_parsed = _semver_tuple(tag)
+        return (
+            tag_parsed is not None
+            and installed_parsed is not None
+            and tag_parsed < installed_parsed
+        )
+
+    options: list[str] = []
+    tags: list[str] = []
+    if not _is_older_than_installed(official_tag):
+        options.append(f"{official_tag} (latest official release)")
+        tags.append(official_tag)
+    if prerelease_tag and not _is_older_than_installed(prerelease_tag):
+        options.append(f"{prerelease_tag} (pre-release, not recommended for normal use)")
+        tags.append(prerelease_tag)
+
+    if not tags:
+        show_info(
+            [wrap(f"Previo {installed} is already up to date with (or ahead of) "
+                  f"every version GitHub currently reports -- nothing to install.")],
+            framed=False,
+        )
+        return
+
+    while True:
+        print()
+        hr("-")
+        print("Allowed Previo versions:")
+        for i, option in enumerate(options, start=1):
+            print(wrap(f"{i}. {option}", indent="  "))
+        hr("-")
+
+        choice = read_input("Choose a version to install (number, or empty to go back): ").strip()
+        if not choice:
+            return
+
+        index = int(choice) - 1 if choice.lstrip("-").isdigit() else -1
+        if not (0 <= index < len(tags)):
+            print("Invalid option.")
+            continue
+
+        tag = tags[index]
+        if tag == installed:
+            print(wrap(
+                f"Previo {tag} is already installed -- this will reinstall "
+                f"everything from scratch (same version, no upgrade)."
+            ))
+        if not confirm(f"Install Previo {tag}? This modifies files in this project."):
+            print("Cancelled.")
+            continue
+
+        if TEST_WORK_FOLDER is not None:
+            # --testconfig never installs for real (it would touch the real
+            # repo root, not the throwaway fixture) -- print the command
+            # that would run instead. install-framework.py has no
+            # --work-folder of its own (it always installs at the real repo
+            # root), unlike SCRIPTS_ACCEPTING_WORK_FOLDER's scripts.
+            show_info(
+                [wrap("--testconfig: not installing for real. Command that would run:")]
+                + [f"python {UPDATE_SCRIPTS / 'install-framework.py'} --version {tag} --yes"],
+                framed=False,
+            )
+            return
+
+        # --yes is required here: install-framework.py refuses to install
+        # anything without it (it only resolves/validates otherwise) -- the
+        # confirm() call right above is exactly the explicit, tag-naming
+        # confirmation that requirement exists to enforce, so passing --yes
+        # now is safe and expected, never a way to skip confirmation.
+        run_script(UPDATE_SCRIPTS / "install-framework.py", "--version", tag, "--yes")
+        show_info(
+            [wrap("Installation finished. Run /pv-update from Claude Code next to "
+                  "verify and repair the configuration against the newly installed version.")],
+            framed=False,
+        )
+        return
+
+
 def show_settings_menu() -> None:
     run_menu(
         "Previo: settings",
         [
             ("Sync skill models per pv-context.json", sync_skill_models),
-            ("Change max character width", change_width),
+            ("Change terminal settings", show_terminal_settings_menu),
+            ("Install new Previo version", install_previo_version),
         ],
         "Back",
     )
@@ -1200,7 +1492,7 @@ MENU: list[tuple[str, "callable"]] = [
     ("Ideas in todo/", show_ideas_menu),
     ("Close an implemented entry (move to changes/closed/)", close_entry),
     ("Configuration", show_settings_menu),
-    ("Check Previo versions", show_versions_menu),
+    ("Check product versions", show_versions_menu),
 ]
 
 
@@ -1212,28 +1504,27 @@ MENU: list[tuple[str, "callable"]] = [
 def run_menu(
     title: str, items: list[tuple[str, "callable"]], last_label: str
 ) -> None:
-    last_index = len(items) + 1
-
     while True:
         print()
         print_header(title)
         for i, (label, _) in enumerate(items, start=1):
             print(wrap(f"{i}. {label}", indent="  "))
-        print(wrap(f"{last_index}. {last_label}", indent="  "))
+        print()
+        print(wrap(f"X. {last_label}", indent="  "))
         hr("=", GOLD)
 
         choice = read_input("Choose an option: ").strip()
         if choice == "":
             continue
 
+        if choice.lower() == "x":
+            return
+
         try:
             index = int(choice)
         except ValueError:
             print("Invalid option.")
             continue
-
-        if index == last_index:
-            return
 
         try:
             _, action = items[index - 1]
@@ -1249,7 +1540,7 @@ def run_menu(
 
 def main() -> None:
     global ROOT, STATUS_SCRIPTS, WORKFLOW_SCRIPTS, INIT_SCRIPTS, INIT_SKILL_PATH, CONTEXT_PATH, TEST_WORK_FOLDER
-    global ACTIVE_CONFIG_PATH, WIDTH
+    global ACTIVE_CONFIG_PATH, WIDTH, DETAILS_WIDTH, UPDATE_SCRIPTS
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -1273,6 +1564,7 @@ def main() -> None:
         WORKFLOW_SCRIPTS = ROOT / ".claude" / "skills" / "pv-internal-workflow" / "scripts"
         INIT_SCRIPTS = ROOT / ".claude" / "skills" / "pv-init" / "scripts"
         INIT_SKILL_PATH = ROOT / ".claude" / "skills" / "pv-init" / "SKILL.md"
+        UPDATE_SCRIPTS = ROOT / ".claude" / "skills" / "pv-update" / "scripts"
         CONTEXT_PATH = ROOT / ".claude" / "pv-context.json"
         TEST_WORK_FOLDER = config["workFolder"]
         # pv.py's own settings still come from (and are written back to) the
@@ -1291,7 +1583,9 @@ def main() -> None:
         print(wrap("Run /pv-init first from Claude Code."))
         return
 
+    migrate_onescript_width_key()
     WIDTH = load_onescript_width()
+    DETAILS_WIDTH = load_details_width()
 
     print(colorize_ring_art(RING_ART))
 

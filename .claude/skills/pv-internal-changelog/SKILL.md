@@ -5,7 +5,8 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.7
+  author: Sergio José Martínez Primiani
+  version: 0.9.8
   uses: []
 ---
 

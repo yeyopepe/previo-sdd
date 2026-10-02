@@ -5,7 +5,8 @@ user-invocable: false
 model: claude-sonnet-5
 effort: medium
 metadata:
-  version: 0.9.7
+  author: Sergio José Martínez Primiani
+  version: 0.9.8
   uses: [pv-internal-doc-files]
 ---
 
@@ -13,7 +14,7 @@ metadata:
 
 A single, shared procedure to organize `docs.functional.featuresDocPathDir` as a folder with one file per feature, instead of a single monolithic document — designed so that analyzing or updating one feature doesn't require reading the entire listing. Only invoked by `pv-do` (which writes this documentation after implementing a change/fix) — not meant for direct invocation by the user.
 
-**Language.** This skill doesn't talk to the user directly. The content it writes to each feature file follows `docs.functional.language` (default `interaction.language`, English if neither is configured) — the caller (`pv-do`) tells it, since this skill doesn't read `.claude/pv-context.json` itself. The labels wrapped in `[[[...]]]` in `FEATURE.template.md` (`Area`, `Available in`, `Code`, `Since`, `Last modified`, and the `NNN` numeric prefix in the title) stay fixed in English always, regardless of `docs.functional.language` — write them without the brackets (see the "Marker convention in templates" section of `pv-design.en.md`). Only the free-text content following each label follows the configured language.
+**Language.** This skill doesn't talk to the user directly. The content it writes to each feature file follows `docs.functional.language` (default `interaction.language`, English if neither is configured) — the caller (`pv-do`) tells it, since this skill doesn't read `.claude/pv-context.json` itself. The labels wrapped in `[[[...]]]` in `FEATURE.template.md` (`Area`, `Available in`, `Code`, `Since`, `Last modified`, and the `NNN` numeric prefix in the title) stay fixed in English always, regardless of `docs.functional.language` — `[[[...]]]` is template-only syntax, never valid output: when writing the real file, drop the triple brackets entirely and keep only the label inside them, unchanged, in English — `**[[[Available in]]]**:` becomes `**Available in**:`, `[[[NNN]]]` becomes the actual number (e.g. `007`). The brackets must never appear in the generated file (see the "Marker convention in templates" section of `pv-design.en.md`). Only the free-text content following each label follows the configured language.
 
 **This skill decides what the documentation says and how it's written.** Given a summary of what was implemented and the context already gathered (touched code, `plan.md`, functional diagrams/mockups available in the entry), it applies its own content checklist and writing rules (below) to draft the entry — including whether it's an in-place edit or a new entry, and which functional diagrams to carry over. It doesn't decide **where** or **how** it's stored on disk (numbering, `INDEX.md`, filename) — that's delegated to `pv-internal-doc-files`.
 
@@ -22,7 +23,7 @@ A single, shared procedure to organize `docs.functional.featuresDocPathDir` as a
 Every feature entry must record:
 
 - **Functional description** — one or more sentences/paragraphs describing the feature's current behavior: what it lets the user do and how it behaves. Never a changelog of what changed in this specific `xxxx` — always the full, faithful description of the resulting behavior, even on an in-place edit.
-- **Functional diagrams (optional)** — carry over a diagram (as-is, never rewritten) when this entry's `description.md` has a functional Mermaid diagram (the kind `pv-new`/`extend-entry.md` generates), or the entry's folder has one or more `design_navigation_*.md`, and it represents a flow of the feature being documented. If two or more of those diagrams reference each other (one says "see diagram 1", or names a state/node defined in another), carry them over together, all or none — never leave a broken reference. Never carry over technical diagrams (internal flow, sequence between components) — those belong in `docs.tech.architectureDocDir`. If the feature already had its own diagrams from a previous version, keep them unless this change makes them outdated, in which case replace them instead of accumulating both.
+- **Functional diagrams (optional)** — carry over a diagram (as-is, never rewritten) when this entry's `description.md` has a functional Mermaid diagram (the kind `pv-new`/`extend-entry.md` generates), or the entry's folder has one or more `navigation_*.md`, and it represents a flow of the feature being documented. If two or more of those diagrams reference each other (one says "see diagram 1", or names a state/node defined in another), carry them over together, all or none — never leave a broken reference. Never carry over technical diagrams (internal flow, sequence between components) — those belong in `docs.tech.architectureDocDir`. If the feature already had its own diagrams from a previous version, keep them unless this change makes them outdated, in which case replace them instead of accumulating both.
 - **`Available in`** — where it's seen/used (mode, screen, component...).
 - **`Code`** — the complete list of `xxxx` codes that created or modified this entry, not just the new one.
 - **`Since`** — date the entry was created (the first `xxxx`); never changes once assigned.
@@ -62,7 +63,7 @@ Parameters:
 - `summary` — brief description of what was implemented (the feature or behavior change) and where it's used/seen.
 - `area` — functional area name (exactly as it should appear in `**Area**:` and group by in the index).
 - `title` — feature name (exactly as it should appear as `# ...`); for an in-place edit, the existing title unless the change itself renames the feature.
-- `context` — what's already gathered: the touched code, `plan.md`, and, if this entry's `description.md` has a functional Mermaid diagram or the entry's folder has `design_navigation_*.md` file(s), their content.
+- `context` — what's already gathered: the touched code, `plan.md`, and, if this entry's `description.md` has a functional Mermaid diagram or the entry's folder has `navigation_*.md` file(s), their content.
 - `existing_file` — path returned by a previous call to `find`, if a matching entry was found; omitted if none was found.
 
 Steps:

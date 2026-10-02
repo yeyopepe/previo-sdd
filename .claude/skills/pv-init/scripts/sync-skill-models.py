@@ -15,9 +15,11 @@ Rules:
 - Inserts or updates (at the top level of the frontmatter, alongside 'name'/
   'description') the 'model:' and 'effort:' keys, right before 'metadata:'
   (or before the closing '---' if that skill has no 'metadata:' block).
-- If the resolved value differs from what the file already had, bumps
-  'metadata.version''s patch by 1 (x.y.z -> x.y.(z+1)). If nothing changes,
-  leaves the file (and its version) untouched.
+- Never touches 'metadata.version': this script runs in every consuming
+  project (it ships as part of 'pv-init'), and the framework's own version
+  number is only ever set by 'dev-generate-version' (dev-only, this repo's
+  own release process) via 'tools/set-skill-versions.py'. Syncing model/
+  effort is a config propagation, not a new release of the skill.
 
 Usage:
   python .claude/skills/pv-init/scripts/sync-skill-models.py [--dry-run]
@@ -33,17 +35,6 @@ from pathlib import Path
 def repo_root() -> Path:
     # This script lives at {repo}/.claude/skills/pv-init/scripts/
     return Path(__file__).resolve().parents[4]
-
-
-def bump_patch(version: str) -> str:
-    # Versions in this framework aren't strict semver -- they carry an
-    # optional 'bN' beta suffix with no separator (e.g. "0.9.5b8"), which
-    # must be preserved as-is across the bump, not stripped or reset.
-    match = re.match(r"^(\d+)\.(\d+)\.(\d+)([a-zA-Z][\w.-]*)?$", version.strip())
-    if not match:
-        return version
-    major, minor, patch, suffix = match.groups()
-    return f"{major}.{minor}.{int(patch) + 1}{suffix or ''}"
 
 
 def sync_skill_file(path: Path, model: str, effort: str) -> str | None:
@@ -87,14 +78,6 @@ def sync_skill_file(path: Path, model: str, effort: str) -> str | None:
         + [f"model: {model}\n", f"effort: {effort}\n"]
         + kept[insert_at:]
     )
-
-    # Bump metadata.version patch, if a metadata block with a version exists.
-    for i, line in enumerate(new_lines):
-        version_match = re.match(r"^(\s+)version:\s*([0-9]+\.[0-9]+\.[0-9]+[a-zA-Z]?[\w.-]*)\s*$", line)
-        if version_match:
-            indent, version = version_match.groups()
-            new_lines[i] = f"{indent}version: {bump_patch(version)}\n"
-            break
 
     new_text = "".join(["---\n"] + new_lines + rest)
     path.write_text(new_text, encoding="utf-8", newline="")

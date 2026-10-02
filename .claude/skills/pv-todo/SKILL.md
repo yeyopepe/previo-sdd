@@ -5,7 +5,8 @@ argument-hint: "[code | change <xxxx>] <idea to note or develop>"
 model: claude-haiku-4-5
 effort: medium
 metadata:
-  version: 0.9.7
+  author: Sergio José Martínez Primiani
+  version: 0.9.8
   uses: []
 ---
 
@@ -13,9 +14,9 @@ metadata:
 
 The `pv-*` framework's idea notebook, but **outside** its workflow: it doesn't document a change/fix to implement, it just keeps a record of an idea to develop later, at a different pace from `pv-new`/`pv-fix`. There's no planning (`pv-how`/`pv-do`), no states (`inProgress`/`implemented`/`closed`), and no version: an idea noted here stays here until, if ever, someone decides to turn it into a real change/fix with `pv-new`/`pv-fix` (outside this skill already).
 
-It also works the other way: an `inProgress` change/fix that's been deprioritized can be **demoted** here (`/pv-todo change <xxxx>`), keeping every file it had, so its analysis isn't lost while it waits — see [Demoting a change into a noted idea](#demoting-a-change-into-a-noted-idea).
+**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation. `description.md` follows `framework.changes.language` (default `interaction.language`, English if neither is configured) — except the labels wrapped in `[[[...]]]` in `description.template.md` (the four markdown headings), which stay fixed in English always (see step 3, and the "Marker convention in templates" section of `pv-design.en.md`): `[[[...]]]` is template-only syntax, never valid output — when writing the real `description.md`, drop the triple brackets entirely and keep only the label inside them, unchanged, in English (e.g. `## [[[Full description]]]` becomes `## Full description`). The brackets must never appear in the generated file, translated or not. If `language` is not configured anywhere, everything is English.
 
-**Language.** Use `framework.interaction.language` (default English) for everything you say to the user in this conversation. `description.md` follows `framework.changes.language` (default `interaction.language`, English if neither is configured) — except the labels wrapped in `[[[...]]]` in `description.template.md` (the four markdown headings), which stay fixed in English always (see step 3, and the "Marker convention in templates" section of `pv-design.en.md`): write them without the brackets. If `language` is not configured anywhere, everything is English.
+It also works the other way: an `inProgress` change/fix that's been deprioritized can be **demoted** here (`/pv-todo change <xxxx>`), keeping every file it had, so its analysis isn't lost while it waits — see [Demoting a change into a noted idea](#demoting-a-change-into-a-noted-idea).
 
 Lives at `{changesDir}/todo/`, a sibling subfolder to `inProgress`/`implemented`/`closed` but **entirely separate** from the rest of the framework: no other `pv-*` skill reads it, writes it, or counts its folders when numbering or looking up changes/fixes. The codes this skill uses have no relation to change/fix's numeric `xxxx` — they're just unique identifiers within `{changesDir}/todo/`. (The one crossover is the demote operation above, and it's one-way: this skill reads and deletes an `inProgress/{xxxx}/` folder, but the resulting idea still gets its own `pv-todo` code and stops counting for the workflow.)
 
@@ -27,7 +28,9 @@ If `.claude/pv-context.json` doesn't exist at the repo root, or is missing the `
 This project doesn't have the `pv-*` framework initialized yet (or is missing configuration). Run `/pv-init` first before invoking me again.
 ```
 
-Additionally, before continuing, check that the framework's installed version is verified: read `metadata.version` from `.claude/skills/pv-init/SKILL.md`'s frontmatter (a handful of lines, not the whole file) and compare it against `framework.frameworkStatus.lastVerifiedVersion` in the `pv-context.json` you already loaded. If `frameworkStatus` is missing entirely, or `lastVerifiedVersion` doesn't match `pv-init/SKILL.md`'s real version, don't continue: tell the user the framework was updated (or has never been verified) and that they must run `pv-update` first — a stale `pv-context.json` can mean outdated templates, marker conventions, or other assumptions this skill relies on. Same stop if `framework.frameworkStatus.blocked` is already `true` (show `blockedReason` if present). This is a cheap, live comparison of two version strings already in hand — it doesn't require `pv-update` to have run before for the check itself to work, only for it to pass.
+Before continuing, check that `.claude/skills/pv-update/scripts/check-framework-status.py` exists. If it doesn't, tell the user the framework doesn't look correctly installed and that they must install the latest version (see `pv-update`'s "Install mode" — `/pv-update install`) — stop there, don't continue this skill's work.
+
+If it exists, run it (`python .claude/skills/pv-update/scripts/check-framework-status.py`) and read its JSON. If `ok` is `false`, show `message` to the user and stop — no `pv-*` skill can continue its work without this step passing with `ok: true`.
 
 From here on, `changesDir` is shorthand for `{workFolder}/changes` (a fixed-name subfolder inside `framework.workFolder`, which defaults to `"/"`, the repo root).
 
@@ -67,8 +70,6 @@ Without asking scope questions or proposing answers to functional gaps (that's w
 - **Creation date** — today's date (`YYYY-MM-DD` format) at the moment this `description.md` is created.
 - **Notes** — the idea's content, as the user raised it. Can be a loose sentence, a list of possibilities, open unresolved questions, or any other form the user wants to note it in — don't force `pv-new`/`pv-fix`'s `description.md` structure onto it (there's no separate "Original prompt" or "Full description").
 
-If the idea has a clear visual component and the user wants to record it, you can also create some `design_*.html`, same as `pv-new` does (self-contained mockup, no real functionality) — but it's not mandatory nor this skill's focus; only do it if the user asks or provides that material.
-
 ## 4. Confirm to the user
 
 Report the assigned code and the created file's path, and remind them that this idea stays noted at `{changesDir}/todo/` outside the workflow — if it's ever turned into a real change/fix, it needs to be documented again with `pv-new`/`pv-fix` (this skill doesn't do that conversion automatically).
@@ -89,7 +90,7 @@ Don't fall back to creating a new idea from a number that didn't resolve — a m
 
 ### D.2 Confirm with the user
 
-Show the change's **Name** and **Type** (read from `{changesDir}/inProgress/{xxxx}/description.md`) and list the files the folder contains (`description.md`, `plan.md`, `history.md`, any `design_*`, `design_data_*`, etc.). State plainly what will happen: **all** of that content is copied into a new `pv-todo` idea and then `{changesDir}/inProgress/{xxxx}/` is deleted (the change leaves the workflow — no version, no changelog entry, it's as if it had never been opened, but its material is kept).
+Show the change's **Name** and **Type** (read from `{changesDir}/inProgress/{xxxx}/description.md`) and list the files the folder contains: `description.md`, `plan.md`, `history.md`, the content of its `mockups/` subfolder if it exists, and any `navigation_*.md`/`data_*.md` loose in the root — two distinct groups, not one flat list. State plainly what will happen: **all** of that content is copied into a new `pv-todo` idea and then `{changesDir}/inProgress/{xxxx}/` is deleted (the change leaves the workflow — no version, no changelog entry, it's as if it had never been opened, but its material is kept).
 
 Ask for explicit confirmation. If the user doesn't confirm, stop and change nothing.
 
@@ -104,7 +105,9 @@ Create `{changesDir}/todo/{code}/` and copy into it **every file** from `{change
 - the change's `description.md` → `original-change-description.md`
 - the change's `history.md` (if present) → `original-change-history.md`
 
-Everything else (`plan.md`, all `design_*` / `design_data_*` files, anything else that was there) keeps its original name.
+Everything else (`plan.md`, `navigation_*.md`/`data_*.md`, anything else loose in the root) keeps its original name.
+
+If `mockups/` exists, copy it as a complete subtree to `{changesDir}/todo/{code}/mockups/`, preserving its structure (don't flatten it into loose files). Then write `{changesDir}/todo/{code}/mockups/important.md` with a fixed note stating these mockups were generated in the past (include today's date) and must be treated only as reference/example material, not the current design — this prevents a future re-promotion from confusing a frozen mockup with the live one. `navigation_*.md`/`data_*.md` copied above don't get this note: they're functional data/flow definitions, not a frozen visual design that could be mistaken for the current one.
 
 ### D.5 Write the idea's `description.md`
 
@@ -113,7 +116,7 @@ Create `{changesDir}/todo/{code}/description.md` following the [`description.tem
 - **Idea** — the change's **Name**, verbatim.
 - **Code** — the `{code}` from D.3.
 - **Creation date** — today's date (`YYYY-MM-DD`).
-- **Notes** — a short line stating this idea was demoted from change/fix `{xxxx}` (originally type `<type>`) on this date because it was deprioritized, then the **full functional description** copied verbatim from the change's `## Full description` section. After it, add a brief "Preserved material" list naming the other files now in this folder (`original-change-description.md` for the original entry with its Technical notes, `plan.md` for the technical plan if it was there, `original-change-history.md` for the prompt history, the `design_*` files, etc.) so whoever picks this up later knows the analysis wasn't thrown away.
+- **Notes** — a short line stating this idea was demoted from change/fix `{xxxx}` (originally type `<type>`) on this date because it was deprioritized, then the **full functional description** copied verbatim from the change's `## Full description` section. After it, add a brief "Preserved material" list naming the other files now in this folder (`original-change-description.md` for the original entry with its Technical notes, `plan.md` for the technical plan if it was there, `original-change-history.md` for the prompt history, the `mockups/` subfolder and any `navigation_*.md`/`data_*.md`, etc.) so whoever picks this up later knows the analysis wasn't thrown away.
 
 ### D.6 Delete the change
 

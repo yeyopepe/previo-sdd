@@ -1,34 +1,30 @@
-# Changelog de Previo v0.9.7 (desde v0.9.6)
+# Changelog de Previo v0.9.8 (desde v0.9.7)
 
 ## Índice
 
 - ⭐[Novedades](#novedades)
-  - 📂Sistema de hooks de proyecto (6 cambios)
+  - 📂Autoactualización del framework (2 cambios)
+  - 📂Mantenimiento de arquitectura y documentación (2 cambios)
+  - Guía de usuario
+  - Framework de anotaciones de revisión en mockups
 - ✏️[Cambios](#cambios)
-  - 📂Sistema de hooks de proyecto (4 cambios)
-  - El scaffolding de `pv-init` ahora siembra la carpeta de hooks
-- ❌[Eliminado](#eliminado)
-  - Se elimina el antiguo pipeline personalizado de fichero único de `pv-version`
+  - El ciclo de vida de los mockups ahora tiene acciones explícitas de cierre y descripción
+  - Todas las skills ahora verifican la instalación del framework antes de ejecutarse
+  - El número máximo de caracteres de la descripción del cambio ahora es configurable
 
 ## ⭐Novedades
 
-- 📂**Sistema de hooks de proyecto**:
-  - **Se añaden puntos de inserción de hooks por flujo en todo el framework** — `pv-do`, `pv-how`, `pv-new`, `pv-fix` y `pv-version` exponen ahora puntos de personalización fijos como ficheros individuales bajo `{workFolder}/stuff/hooks/<flow>/<NN>-<slug>.md`, un fichero por punto de inserción, que contiene cero o más pasos (comando, salida esperada, notas). Un hook sin pasos se omite silenciosamente; un paso que falla detiene el flujo y explica el motivo. `stuff/` incorpora una subcarpeta `hooks/` con un subdirectorio por cada skill que expone hooks — ejecutar `pv-init` en un proyecto nuevo o `pv-update` en uno existente siembra los nuevos ficheros automáticamente, sin sobrescribir ningún contenido ya creado por el proyecto.
-  - **`pv-how` incorpora dos puntos de hook** — uno antes de que empiece el análisis técnico, para cargar o actualizar contexto como tipos generados, un volcado del esquema de base de datos o documentación externa (se omite cuando el usuario elige implementar un `plan.md` ya existente en lugar de volver a analizar), y otro después de que se escriban `plan.md` y su puntuación de riesgo, antes de pedir al usuario que implemente, para validar o publicar el plan (p. ej. abrir un ticket).
-  - **`pv-new` incorpora un punto de hook** — al terminar la entrada (y cualquier mockup), justo antes de pasar el control a `pv-how`, para registrar la entrada externamente (p. ej. un issue en el tracker, una publicación en un canal, una fila de índice). En modo todo se ejecuta después de eliminar la idea de origen.
-  - **`pv-fix` incorpora un punto de hook para la vía rápida (cambio trivial)** — justo después de documentar la entrada, antes de tocar cualquier código; es el único punto de personalización disponible antes de que un cambio por vía rápida se aplique, ya que esta vía se salta por completo `plan.md`/`pv-how`. La vía rápida ahora también ejecuta los dos hooks de `pv-do` descritos más abajo, puesto que edita código de la misma forma que `pv-do`.
-  - **`pv-version` incorpora un quinto punto de hook, el más temprano** — antes incluso de comprobar que `implemented/` está vacío, para comprobaciones de aborto baratas (árbol git limpio, rama correcta, CI en verde, etiqueta de versión aún no usada). Sus tres antiguas secciones de "pipeline personalizado" pasan a ser tres ficheros de hook independientes en lugar de secciones de un único fichero compartido (ver Cambios, más abajo).
-  - **`pv-do` incorpora dos puntos de hook** — antes de editar cualquier código, y después de terminar el código y la documentación pero antes de mover la carpeta a `implemented/`. Ambos se ejecutan también desde la vía rápida de `pv-fix`.
+- 📂**Autoactualización del framework**:
+  - **`/pv-update install` instala o actualiza el propio framework** — un nuevo modo explícito que resuelve la última versión oficial de GitHub (o la que se le pida), avisa sobre pre-releases y sobre reinstalaciones de la misma versión, se niega a hacer downgrade, y solo instala después de que el usuario confirme por su nombre la versión exacta resuelta. Si tiene éxito, ejecuta automáticamente la auditoría de configuración habitual contra la versión recién instalada.
+  - **`pv.py` puede instalar una nueva versión de Previo desde su propio menú** — una nueva opción "Instalar nueva versión de Previo" reproduce el mismo flujo de resolución-confirmación-instalación que `/pv-update install`, sin necesidad de abrir Claude Code.
+- 📂**Mantenimiento de arquitectura y documentación**:
+  - **Nueva skill: `/pv-review-architecture`** — analiza el código fuente real del proyecto contra una checklist de principios de diseño agnósticos del lenguaje (separación de responsabilidades, SOLID, tamaño de fichero, nomenclatura, capas, DRY/KISS) y genera una lista numerada de propuestas de reorganización puras (dividir, fusionar, reubicar, renombrar), sin añadir ni eliminar nunca funcionalidad. Para cada propuesta aceptada, puede convertirla en una idea anotada (`pv-todo`) o en un cambio documentado (`pv-new`).
+  - **Nueva skill: `/pv-review-doc-tech`** — reorganiza las carpetas de documentación técnica del proyecto (`architectureDocDir`, `styleBibleDocDir`) solo a nivel de estructura: mueve contenido mal ubicado al fichero/categoría correcto, fusiona duplicados y corrige agrupaciones incorrectas, sin borrar, reescribir ni añadir contenido en ningún caso.
+- **Nueva guía de usuario** — un documento completo de incorporación (`pv-guide`) que recorre la configuración inicial, el flujo natural de definición-planificación-implementación de un cambio, la preparación de versiones y las skills de mantenimiento, pensado para alguien nuevo en el framework.
+- **Framework de anotaciones de revisión en mockups** — los mockups HTML (`design_*.html`) ahora incorporan una barra de herramientas de revisión estándar y autocontenida (notas fijadas a elementos, notas generales, mostrar/ocultar, guardar), que permite a quien revisa dejar comentarios directamente sobre el mockup en lugar de solo en el chat.
 
 ## ✏️Cambios
 
-- 📂**Sistema de hooks de proyecto**:
-  - **El antiguo pipeline personalizado de `pv-version`, de fichero único y tres secciones, se sustituye por los nuevos ficheros de hook por punto** — las antiguas secciones fijas ("Antes de empezar" / "En medio" / "Al final") pasan a ser tres ficheros independientes, más el nuevo hook de comprobación inicial. **Requiere acción:** `pv-update` detecta el fichero heredado — si es una semilla vacía sin modificar, se elimina y se vuelve a sembrar automáticamente; si contiene pasos creados por el proyecto, **no** se migra automáticamente, y se informa del mapeo de sección a fichero para que el usuario pueda mover los pasos a mano.
-  - **El fichero de procedimiento de compilación de `pv-version` se renombra de `how-to-compile-version.md` a `how-to-compile.md`** — mismo rol y formato, solo cambia el nombre. **Requiere acción:** `pv-update` renombra el fichero automáticamente cuando solo se encuentra el nombre antiguo; si existen ambos nombres, no se toca ninguno y se pide al usuario que los concilie manualmente.
-  - **El alcance de auditoría/reparación de `pv-update` se amplía al nuevo sistema de hooks** — comprueba la presencia de cada fichero de hook, renombra cualquier fichero que use un nombre antiguo o no canónico conservando su contenido, y, dado que los ficheros de hook son en inglés técnico fijo sin opción de idioma, traduce automáticamente in situ cualquier contenido de pasos creado por el proyecto que se encuentre en otro idioma, sin tocar comandos ni rutas de fichero.
-  - **`pv-do`, `pv-how`, `pv-new`, `pv-fix` y `pv-version` ahora se documentan explícitamente como framework instalado no editable** — una petición de cambiar el comportamiento de uno de estos flujos se responde ahora señalando el fichero de hook correspondiente en lugar de editar la skill a mano, ya que una skill editada a mano queda desincronizada del control de versiones de `pv-update`. Cada una de estas skills también incorpora un fichero de diagrama de flujo explícito (`workflow.do.md`, junto a los ya existentes para las demás) que documenta la secuencia completa del flujo, incluidos los puntos de ramificación de los hooks.
-- **El scaffolding de `pv-init` ahora siembra la carpeta de hooks** — el scaffolding de proyecto siembra ahora `stuff/hooks/` y sus subcarpetas/ficheros semilla por skill, en lugar de la antigua semilla única de pipeline personalizado, como parte de la inicialización de un proyecto nuevo.
-
-## ❌Eliminado
-
-- **Se elimina el antiguo pipeline personalizado de fichero único de `pv-version`** — desaparece el fichero semilla de tres secciones sin pasos, sustituido por los ficheros de plantilla de hook independientes por punto descritos arriba.
+- **El ciclo de vida de los mockups ahora tiene acciones explícitas de cierre y descripción** — tanto la skill de mockups HTML como la de ASCII incorporan una acción `ensure-closed` (que resuelve cualquier anotación pendiente en un mockup antes de considerarlo definitivo) y una acción `describe` (un resumen en texto plano del contenido visual de un mockup para que otra skill lo use como referencia, sin leer el fichero en bruto). `pv-new`, `pv-fix` y `pv-how` ahora pasan por estas acciones en los puntos correspondientes de su flujo en lugar de leer los ficheros de mockup directamente.
+- **Todas las skills ahora verifican la instalación del framework antes de ejecutarse** — `pv-fix`, `pv-how`, `pv-do`, `pv-new`, `pv-todo`, `pv-status` y el resto de skills `pv-*` comprueban ahora el estado de la instalación del framework como primer paso, y se detienen con un mensaje claro que señala `/pv-update install` si algo falla, en lugar de dar un error menos claro más adelante en su propio flujo.
+- **El número máximo de caracteres de la descripción del cambio ahora es configurable** — la vista de detalle de `pv.py` incorpora un nuevo ajuste para cambiar cuántos caracteres de la descripción de un cambio se muestran, junto al ajuste ya existente de ancho de terminal.

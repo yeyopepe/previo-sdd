@@ -13,8 +13,8 @@ For each entry in the state folder, five columns are computed:
     field); in any other state, description.md's '**Type**' field
     ('change'/'fix'/'fast'); 'unknown' if not found or there's no
     description.md.
-  - description: the first 250 characters of description.md's '## Full
-    description' section (with "..." at the end if truncated); None if
+  - description: description.md's '## Full description' section, full text
+    with whitespace collapsed (not truncated here -- see below); None if
     that section is empty or missing. history.md is never used as a
     fallback: it's prompt history for the exclusive use of pv-new/pv-fix,
     no other skill (including pv-status) should read it.
@@ -28,12 +28,16 @@ For each entry in the state folder, five columns are computed:
     formatted as YYYY-MM-DD; if there's no description.md, the folder's own
     mtime.
   - extra_files: count of files directly inside the entry folder that
-    aren't the framework's own (description.md, plan.md, history.md) --
-    e.g. design_*.html/design_*.txt mockups, or anything else a change/fix
-    folder may accumulate. Only surfaces in --terminal mode's detail card
-    (see TERMINAL_FRAMEWORK_FILES below); 'todo/' entries never show it,
-    same reasoning as Risk/planned (todo/ folders only ever hold
-    description.md).
+    aren't the framework's own (description.md, plan.md, history.md) and
+    aren't the mockups/ subfolder -- e.g. navigation_*.md/data_*.md, or
+    anything else a change/fix folder may accumulate. Only surfaces in
+    --terminal mode's detail card (see TERMINAL_FRAMEWORK_FILES below);
+    'todo/' entries never show it, same reasoning as Risk/planned (todo/
+    folders only ever hold description.md).
+  - mockups_count: count of files inside the entry folder's mockups/
+    subfolder (design_*.html/design_*.txt mockups), not recursive; None if
+    that subfolder doesn't exist. Only surfaces in --terminal mode's detail
+    card, same as extra_files; 'todo/' entries never show it either.
 
 Two more fields, name (description.md's '**Name**' field) and planned_date
 (plan.md's '**Creation date**' field, same bold-inline format as
@@ -145,25 +149,34 @@ def load_changes_dir(root: Path, override: str | None) -> Path:
 DESCRIPTION_MAX_CHARS = 250
 
 # Files an entry folder always carries as part of the pv-new/pv-fix/pv-how
-# workflow -- everything else directly inside the folder (design_*.html,
-# design_*.txt, or anything else a change/fix accumulates) counts as
-# "extra" for the detail card's file count.
+# workflow -- everything else directly inside the folder (navigation_*.md,
+# data_*.md, or anything else a change/fix accumulates) counts as "extra"
+# for the detail card's file count. mockups/ is excluded separately (it's a
+# directory, not a file -- is_file() already filters it out) and counted on
+# its own via mockups_count instead.
 TERMINAL_FRAMEWORK_FILES = {"description.md", "plan.md", "history.md"}
 
 
-def summarize(text: str) -> str:
-    # Collapses repeated line breaks/whitespace before truncating, so the
-    # summary doesn't drag along markdown formatting.
-    collapsed = re.sub(r"\s+", " ", text).strip()
-    if len(collapsed) <= DESCRIPTION_MAX_CHARS:
-        return collapsed
-    return collapsed[:DESCRIPTION_MAX_CHARS].rstrip() + "..."
+def collapse_whitespace(text: str) -> str:
+    # Collapses repeated line breaks/whitespace so the description doesn't
+    # drag along markdown formatting. Truncation is the caller's job:
+    # render_report() (markdown table) truncates at DESCRIPTION_MAX_CHARS,
+    # render_terminal() (detail card) truncates at its own --details-width --
+    # so the full, untruncated text has to survive past this point for the
+    # terminal card to have anything to truncate beyond 250 characters.
+    return re.sub(r"\s+", " ", text).strip()
+
+
+def truncate(text: str, max_chars: int) -> str:
+    if len(text) <= max_chars:
+        return text
+    return text[:max_chars].rstrip() + "..."
 
 
 def extract_description(text: str) -> str | None:
     match = DESCRIPTION_FULL_RE.search(text)
     if match and match.group(1).strip():
-        return summarize(match.group(1))
+        return collapse_whitespace(match.group(1))
 
     return None
 
@@ -199,6 +212,13 @@ def count_extra_files(entry_dir: Path) -> int:
         for p in entry_dir.iterdir()
         if p.is_file() and p.name not in TERMINAL_FRAMEWORK_FILES
     )
+
+
+def count_mockups_files(entry_dir: Path) -> int | None:
+    mockups_dir = entry_dir / "mockups"
+    if not mockups_dir.is_dir():
+        return None
+    return sum(1 for p in mockups_dir.iterdir() if p.is_file())
 
 
 def build_entry(state: str, entry_dir: Path) -> dict:
@@ -239,6 +259,7 @@ def build_entry(state: str, entry_dir: Path) -> dict:
     # missing the field) means "pending" to the caller, not "unknown yet".
     planned_date = extract_date(plan_text) if plan_text else None
     extra_files = None if state == "todo" else count_extra_files(entry_dir)
+    mockups_count = None if state == "todo" else count_mockups_files(entry_dir)
     # Status flags from .metadata.json (dotfile owned by pv-internal-workflow).
     # todo/ entries never carry flags or relatedIds.
     flags = [] if state == "todo" else read_flags(entry_dir)
@@ -254,6 +275,7 @@ def build_entry(state: str, entry_dir: Path) -> dict:
         "planned_date": planned_date,
         "risk": risk,
         "extra_files": extra_files,
+        "mockups_count": mockups_count,
         "flags": flags,
         "relatedIds": related_ids,
     }
@@ -395,7 +417,7 @@ def render_report(result: dict) -> str:
             row_template.format(
                 code=entry["code"],
                 type=TYPE_LABELS.get(entry["type"], entry["type"]),
-                description=entry["description"] or "—",
+                description=truncate(entry["description"], DESCRIPTION_MAX_CHARS) if entry["description"] else "—",
                 risk=f"{entry['risk']}/10" if entry["risk"] is not None else "?",
                 date=entry["date"] or "—",
                 # Chat/markdown: always emoji. Own leading "Flags" column.
@@ -419,7 +441,11 @@ TERMINAL_DESCRIPTION_MAX_CHARS = 500
 SEARCH_KIND_LABELS = {"id": "id", "content": "content", "flag": "flag"}
 
 
-def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
+def render_terminal(
+    result: dict,
+    width: int = term.DEFAULT_WIDTH,
+    details_width: int = TERMINAL_DESCRIPTION_MAX_CHARS,
+) -> str:
     is_search = "query" in result
     if not is_search:
         title = f"PROJECT STATUS — {result['state']}"
@@ -467,15 +493,16 @@ def render_terminal(result: dict, width: int = term.DEFAULT_WIDTH) -> str:
             continue
 
         risk = f"{entry['risk']}/10" if entry["risk"] is not None else "?"
-        description = entry["description"] or "—"
-        if len(description) > TERMINAL_DESCRIPTION_MAX_CHARS:
-            description = description[:TERMINAL_DESCRIPTION_MAX_CHARS].rstrip() + "..."
+        description = truncate(entry["description"], details_width) if entry["description"] else "—"
         extra_files = entry["extra_files"] or 0
         lines.append(f"{prefix}{entry['code']}  [{type_}]  ({entry['state']})  Risk: {risk}")
         lines.append(f"created: {entry['date'] or '—'}, planned: {planned}")
         lines.append(term.wrap(entry["name"] or "(no name)", indent="> ", width=width))
         lines.append(term.wrap(description, indent="  ", width=width))
         lines.append(f"extra files: {extra_files}")
+        mockups_count = entry.get("mockups_count")
+        if mockups_count is not None:
+            lines.append(f"mockups: {mockups_count}")
         related_ids = entry.get("relatedIds") or []
         if related_ids:
             lines.append(f"Related: {', '.join(related_ids)}")
@@ -538,6 +565,15 @@ def main() -> None:
         "already). The caller decides this -- pv.py passes its own WIDTH "
         f"so delegated screens match its menu's width. Default {term.DEFAULT_WIDTH}.",
     )
+    parser.add_argument(
+        "--details-width",
+        type=int,
+        default=TERMINAL_DESCRIPTION_MAX_CHARS,
+        help="Max characters of a change/fix's description shown in the "
+        "--terminal detail card's description line, before truncating with "
+        "'...'. The caller decides this -- pv.py passes its own persisted "
+        f"setting. Default {TERMINAL_DESCRIPTION_MAX_CHARS}.",
+    )
     args = parser.parse_args()
 
     exclusive = [bool(args.search_id), bool(args.search_content), bool(args.flag)]
@@ -566,21 +602,25 @@ def main() -> None:
 
     if args.search_id:
         result = collect_search_by_id(changes_dir, args.search_id)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     if args.search_content:
         result = collect_search_by_content(changes_dir, args.search_content)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     if args.flag:
         result = collect_by_flag(changes_dir, args.flag)
-        print(render_terminal(result, width=args.width))
+        print(render_terminal(result, width=args.width, details_width=args.details_width))
         return
 
     result = collect(changes_dir, args.state)
-    print(render_terminal(result, width=args.width) if args.terminal else render_report(result))
+    print(
+        render_terminal(result, width=args.width, details_width=args.details_width)
+        if args.terminal
+        else render_report(result)
+    )
 
 
 if __name__ == "__main__":
