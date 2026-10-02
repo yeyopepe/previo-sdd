@@ -5,7 +5,7 @@
 ![Static Badge](https://img.shields.io/badge/Powered%20by-Claude_code-orange) ![Static Badge](https://img.shields.io/badge/License-AGPLv3-red)
 ![Static Badge](https://img.shields.io/badge/Supports-Claude-orange)
 
-_Puedes leer esto también en [Spanish](README.es.md)_
+_You can also read this in [Spanish](README.es.md)_
 </div>
 
 
@@ -37,7 +37,7 @@ Currently only available for [Claude Code](https://claude.com/claude-code), but 
 |---|---|
 |<u>**Fast and no fuss**</u>|Prioritizes speed and sequential work over parallel work, avoiding the complexity of coordinating multiple changes at once, resolving PR conflicts, or managing simultaneous branches.|
 |<u>**Complete spec, free-form**</u>|Every entry requires just enough structure to be useful (intent, plan, state), without complex *spec* formats to learn or maintain by hand.|
-|<u>**Design is always validated**</u>|Visualizes and validates visual changes and workflows with static mockups (HTML/CSS or a custom format) before implementing anything — avoiding the "implement → doesn't land right → redo" cycle.|
+|<u>**Design is always validated**</u>|Visualizes and validates visual changes and workflows with HTML mockups that let you view, try out, and even annotate any change you want before implementing anything — avoiding the "implement → doesn't land right → redo" cycle.|
 |<u>**Clear risks**</u>|Every change is analyzed to calculate the risk it carries of causing potential side effects: 9 risk factors that produce a score from 0 (no risk) to 10 (extreme risk).|
 |<u>**Documentation always up to date**</u>|**Previo** keeps the project's technical and functional documentation up to date at all times, along with the changelog between versions. You can start the project with an initial technical design, by analyzing an existing project, or let **Previo** build it up on its own as the project progresses.|
 |<u>**Adaptable and versatile**</u>| Great for projects of any size, and adapts to each project's stack.|

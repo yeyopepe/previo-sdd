@@ -37,7 +37,7 @@ De momento solo está disponible para [Claude Code](https://claude.com/claude-co
 |---|---|
 |<u>**Rápido y sin complicaciones**</u>|Prioriza la velocidad y el trabajo secuencial frente al trabajo en paralelo, evitando la complejidad de coordinar varios cambios a la vez, resolver conflictos entre PRs o gestionar ramas simultáneas.|
 |<u>**Especificación completa, formato libre**</u>|Cada entrada exige la estructura mínima necesaria para ser útil (intención, plan, estado), sin formatos de *spec* complejos que haya que aprender o mantener a mano.|
-|<u>**Valida siempre sobre diseños**</u>|Visualiza y valida los cambios visuales y los flujos de trabajo con maquetas HTML que te permien visualizar, probar e incluso anotar los cambios que quieras antes de implementar nada, evitando el ciclo de "implementar → ver que no convence → rehacer".|
+|<u>**Valida siempre sobre diseños**</u>|Visualiza y valida los cambios visuales y los flujos de trabajo con maquetas HTML que te permiten visualizar, probar e incluso anotar los cambios que quieras antes de implementar nada, evitando el ciclo de "implementar → ver que no convence → rehacer".|
 |<u>**Riesgos claros**</u>|Cada cambio se analiza para calcular el riesgo que conlleva de generar potenciales efectos secundarios: 9 factores de riesgo que dan una puntuación de 0 (sin riesgo) a 10 (riesgo extremo).|
 |<u>**Documentación siempre al día**</u>|**Previo** mantiene siempre actualizada la documentación del proyecto de forma autónoma, tanto técnica como funcional, así como los cambios entre versiones. Puedes empezar el proyecto con un diseño técnico inicial, analizando un proyecto ya existente o dejar que **Previo** la vaya generando según avance el proyecto.|
 |<u>**Adaptable y versátil**</u> | Ideal para proyectos de cualquier tamaño y se adapta al stack de cada uno.|
@@ -179,7 +179,7 @@ Consulta en la [guía de usuario](.claude/pv-doc/pv-guide/pv-guide.es.md) todo l
 
 
 ## 📐Cómo está hecho, al detalle
-Si lo quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), lo puedes consultar en los [documentos de diseño](.claude/pv-doc/).
+Si lo que quieres es ver cómo está hecho (el mapa de skills del framework, cómo se invocan entre sí, las decisiones detrás de su arquitectura, etc), lo puedes consultar en los [documentos de diseño](.claude/pv-doc/).
 
 ## ⚖️Licencia
 
